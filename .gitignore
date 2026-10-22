@@ -18,6 +18,9 @@ application_answers.csv
 universal_applied_jobs.csv
 platforms/linkedin/out.csv
 platforms/linkedin/qa.csv
+*.db
+*.db-shm
+*.db-wal
 
 # Logs
 logs/

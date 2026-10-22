@@ -22,10 +22,18 @@
   - [`Umesh-Temburwar-OCT.pdf`](Umesh-Temburwar-OCT.pdf): Master resume automatically attached to job applications.
 - 🖥️ **Universal Multi-Browser Engine**:
   - Auto-detects Windows default browser (**Microsoft Edge**, **Google Chrome**, **Brave**, **Firefox**).
-  - Built-in anti-detection flags (`--disable-blink-features=AutomationControlled`, `--no-sandbox`).
-- 📊 **Consolidated Analytics**:
-  - Auto-aggregates applications into [`universal_applied_jobs.csv`](universal_applied_jobs.csv) with a rich terminal dashboard.
-- ⚡ **1-Click Launch**: Double-click [`run.bat`](run.bat) or execute [`Universal_Job_Auto_Apply.py`](Universal_Job_Auto_Apply.py).
+- 🖥️ **Modern Web UI Dashboard**:
+  - Full-featured dark-mode Web Dashboard (`http://localhost:5000`) with live KPI metrics, real-time log terminal feed, application search/filter CRM table, and in-browser profile editor.
+- 🧠 **AI Screening Answerer & ATS Matcher**:
+  - Auto-answers subjective employer questions ("Why should we hire you?", "Describe your experience with React") using Candidate profile heuristics or optional Gemini Flash API.
+  - ATS Keyword Matcher evaluates job descriptions against candidate skills and calculates match compatibility score.
+- 💾 **SQLite Application Tracker & CRM**:
+  - Persistent `jobs_tracker.db` database tracks every application and prevents duplicate submissions across all platforms.
+- 🔔 **Instant Smartphone Push Alerts**:
+  - Non-blocking real-time Telegram Bot & Discord Webhook alerts on every successful application.
+- 🛡️ **Advanced Human Emulation & Anti-Detection**:
+  - Random human typing delays, smooth page scrolling, randomized cooldown intervals, and webdriver flag evasion.
+- ⚡ **1-Click Launch**: Double-click [`run.bat`](run.bat), run the Web UI with `py Universal_Job_Auto_Apply.py --gui`, or use the interactive CLI.
 
 ---
 

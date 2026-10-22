@@ -213,3 +213,47 @@ def create_driver(target=None, headless=False):
             logger.warning(f"Could not start {b.upper()}: {e}")
 
     raise RuntimeError("Failed to launch any supported browser (Edge, Chrome, Brave, Firefox).")
+
+
+# ── Human Emulation & Anti-Detection Utilities ────────────────────────────────
+
+import time
+import random
+
+
+def human_delay(min_sec: float = 1.5, max_sec: float = 3.5):
+    """Introduce human-like variable pauses."""
+    time.sleep(random.uniform(min_sec, max_sec))
+
+
+def human_type(element, text: str, min_delay: float = 0.02, max_delay: float = 0.08):
+    """Type characters sequentially with randomized keystroke intervals."""
+    try:
+        element.clear()
+    except Exception:
+        pass
+    for char in text:
+        element.send_keys(char)
+        time.sleep(random.uniform(min_delay, max_delay))
+
+
+def human_scroll(driver, steps: int = 3):
+    """Simulate realistic candidate scrolling behavior with pauses."""
+    for _ in range(steps):
+        scroll_y = random.randint(250, 600)
+        driver.execute_script(f"window.scrollBy(0, {scroll_y});")
+        time.sleep(random.uniform(0.6, 1.4))
+    # Slight micro-scroll upwards like reading
+    driver.execute_script("window.scrollBy(0, -120);")
+    time.sleep(random.uniform(0.5, 1.0))
+
+
+def safe_click(driver, element):
+    """Scroll smoothly into center view, brief pause, and click with JS fallback."""
+    try:
+        driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", element)
+        time.sleep(0.4)
+        element.click()
+    except Exception:
+        driver.execute_script("arguments[0].click();", element)
+

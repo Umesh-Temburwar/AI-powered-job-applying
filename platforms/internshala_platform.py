@@ -19,7 +19,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 
-from platforms.browser_manager import create_driver
+from platforms.browser_manager import create_driver, human_delay, safe_click
+from platforms.tracker_db import has_applied, record_application
+from platforms.notifier import notify_application_success
+from platforms.ai_engine import qa_engine
 
 logger = logging.getLogger("InternshalaBot")
 load_dotenv()
@@ -192,10 +195,21 @@ def apply_on_internshala(driver, max_apps=25):
             if applied_count >= max_apps:
                 break
 
+            # Fast CRM Duplicate Prevention
+            if has_applied(url=link):
+                logger.info(f"Already applied to {link} according to Application CRM Tracker. Skipping.")
+                continue
+
             logger.info(f"Visiting: {link}")
             try:
                 driver.get(link)
                 time.sleep(3)
+
+                # Extract role & company for tracking
+                role_elem = driver.find_elements(By.CSS_SELECTOR, "h1, .heading_4_5, .profile")
+                role_text = role_elem[0].text.strip() if role_elem else "Internshala Job"
+                comp_elem = driver.find_elements(By.CSS_SELECTOR, ".company_name, .link_display_like_text")
+                comp_text = comp_elem[0].text.strip() if comp_elem else "Employer"
 
                 # Find Apply Now button
                 apply_selectors = [
@@ -220,15 +234,21 @@ def apply_on_internshala(driver, max_apps=25):
                 driver.execute_script("arguments[0].click();", apply_btn)
                 time.sleep(3)
 
-                # Fill Cover Letter if present
-                textareas = driver.find_elements(By.CSS_SELECTOR, "textarea#cover_letter, textarea.cover_letter, textarea")
-                if textareas:
-                    for ta in textareas:
-                        if ta.is_displayed():
-                            ta.clear()
-                            ta.send_keys(generate_cover_letter(profile))
-                            time.sleep(1)
-                            break
+                # Fill Cover Letter or AI Question Answers
+                textareas = driver.find_elements(By.CSS_SELECTOR, "textarea")
+                for ta in textareas:
+                    if ta.is_displayed():
+                        try:
+                            lbl = ta.find_element(By.XPATH, "./preceding::label[1]").text
+                            if "cover letter" in lbl.lower() or not lbl:
+                                ans = generate_cover_letter(profile, role_title=role_text)
+                            else:
+                                ans = qa_engine.answer_question(lbl, role_title=role_text)
+                        except Exception:
+                            ans = generate_cover_letter(profile, role_title=role_text)
+                        ta.clear()
+                        ta.send_keys(ans)
+                        time.sleep(0.5)
 
                 # Answer any assessment / radio questions
                 radios = driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
@@ -252,7 +272,11 @@ def apply_on_internshala(driver, max_apps=25):
                         driver.execute_script("arguments[0].click();", sub_btn[0])
                         submitted = True
                         applied_count += 1
-                        logger.info(f"✓ Applied on Internshala! ({applied_count}/{max_apps})")
+                        logger.info(f"✓ Applied on Internshala: '{role_text}' @ {comp_text} ({applied_count}/{max_apps})")
+                        
+                        # Record in SQLite DB + CSV + Push Notification
+                        record_application(platform="Internshala", job_title=role_text, company=comp_text, url=link, status="Applied")
+                        notify_application_success(platform="Internshala", job_title=role_text, company=comp_text, url=link)
                         records.append({"platform": "Internshala", "url": link, "status": "Applied", "time": str(datetime.now())})
                         time.sleep(2)
                         break

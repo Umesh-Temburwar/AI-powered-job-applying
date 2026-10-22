@@ -563,12 +563,23 @@ def apply_to_jobs(driver, job_links):
 
 
 def save_results(applied_list):
-    """Save applied/failed links to CSV."""
+    """Save applied/failed links to CSV and persistent SQLite CRM Tracker."""
     csv_file = "naukriapplied.csv"
     final_dict = {k: pd.Series(v) for k, v in applied_list.items()}
     df = pd.DataFrame.from_dict(final_dict)
     df.to_csv(csv_file, index=False)
     logger.info(f"Results saved to {csv_file}")
+
+    # Persistent SQLite CRM Sync & Notifications
+    try:
+        from platforms.tracker_db import record_application, has_applied
+        from platforms.notifier import notify_application_success
+        for url in applied_list.get('passed', []):
+            if url and not has_applied(url=url):
+                record_application(platform="Naukri", job_title="Naukri Applied Job", url=url, status="Applied")
+                notify_application_success(platform="Naukri", job_title="Naukri Keyword Applied Job", company="Naukri Employer", url=url)
+    except Exception as e:
+        logger.debug(f"Tracker sync notice: {e}")
 
 
 def main():

@@ -943,6 +943,16 @@ def main():
         logger.info(f"✅ Complete! Applied to ~{total_applied} jobs total.")
         logger.info("=" * 50)
 
+        # Record in CRM Tracker and send push notification
+        try:
+            from platforms.tracker_db import record_application
+            from platforms.notifier import notify_application_success
+            if total_applied > 0:
+                record_application(platform="Naukri", job_title=f"Recommended Jobs Batch ({total_applied} jobs)", company="Multiple Recruiters", status="Applied")
+                notify_application_success(platform="Naukri", job_title=f"Naukri Recommended Batch ({total_applied} jobs)", company="Top Recruiters")
+        except Exception as e:
+            logger.debug(f"Tracker sync notice: {e}")
+
     except Exception as e:
         logger.exception(f"Error: {e}")
     finally:

@@ -20,7 +20,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 
-from platforms.browser_manager import create_driver
+from platforms.browser_manager import create_driver, human_delay, safe_click
+from platforms.tracker_db import has_applied, record_application
+from platforms.notifier import notify_application_success
+from platforms.ai_engine import qa_engine
 
 logger = logging.getLogger("IndeedBot")
 load_dotenv()
@@ -186,6 +189,11 @@ def apply_on_indeed(driver, max_apps=25):
             if applied_count >= max_apps:
                 break
 
+            # Fast CRM Duplicate Prevention
+            if has_applied(url=link):
+                logger.info(f"Already applied to {link} according to CRM Tracker. Skipping.")
+                continue
+
             logger.info(f"Visiting Indeed Job: {link}")
             try:
                 driver.get(link)
@@ -219,6 +227,8 @@ def apply_on_indeed(driver, max_apps=25):
                 if handle_indeed_application_modal(driver, profile, answers):
                     applied_count += 1
                     logger.info(f"✓ Successfully applied on Indeed! ({applied_count}/{max_apps})")
+                    record_application(platform="Indeed", job_title=kw, company="Indeed Employer", url=link, status="Applied")
+                    notify_application_success(platform="Indeed", job_title=kw, company="Indeed Employer", url=link)
                     records.append({"platform": "Indeed", "url": link, "status": "Applied", "time": str(datetime.now())})
                 else:
                     failed_count += 1

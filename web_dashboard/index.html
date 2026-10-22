@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Job Auto Apply Bot • 2026 Pro Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #07090e;
+            --bg-surface: #0e131f;
+            --bg-card: rgba(18, 24, 38, 0.75);
+            --bg-card-hover: rgba(28, 38, 60, 0.85);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(56, 189, 248, 0.25);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --font-head: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-code: 'Fira Code', monospace;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            --glow: 0 0 20px -3px rgba(6, 182, 212, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.12) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        /* Sidebar Navigation */
+        aside {
+            width: 260px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            padding: 28px 20px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 36px;
+            padding-left: 6px;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: var(--glow);
+        }
+
+        .brand-title {
+            font-family: var(--font-head);
+            font-size: 19px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #fff, var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-tag {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .nav-item.active {
+            color: #fff;
+            background: linear-gradient(90deg, rgba(6, 182, 212, 0.15), rgba(59, 130, 246, 0.05));
+            border-color: rgba(6, 182, 212, 0.3);
+            box-shadow: inset 0 0 12px rgba(6, 182, 212, 0.1);
+        }
+
+        .bot-status-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-top: auto;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: all 0.3s;
+        }
+
+        .status-dot.active {
+            background: var(--accent-emerald);
+            box-shadow: 0 0 10px var(--accent-emerald);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        /* Main Content */
+        main {
+            margin-left: 260px;
+            flex: 1;
+            padding: 32px 40px;
+            max-width: 1400px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header-title h1 {
+            font-family: var(--font-head);
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            font-family: var(--font-body);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: #fff;
+            box-shadow: var(--glow);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.92;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            border-color: var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-glow);
+        }
+
+        /* Grid Metrics */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            border-color: var(--border-glow);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            opacity: 0.8;
+        }
+
+        .metric-title {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .metric-val {
+            font-family: var(--font-head);
+            font-size: 34px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            color: #fff;
+        }
+
+        .metric-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* Action Launchpad */
+        .section-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 28px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-family: var(--font-head);
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .launch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px;
+        }
+
+        .launch-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .launch-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+        }
+
+        .launch-btn h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .launch-btn p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Two Column Layout */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 28px;
+        }
+
+        /* Terminal Console Feed */
+        .terminal-box {
+            background: #05070a;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            height: 320px;
+            overflow-y: auto;
+            font-family: var(--font-code);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .log-row {
+            margin-bottom: 4px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+        }
+
+        .log-info { color: #38bdf8; }
+        .log-success { color: #4ade80; }
+        .log-error { color: #f87171; }
+        .log-warn { color: #fbbf24; }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-primary);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            display: inline-flex;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-naukri { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-internshala { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
+        .badge-linkedin { background: rgba(14, 165, 233, 0.15); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); }
+        .badge-indeed { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3); }
+
+        .badge-applied { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .badge-failed { background: rgba(244, 63, 94, 0.15); color: #fb7185; }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
+            color: #fff;
+            font-family: var(--font-body);
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--accent-cyan);
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+        }
+
+        /* Tabs Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 900px) {
+            aside { width: 70px; padding: 20px 10px; }
+            .brand-title, .brand-tag, .nav-item span, .bot-status-card { display: none; }
+            main { margin-left: 70px; padding: 20px; }
+            .grid-2col { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside>
+        <div class="brand">
+            <div class="brand-icon">⚡</div>
+            <div>
+                <div class="brand-title">Universal Bot</div>
+                <div class="brand-tag">2026 Pro Edition</div>
+            </div>
+        </div>
+
+        <nav>
+            <div class="nav-item active" onclick="switchTab('overview')">
+                <span>📊</span> <span>Overview</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('applications')">
+                <span>📁</span> <span>Applications CRM</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('profile')">
+                <span>👤</span> <span>Profile & Skills</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('settings')">
+                <span>⚙️</span> <span>Configuration</span>
+            </div>
+        </nav>
+
+        <div class="bot-status-card">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Bot Idle</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="currentTask">Ready to launch</div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main>
+        <header>
+            <div class="header-title">
+                <h1 id="pageTitle">Dashboard Overview</h1>
+                <p>Welcome, Umesh Temburwar • Full Stack Developer</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="fetchStats()">🔄 Refresh</button>
+                <button class="btn btn-primary" onclick="triggerJob('all')">🚀 Run All Platforms</button>
+            </div>
+        </header>
+
+        <!-- TAB 1: OVERVIEW -->
+        <div id="tab-overview" class="tab-content active">
+            <!-- Metrics Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">TOTAL APPLICATIONS <span>📈</span></div>
+                    <div class="metric-val" id="totalApps">--</div>
+                    <div class="metric-sub">Across all job portals</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">TODAY'S APPLICATIONS <span>⚡</span></div>
+                    <div class="metric-val" id="todayApps">--</div>
+                    <div class="metric-sub">Applications submitted today</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">NAUKRI APPLIED <span>🔵</span></div>
+                    <div class="metric-val" id="naukriApps">--</div>
+                    <div class="metric-sub">Keyword search & recommended</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">INTERNSHALA APPLIED <span>🔷</span></div>
+                    <div class="metric-val" id="internshalaApps">--</div>
+                    <div class="metric-sub">Jobs & internships applied</div>
+                </div>
+            </div>
+
+            <!-- Launchpad -->
+            <div class="section-panel">
+                <div class="panel-header">
+                    <div class="panel-title">⚡ Instant Launchpad</div>
+                    <span style="font-size: 12px; color: var(--text-muted);">Trigger individual bots with 1-click</span>
+                </div>
+                <div class="launch-grid">
+                    <div class="launch-btn" onclick="triggerJob('all')">
+                        <h4>🚀 All Platforms</h4>
+                        <p>Run Naukri + Internshala + Indeed + LinkedIn</p>
+                    </div>
+                    <div class="launch-btn" onclick="triggerJob('naukri')">
+                        <h4>🔵 Naukri Apply</h4>
+                        <p>Search keywords & apply multi-tab</p>
+                    </div>
+                    <div class="launch-btn" onclick="triggerJob('internshala')">
+                        <h4>🔷 Internshala Apply</h4>
+                        <p>Jobs & internships auto-apply</p>
+                    </div>
+                    <div class="launch-btn" onclick="triggerJob('indeed')">
+                        <h4>🔶 Indeed Apply</h4>
+                        <p>Easily apply jobs scanner</p>
+                    </div>
+                    <div class="launch-btn" onclick="triggerJob('linkedin')">
+                        <h4>💼 LinkedIn Easy Apply</h4>
+                        <p>Automated easy apply bot</p>
+                    </div>
+                    <div class="launch-btn" onclick="triggerJob('sync_profiles')">
+                        <h4>🌟 Sync Profiles</h4>
+                        <p>Update Naukri & Internshala profiles</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2-Column: Live Feed + Platform Breakdown -->
+            <div class="grid-2col">
+                <div class="section-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">📡 Live Execution Feed</div>
+                        <span style="font-size: 12px; color: var(--accent-cyan);" id="logStatus">Streaming</span>
+                    </div>
+                    <div class="terminal-box" id="terminalBox">
+                        <div class="log-row"><span class="log-time">[Ready]</span> <span class="log-info">Universal Bot initialized and standing by...</span></div>
+                    </div>
+                </div>
+
+                <div class="section-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">📊 Platform Breakdown</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 16px;" id="platformList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: APPLICATIONS CRM -->
+        <div id="tab-applications" class="tab-content">
+            <div class="section-panel">
+                <div class="panel-header">
+                    <div class="panel-title">📁 Job Applications History</div>
+                    <input type="text" id="appSearch" placeholder="Search by job title or company..." style="width: 280px;" oninput="filterApplications()">
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Role / Title</th>
+                                <th>Company</th>
+                                <th>Status</th>
+                                <th>Applied Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appsTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: PROFILE & SKILLS -->
+        <div id="tab-profile" class="tab-content">
+            <div class="section-panel" style="max-width: 800px;">
+                <div class="panel-header">
+                    <div class="panel-title">👤 Master Candidate Profile</div>
+                    <button class="btn btn-primary" onclick="saveProfile()">💾 Save Profile</button>
+                </div>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="profName">
+                </div>
+                <div class="form-group">
+                    <label>Professional Headline</label>
+                    <input type="text" id="profHeadline">
+                </div>
+                <div class="form-group">
+                    <label>Profile Summary (Bio)</label>
+                    <textarea id="profSummary" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Key Skills (Comma-separated)</label>
+                    <textarea id="profSkills" rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: CONFIGURATION -->
+        <div id="tab-settings" class="tab-content">
+            <div class="section-panel" style="max-width: 800px;">
+                <div class="panel-header">
+                    <div class="panel-title">⚙️ Bot & Search Preferences</div>
+                    <button class="btn btn-primary" onclick="saveConfig()">💾 Save Settings</button>
+                </div>
+                <div class="form-group">
+                    <label>Target Job Search Keywords</label>
+                    <input type="text" id="cfgKeywords">
+                </div>
+                <div class="form-group">
+                    <label>Target Location</label>
+                    <input type="text" id="cfgLocation">
+                </div>
+                <div class="form-group">
+                    <label>Browser Engine</label>
+                    <select id="cfgBrowser">
+                        <option value="auto">Auto-Detect Default Browser</option>
+                        <option value="edge">Microsoft Edge</option>
+                        <option value="chrome">Google Chrome</option>
+                        <option value="brave">Brave Browser</option>
+                        <option value="firefox">Mozilla Firefox</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Telegram Bot Token (Optional for instant smartphone alerts)</label>
+                    <input type="text" id="cfgTgToken" placeholder="123456789:ABCDefgh...">
+                </div>
+                <div class="form-group">
+                    <label>Telegram Chat ID</label>
+                    <input type="text" id="cfgTgChat" placeholder="987654321">
+                </div>
+                <div class="form-group">
+                    <label>Discord Webhook URL (Optional)</label>
+                    <input type="text" id="cfgDiscord" placeholder="https://discord.com/api/webhooks/...">
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let allApplications = [];
+        let profileRaw = {};
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.add('active');
+
+            const navIdx = ['overview', 'applications', 'profile', 'settings'].indexOf(tabId);
+            if (navIdx >= 0) {
+                document.querySelectorAll('.nav-item')[navIdx].classList.add('active');
+            }
+
+            const titles = {
+                'overview': 'Dashboard Overview',
+                'applications': 'Applications CRM',
+                'profile': 'Candidate Profile & Skills',
+                'settings': 'Configuration & Settings'
+            };
+            document.getElementById('pageTitle').innerText = titles[tabId] || 'Dashboard';
+
+            if (tabId === 'applications') fetchApplications();
+            if (tabId === 'profile') fetchProfile();
+            if (tabId === 'settings') fetchConfig();
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+
+                document.getElementById('totalApps').innerText = data.total_applications || 0;
+                document.getElementById('todayApps').innerText = data.today_applications || 0;
+
+                const plats = data.platforms || {};
+                document.getElementById('naukriApps').innerText = (plats['Naukri']?.applied || 0);
+                document.getElementById('internshalaApps').innerText = (plats['Internshala']?.applied || 0);
+
+                // Populate platform breakdown list
+                const listEl = document.getElementById('platformList');
+                listEl.innerHTML = '';
+                const total = data.total_applications || 1;
+
+                for (const [pName, stats] of Object.entries(plats)) {
+                    const pct = Math.round((stats.applied / total) * 100) || 0;
+                    listEl.innerHTML += `
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                                <span style="font-weight: 600;">${pName}</span>
+                                <span style="color: var(--text-secondary);">${stats.applied} applied (${pct}%)</span>
+                            </div>
+                            <div style="height: 6px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden;">
+                                <div style="height: 100%; width: ${pct}%; background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error("Error fetching stats:", err);
+            }
+        }
+
+        async function fetchApplications() {
+            try {
+                const res = await fetch('/api/applications');
+                allApplications = await res.json();
+                renderApplications(allApplications);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderApplications(apps) {
+            const tbody = document.getElementById('appsTableBody');
+            tbody.innerHTML = '';
+            apps.forEach(app => {
+                const pClass = `badge-${(app.platform || 'naukri').toLowerCase()}`;
+                const sClass = app.status === 'Applied' ? 'badge-applied' : 'badge-failed';
+                const linkHtml = app.url && app.url.startsWith('http') 
+                    ? `<a href="${app.url}" target="_blank" style="color: var(--accent-cyan); text-decoration: none;">View ↗</a>` 
+                    : '-';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><span class="badge ${pClass}">${app.platform}</span></td>
+                        <td style="font-weight: 500;">${app.job_title}</td>
+                        <td>${app.company || 'Not Specified'}</td>
+                        <td><span class="badge ${sClass}">${app.status}</span></td>
+                        <td style="color: var(--text-muted); font-size: 12px;">${app.applied_date}</td>
+                        <td>${linkHtml}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function filterApplications() {
+            const query = document.getElementById('appSearch').value.toLowerCase();
+            const filtered = allApplications.filter(a => 
+                (a.job_title && a.job_title.toLowerCase().includes(query)) ||
+                (a.company && a.company.toLowerCase().includes(query)) ||
+                (a.platform && a.platform.toLowerCase().includes(query))
+            );
+            renderApplications(filtered);
+        }
+
+        async function fetchProfile() {
+            try {
+                const res = await fetch('/api/profile');
+                profileRaw = await res.json();
+                document.getElementById('profName').value = profileRaw.personal?.name || '';
+                document.getElementById('profHeadline').value = profileRaw.naukri_headline || '';
+                document.getElementById('profSummary').value = profileRaw.profile_summary || '';
+                document.getElementById('profSkills').value = (profileRaw.key_skills || []).join(', ');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function saveProfile() {
+            profileRaw.personal = profileRaw.personal || {};
+            profileRaw.personal.name = document.getElementById('profName').value;
+            profileRaw.naukri_headline = document.getElementById('profHeadline').value;
+            profileRaw.profile_summary = document.getElementById('profSummary').value;
+            profileRaw.key_skills = document.getElementById('profSkills').value.split(',').map(s => s.trim()).filter(Boolean);
+
+            try {
+                const res = await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profileRaw)
+                });
+                const data = await res.json();
+                alert(data.message || 'Profile saved!');
+            } catch (err) {
+                alert('Failed to save profile: ' + err);
+            }
+        }
+
+        async function fetchConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const cfg = await res.json();
+                document.getElementById('cfgKeywords').value = cfg.KEYWORDS || '';
+                document.getElementById('cfgLocation').value = cfg.LOCATION || '';
+                document.getElementById('cfgBrowser').value = cfg.BROWSER || 'auto';
+                document.getElementById('cfgTgToken').value = cfg.TELEGRAM_BOT_TOKEN || '';
+                document.getElementById('cfgTgChat').value = cfg.TELEGRAM_CHAT_ID || '';
+                document.getElementById('cfgDiscord').value = cfg.DISCORD_WEBHOOK_URL || '';
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function saveConfig() {
+            const payload = {
+                KEYWORDS: document.getElementById('cfgKeywords').value,
+                LOCATION: document.getElementById('cfgLocation').value,
+                BROWSER: document.getElementById('cfgBrowser').value,
+                TELEGRAM_BOT_TOKEN: document.getElementById('cfgTgToken').value,
+                TELEGRAM_CHAT_ID: document.getElementById('cfgTgChat').value,
+                DISCORD_WEBHOOK_URL: document.getElementById('cfgDiscord').value
+            };
+
+            try {
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                alert(data.message || 'Settings saved!');
+            } catch (err) {
+                alert('Failed to save settings: ' + err);
+            }
+        }
+
+        async function triggerJob(task) {
+            try {
+                const res = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    alert(data.error);
+                }
+            } catch (err) {
+                alert('Error launching job: ' + err);
+            }
+        }
+
+        async function pollStatusAndLogs() {
+            try {
+                // Poll Status
+                const sRes = await fetch('/api/status');
+                const state = await sRes.json();
+                const dot = document.getElementById('statusDot');
+                const sText = document.getElementById('statusText');
+                const cTask = document.getElementById('currentTask');
+
+                if (state.is_running) {
+                    dot.classList.add('active');
+                    sText.innerText = 'Bot Running';
+                    cTask.innerText = `Executing: ${state.current_task}`;
+                } else {
+                    dot.classList.remove('active');
+                    sText.innerText = 'Bot Idle';
+                    cTask.innerText = 'Ready to launch';
+                }
+
+                // Poll Logs
+                const lRes = await fetch('/api/logs');
+                const logs = await lRes.json();
+                const term = document.getElementById('terminalBox');
+                if (logs && logs.length > 0) {
+                    term.innerHTML = logs.map(l => {
+                        const lClass = `log-${(l.level || 'info').toLowerCase()}`;
+                        return `<div class="log-row"><span class="log-time">[${l.time}]</span> <span class="${lClass}">${l.msg}</span></div>`;
+                    }).join('');
+                    term.scrollTop = term.scrollHeight;
+                }
+            } catch (err) {
+                // ignore
+            }
+        }
+
+        // Init
+        fetchStats();
+        setInterval(fetchStats, 10000);
+        setInterval(pollStatusAndLogs, 2500);
+    </script>
+</body>
+</html>

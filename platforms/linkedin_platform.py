@@ -83,6 +83,23 @@ def run_linkedin():
         cmd = [sys.executable, script_path]
         proc = subprocess.run(cmd, cwd=LINKEDIN_DIR)
         logger.info(f"LinkedIn process ended with return code {proc.returncode}")
+
+        # Sync out.csv to tracker DB
+        try:
+            from platforms.tracker_db import record_application, has_applied
+            import csv
+            out_csv = os.path.join(LINKEDIN_DIR, "out.csv")
+            if os.path.exists(out_csv):
+                with open(out_csv, "r", encoding="utf-8") as f:
+                    reader = csv.reader(f)
+                    for row in reader:
+                        if row and row[0]:
+                            url = row[0].strip()
+                            if not has_applied(url=url):
+                                record_application(platform="LinkedIn", job_title="LinkedIn Easy Apply", url=url, status="Applied")
+        except Exception as e:
+            logger.debug(f"LinkedIn DB sync notice: {e}")
+
         return 1 if proc.returncode == 0 else 0, 0
     except Exception as e:
         logger.error(f"Error running LinkedIn bot: {e}")

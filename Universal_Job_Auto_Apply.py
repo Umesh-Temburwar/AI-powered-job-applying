@@ -267,6 +267,18 @@ def run_jobbot_engine():
     subprocess.run([sys.executable, script], cwd=os.path.dirname(__file__))
 
 
+def launch_dashboard(port: int = 5000):
+    """Launch the modern Web UI dashboard in the default browser."""
+    import webbrowser
+    url = f"http://localhost:{port}"
+    logger.info("=" * 60)
+    logger.info(f"🚀 Launching Universal Bot Web Dashboard at: {url}")
+    logger.info("=" * 60)
+    webbrowser.open(url)
+    from web_dashboard.app import start_server
+    start_server(port)
+
+
 def interactive_menu():
     """Display interactive CLI menu."""
     while True:
@@ -282,11 +294,12 @@ def interactive_menu():
         print("  [8] 💼 LinkedIn Easy Apply")
         print("  [9] 🌐 9-Portal Multi-Apply (Glassdoor, Shine, Foundit, TimesJobs, Wellfound)")
         print("  [10] 📊 View Consolidated Applied Jobs Report")
+        print("  [11] 🖥️ Launch Modern Web UI Dashboard (http://localhost:5000)")
         print("  [0] ❌ Exit")
         print("-" * 50)
 
         try:
-            choice = input("Enter choice [0-10]: ").strip()
+            choice = input("Enter choice [0-11]: ").strip()
         except (KeyboardInterrupt, EOFError):
             print("\nExiting.")
             break
@@ -311,11 +324,13 @@ def interactive_menu():
             run_jobbot_engine()
         elif choice == "10":
             show_consolidated_report()
+        elif choice == "11":
+            launch_dashboard()
         elif choice == "0":
             print("Best of luck with your job hunt!")
             break
         else:
-            print("Invalid selection. Please choose a number between 0 and 10.\n")
+            print("Invalid selection. Please choose a number between 0 and 11.\n")
             time.sleep(1)
 
         input("\nPress Enter to return to main menu...")
@@ -332,8 +347,13 @@ def main():
     parser.add_argument("--update-internshala-profile", action="store_true", help="Run Internshala Resume Auto-Updater")
     parser.add_argument("--update-all-profiles", action="store_true", help="Run both Naukri & Internshala Profile Updaters")
     parser.add_argument("--report", action="store_true", help="Display consolidated application report")
+    parser.add_argument("--gui", "--dashboard", action="store_true", dest="dashboard", help="Launch Modern Web UI Dashboard")
 
     args = parser.parse_args()
+
+    if args.dashboard:
+        launch_dashboard()
+        return
 
     if args.report:
         show_consolidated_report()
