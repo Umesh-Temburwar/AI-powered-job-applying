@@ -1,0 +1,29 @@
+username: <username>
+password: <password>
+phone_number: <phone_number>
+
+profile_path: '' # can be empty, defaults to Chrome user profile
+
+positions:
+  - Software Engineer
+
+locations:
+  - Remote
+
+salary: 60,000
+rate: 25
+
+uploads:
+  Resume: path/to/resume.pdf
+  Cover Letter: path/to/cover_letter.pdf
+
+output_filename:
+  - platforms/linkedin/out.csv
+
+experience_level:
+  # - 1 # Entry level
+  # - 2 # Associate
+  # - 3 # Mid-Senior level
+  # - 4 # Director
+  # - 5 # Executive
+  # - 6 # Internship

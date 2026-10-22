@@ -2,6 +2,12 @@
 .env
 .env.*
 !.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 
 # Python cache
 __pycache__/
@@ -26,12 +32,19 @@ platforms/linkedin/qa.csv
 logs/
 *.log
 
-# Personal data and credentials
+# Personal data, credentials, and generated configs
 profile_data.json
 resume.ini
+platforms/linkedin/config.yaml
+!platforms/linkedin/config.example.yaml
+*.pem
+*.key
 
-# Resume and personal documents
+# Resume and personal documents / temp user storage
 *.pdf
+storage/
+resumes/
+temp_profiles/
 
 # IDE/editor files
 .vscode/
@@ -48,6 +61,7 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+.vite/
 
 # Virtual environments
 venv/
