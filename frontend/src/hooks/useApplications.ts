@@ -160,6 +160,7 @@ export function useDashboard() {
         successful: summary.successful_submissions,
         pendingReview: summary.pending_review,
         failedOrSkipped: summary.failed_tasks,
+        dailyStreak: 0,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to connect to backend API');

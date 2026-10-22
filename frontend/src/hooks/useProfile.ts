@@ -68,7 +68,12 @@ export function useProfile() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [updating, setUpdating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const userId = user?.id || session?.user?.id || '';
+  const userEmail = user?.email || session?.user?.email || '';
+  const userFullName = user?.fullName || '';
 
   const fetchProfile = useCallback(async () => {
     if (!token) {
@@ -84,9 +89,9 @@ export function useProfile() {
       setProfile(mapBackendToUserProfile(data));
     } catch (err) {
       setProfile({
-        id: user?.id || session?.user?.id || '',
-        email: user?.email || session?.user?.email || '',
-        fullName: user?.fullName || '',
+        id: userId,
+        email: userEmail,
+        fullName: userFullName,
         phone: '',
         currentLocation: '',
         city: '',
@@ -95,6 +100,7 @@ export function useProfile() {
         linkedinUrl: '',
         githubUrl: '',
         portfolioUrl: '',
+        noticePeriodDays: 15,
         skills: [],
         preferredTitles: [],
         preferredLocations: [],
@@ -112,11 +118,11 @@ export function useProfile() {
     } finally {
       setLoading(false);
     }
-  }, [token, user, session]);
+  }, [token, userId, userEmail, userFullName]);
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     try {
-      setLoading(true);
+      setUpdating(true);
       setError(null);
 
       if (token) {
@@ -169,7 +175,7 @@ export function useProfile() {
       setError(msg);
       throw new Error(msg);
     } finally {
-      setLoading(false);
+      setUpdating(false);
     }
   };
 
@@ -177,5 +183,5 @@ export function useProfile() {
     fetchProfile();
   }, [fetchProfile]);
 
-  return { profile, loading, error, refreshProfile: fetchProfile, updateProfile };
+  return { profile, loading, updating, error, refreshProfile: fetchProfile, updateProfile };
 }

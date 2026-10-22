@@ -127,6 +127,11 @@ describe('Dashboard Task Queue Dynamic Integration Tests', () => {
     const limitInput = screen.getByLabelText(/Application Limit/i);
     fireEvent.change(limitInput, { target: { value: '10' } });
 
+    // Add custom keyword tag
+    const keywordInput = screen.getByPlaceholderText(/Type keyword and press Enter/i);
+    fireEvent.change(keywordInput, { target: { value: 'DevOps' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /^Add$/i })[0]);
+
     // Submit form
     const submitBtn = screen.getByRole('button', { name: /Enqueue Task \(POST \/api\/v1\/tasks\)/i });
     fireEvent.click(submitBtn);

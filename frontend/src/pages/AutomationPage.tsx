@@ -71,14 +71,10 @@ export const AutomationPage: React.FC = () => {
     if (preferences) {
       if (preferences.targetTitles && preferences.targetTitles.length > 0) {
         setKeywords(preferences.targetTitles);
-      } else {
-        setKeywords(['Full Stack Developer', 'React Developer']);
       }
 
       if (preferences.targetLocations && preferences.targetLocations.length > 0) {
         setLocations(preferences.targetLocations);
-      } else {
-        setLocations(['Remote', 'Pune', 'Bengaluru']);
       }
 
       if (preferences.dailyApplicationLimit) {
@@ -88,9 +84,6 @@ export const AutomationPage: React.FC = () => {
       if (preferences.selectedPlatforms && preferences.selectedPlatforms.length > 0) {
         setSelectedPlatform(preferences.selectedPlatforms[0]);
       }
-    } else {
-      setKeywords(['Full Stack Developer', 'Frontend Developer']);
-      setLocations(['Remote', 'India']);
     }
   }, [preferences]);
 
@@ -621,7 +614,9 @@ export const AutomationPage: React.FC = () => {
 
         <div className="space-y-3">
           {history.length === 0 ? (
-            <p className="text-xs text-theme-muted text-center py-4">No task history recorded yet.</p>
+            <p className="text-xs text-theme-muted text-center py-6">
+              No automation tasks yet. Configure your job preferences above to get started.
+            </p>
           ) : (
             history.map((hist) => (
               <div

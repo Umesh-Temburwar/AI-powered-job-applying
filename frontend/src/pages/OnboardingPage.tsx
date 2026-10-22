@@ -81,14 +81,12 @@ export const OnboardingPage: React.FC = () => {
   const [portfolioUrl, setPortfolioUrl] = useState('');
 
   // Education & Experience
-  const [educationList, setEducationList] = useState<EducationItem[]>([
-    { id: '1', degree: 'B.Tech in Computer Science', institution: '', year: '2024', score: '' },
-  ]);
+  const [educationList, setEducationList] = useState<EducationItem[]>([]);
   const [isFresher, setIsFresher] = useState(true);
   const [experienceList, setExperienceList] = useState<ExperienceItem[]>([]);
 
   // Skills & Projects
-  const [skills, setSkills] = useState<string[]>(['React', 'TypeScript', 'Node.js', 'Python']);
+  const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
   const [projectsList, setProjectsList] = useState<ProjectItem[]>([]);
   const [certificationsList, setCertificationsList] = useState<CertificationItem[]>([]);
@@ -97,14 +95,14 @@ export const OnboardingPage: React.FC = () => {
   const [noticePeriodDays, setNoticePeriodDays] = useState(15);
   const [willingToRelocate, setWillingToRelocate] = useState(true);
   const [workAuthorization, setWorkAuthorization] = useState('Authorized to work in India');
-  const [expectedSalaryLakhs, setExpectedSalaryLakhs] = useState<number | undefined>(10);
+  const [expectedSalaryLakhs, setExpectedSalaryLakhs] = useState<number | undefined>(undefined);
 
   // Job Preferences
-  const [targetTitles, setTargetTitles] = useState<string[]>(['Full Stack Developer', 'Software Engineer']);
+  const [targetTitles, setTargetTitles] = useState<string[]>([]);
   const [targetTitleInput, setTargetTitleInput] = useState('');
-  const [targetLocations, setTargetLocations] = useState<string[]>(['Remote', 'Pune', 'Bengaluru']);
+  const [targetLocations, setTargetLocations] = useState<string[]>([]);
   const [targetLocationInput, setTargetLocationInput] = useState('');
-  const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformName[]>(['Naukri', 'Internshala', 'Indeed']);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformName[]>(['Naukri', 'Internshala']);
   const [dailyLimit, setDailyLimit] = useState(25);
 
   // Initialize or resume saved onboarding progress

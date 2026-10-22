@@ -184,7 +184,7 @@ export interface DashboardMetrics {
   successful: number;
   pendingReview: number;
   failedOrSkipped: number;
-  dailyStreak: number;
+  dailyStreak?: number;
   activeTask?: AutomationTask;
 }
 

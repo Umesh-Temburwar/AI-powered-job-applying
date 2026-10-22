@@ -13,6 +13,9 @@ import {
   AlertCircle,
   X,
   Info,
+  FolderGit2,
+  Award,
+  ExternalLink,
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useToast } from '../context/ToastContext';
@@ -26,7 +29,7 @@ import {
   Modal,
   Skeleton,
 } from '../components/ui';
-import type { EducationItem, ExperienceItem } from '../types';
+import type { EducationItem, ExperienceItem, ProjectItem, CertificationItem } from '../types';
 
 export const ProfilePage: React.FC = () => {
   const { profile, loading, error, updateProfile } = useProfile();
@@ -53,16 +56,24 @@ export const ProfilePage: React.FC = () => {
 
   const [education, setEducation] = useState<EducationItem[]>([]);
   const [experience, setExperience] = useState<ExperienceItem[]>([]);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [certifications, setCertifications] = useState<CertificationItem[]>([]);
 
   const [isDirty, setIsDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Modal states for adding Education / Experience
+  // Modal states for adding Education / Experience / Project / Certification
   const [eduModalOpen, setEduModalOpen] = useState(false);
   const [newEdu, setNewEdu] = useState({ degree: '', institution: '', year: '', score: '' });
 
   const [expModalOpen, setExpModalOpen] = useState(false);
   const [newExp, setNewExp] = useState({ role: '', company: '', duration: '', description: '' });
+
+  const [projectModalOpen, setProjectModalOpen] = useState(false);
+  const [newProject, setNewProject] = useState({ title: '', description: '', technologies: '', url: '' });
+
+  const [certModalOpen, setCertModalOpen] = useState(false);
+  const [newCert, setNewCert] = useState({ name: '', issuer: '', date: '', url: '' });
 
   useEffect(() => {
     if (profile) {
@@ -80,6 +91,8 @@ export const ProfilePage: React.FC = () => {
       setPreferredLocations(profile.preferredLocations || []);
       setEducation(profile.education || []);
       setExperience(profile.experience || []);
+      setProjects(profile.projects || []);
+      setCertifications(profile.certifications || []);
       setIsDirty(false);
     }
   }, [profile]);
@@ -173,6 +186,50 @@ export const ProfilePage: React.FC = () => {
     setIsDirty(true);
   };
 
+  const handleAddProjectSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProject.title.trim()) return;
+    const item: ProjectItem = {
+      id: `proj_${Date.now()}`,
+      title: newProject.title.trim(),
+      description: newProject.description.trim() || undefined,
+      technologies: newProject.technologies ? newProject.technologies.split(',').map((t) => t.trim()).filter(Boolean) : [],
+      url: newProject.url.trim() || undefined,
+    };
+    setProjects((prev) => [...prev, item]);
+    setNewProject({ title: '', description: '', technologies: '', url: '' });
+    setProjectModalOpen(false);
+    setIsDirty(true);
+  };
+
+  const handleDeleteProject = (id?: string) => {
+    if (!id) return;
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setIsDirty(true);
+  };
+
+  const handleAddCertSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCert.name.trim()) return;
+    const item: CertificationItem = {
+      id: `cert_${Date.now()}`,
+      name: newCert.name.trim(),
+      issuer: newCert.issuer.trim() || undefined,
+      date: newCert.date.trim() || undefined,
+      url: newCert.url.trim() || undefined,
+    };
+    setCertifications((prev) => [...prev, item]);
+    setNewCert({ name: '', issuer: '', date: '', url: '' });
+    setCertModalOpen(false);
+    setIsDirty(true);
+  };
+
+  const handleDeleteCert = (id?: string) => {
+    if (!id) return;
+    setCertifications((prev) => prev.filter((c) => c.id !== id));
+    setIsDirty(true);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -184,6 +241,8 @@ export const ProfilePage: React.FC = () => {
         preferredLocations,
         education,
         experience,
+        projects,
+        certifications,
       });
       setIsDirty(false);
       showToast('Candidate profile updated successfully', 'success');
@@ -210,6 +269,8 @@ export const ProfilePage: React.FC = () => {
       setPreferredLocations(profile.preferredLocations || []);
       setEducation(profile.education || []);
       setExperience(profile.experience || []);
+      setProjects(profile.projects || []);
+      setCertifications(profile.certifications || []);
       setIsDirty(false);
     }
   };
@@ -551,6 +612,148 @@ export const ProfilePage: React.FC = () => {
           </Card>
         </div>
 
+        {/* Projects & Certifications */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Projects list */}
+          <Card>
+            <CardHeader
+              title="Projects & Portfolio"
+              subtitle="Verified candidate projects and technical builds"
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Plus className="w-3.5 h-3.5" />}
+                  onClick={() => setProjectModalOpen(true)}
+                >
+                  Add
+                </Button>
+              }
+            />
+
+            <div className="space-y-3">
+              {projects.length === 0 ? (
+                <p className="text-xs text-theme-muted py-4 text-center">
+                  No projects added yet. Add a project or import one from your resume.
+                </p>
+              ) : (
+                projects.map((proj) => (
+                  <div
+                    key={proj.id || proj.title}
+                    className="flex items-start justify-between gap-3 p-3 rounded-xl border border-theme bg-theme-surface/50"
+                  >
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold text-theme-primary flex items-center gap-1.5">
+                        <FolderGit2 className="w-4 h-4 text-sky-400" />
+                        {proj.title}
+                        {proj.url && (
+                          <a
+                            href={proj.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-theme-muted hover:text-[var(--accent)]"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </h4>
+                      {proj.description && (
+                        <p className="text-[11px] text-theme-secondary line-clamp-2">{proj.description}</p>
+                      )}
+                      {proj.technologies && proj.technologies.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {proj.technologies.map((t, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-theme-surface text-theme-muted border border-theme"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProject(proj.id)}
+                      className="text-theme-muted hover:text-red-400 p-1 transition-colors shrink-0"
+                      aria-label="Remove project"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+
+          {/* Certifications list */}
+          <Card>
+            <CardHeader
+              title="Certifications & Badges"
+              subtitle="Industry credentials and verified certificates"
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Plus className="w-3.5 h-3.5" />}
+                  onClick={() => setCertModalOpen(true)}
+                >
+                  Add
+                </Button>
+              }
+            />
+
+            <div className="space-y-3">
+              {certifications.length === 0 ? (
+                <p className="text-xs text-theme-muted py-4 text-center">
+                  No certifications added yet.
+                </p>
+              ) : (
+                certifications.map((cert) => (
+                  <div
+                    key={cert.id || cert.name}
+                    className="flex items-start justify-between gap-3 p-3 rounded-xl border border-theme bg-theme-surface/50"
+                  >
+                    <div>
+                      <h4 className="text-xs font-bold text-theme-primary flex items-center gap-1.5">
+                        <Award className="w-4 h-4 text-amber-400" />
+                        {cert.name}
+                        {cert.url && (
+                          <a
+                            href={cert.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-theme-muted hover:text-[var(--accent)]"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </h4>
+                      {cert.issuer && (
+                        <p className="text-[11px] text-theme-secondary mt-0.5">{cert.issuer}</p>
+                      )}
+                      {cert.date && (
+                        <p className="text-[10px] text-theme-muted mt-0.5">{cert.date}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCert(cert.id)}
+                      className="text-theme-muted hover:text-red-400 p-1 transition-colors shrink-0"
+                      aria-label="Remove certification"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+        </div>
+
         {/* Bottom Actions Bar */}
         <div className="flex items-center justify-between p-4 rounded-xl border border-theme bg-theme-card sticky bottom-4 z-10 shadow-lg">
           <Button
@@ -661,6 +864,94 @@ export const ProfilePage: React.FC = () => {
             </Button>
             <Button type="submit" variant="primary">
               Add Experience
+            </Button>
+          </div>
+        </form>
+      </Modal>
+      {/* Add Project Modal */}
+      <Modal
+        isOpen={projectModalOpen}
+        onClose={() => setProjectModalOpen(false)}
+        title="Add Technical Project"
+      >
+        <form onSubmit={handleAddProjectSubmit} className="space-y-4">
+          <Input
+            label="Project Title"
+            placeholder="e.g. Distributed Task Orchestrator"
+            value={newProject.title}
+            onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
+            required
+          />
+          <Input
+            label="Project URL / Repository"
+            placeholder="e.g. https://github.com/myname/project"
+            value={newProject.url}
+            onChange={(e) => setNewProject({ ...newProject, url: e.target.value })}
+          />
+          <Input
+            label="Technologies (comma separated)"
+            placeholder="e.g. Python, FastAPI, Docker, PostgreSQL"
+            value={newProject.technologies}
+            onChange={(e) => setNewProject({ ...newProject, technologies: e.target.value })}
+          />
+          <Textarea
+            label="Description & Highlights"
+            rows={3}
+            placeholder="Key technical features, performance gains, and architecture..."
+            value={newProject.description}
+            onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setProjectModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              Add Project
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Certification Modal */}
+      <Modal
+        isOpen={certModalOpen}
+        onClose={() => setCertModalOpen(false)}
+        title="Add Certification / License"
+      >
+        <form onSubmit={handleAddCertSubmit} className="space-y-4">
+          <Input
+            label="Certification Name"
+            placeholder="e.g. AWS Certified Solutions Architect"
+            value={newCert.name}
+            onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
+            required
+          />
+          <Input
+            label="Issuing Organization"
+            placeholder="e.g. Amazon Web Services"
+            value={newCert.issuer}
+            onChange={(e) => setNewCert({ ...newCert, issuer: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Issue Date / Year"
+              placeholder="e.g. 2024"
+              value={newCert.date}
+              onChange={(e) => setNewCert({ ...newCert, date: e.target.value })}
+            />
+            <Input
+              label="Credential URL"
+              placeholder="e.g. https://credly.com/..."
+              value={newCert.url}
+              onChange={(e) => setNewCert({ ...newCert, url: e.target.value })}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" onClick={() => setCertModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              Add Certification
             </Button>
           </div>
         </form>

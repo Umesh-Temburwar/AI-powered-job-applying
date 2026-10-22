@@ -117,9 +117,11 @@ describe('Smart Resume Onboarding & Profile Builder Wizard Tests', () => {
     fireEvent.click(manualBtn);
 
     // Verify Step 1 is rendered
-    expect(screen.getByText(/Personal Information/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Full Name \*/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email Address \*/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Personal Information/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Full Name \*/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Email Address \*/i)).toBeInTheDocument();
+    });
 
     // Verify navigation buttons
     expect(screen.getByRole('button', { name: /Save & Continue/i })).toBeInTheDocument();
@@ -142,6 +144,10 @@ describe('Smart Resume Onboarding & Profile Builder Wizard Tests', () => {
     // Go to Step 1
     fireEvent.click(screen.getByRole('button', { name: /Skip & Fill Manually/i }));
 
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Full Name \*/i)).toBeInTheDocument();
+    });
+
     // Clear Full Name input
     const nameInput = screen.getByLabelText(/Full Name \*/i);
     fireEvent.change(nameInput, { target: { value: '' } });
@@ -149,8 +155,8 @@ describe('Smart Resume Onboarding & Profile Builder Wizard Tests', () => {
     // Click Save & Continue
     fireEvent.click(screen.getByRole('button', { name: /Save & Continue/i }));
 
-    // Should stay on Step 1 and not advance
-    expect(screen.getByText(/Personal Information/i)).toBeInTheDocument();
+    // Should stay on Step 1 and not advance due to validation error
+    expect(screen.getByText(/Please enter your full name/i)).toBeInTheDocument();
   });
 
   it('advances through Education to Skills and supports Fresher toggle in Experience step', async () => {
@@ -169,6 +175,10 @@ describe('Smart Resume Onboarding & Profile Builder Wizard Tests', () => {
     // Step 0 -> Step 1
     fireEvent.click(screen.getByRole('button', { name: /Skip & Fill Manually/i }));
 
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Full Name \*/i)).toBeInTheDocument();
+    });
+
     // Fill Step 1
     const nameInput = screen.getByLabelText(/Full Name \*/i);
     fireEvent.change(nameInput, { target: { value: 'Alex Vance' } });
@@ -179,12 +189,22 @@ describe('Smart Resume Onboarding & Profile Builder Wizard Tests', () => {
       expect(screen.getByText(/Education History/i)).toBeInTheDocument();
     });
 
+    // Add degree
+    fireEvent.click(screen.getByRole('button', { name: /Add Degree/i }));
+    const degreeInput = screen.getByLabelText(/Degree \/ Program/i);
+    fireEvent.change(degreeInput, { target: { value: 'Bachelor of Technology' } });
+
     // Advance to Step 3: Skills & Projects
     fireEvent.click(screen.getByRole('button', { name: /Save & Continue/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Skills & Technical Projects/i)).toBeInTheDocument();
     });
+
+    // Add skill
+    const skillInput = screen.getByPlaceholderText(/Type a skill and press Enter/i);
+    fireEvent.change(skillInput, { target: { value: 'React' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add Skill/i }));
 
     // Advance to Step 4: Professional Experience
     fireEvent.click(screen.getByRole('button', { name: /Save & Continue/i }));

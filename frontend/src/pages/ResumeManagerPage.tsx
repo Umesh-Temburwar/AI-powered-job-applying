@@ -228,8 +228,8 @@ export const ResumeManagerPage: React.FC = () => {
         ) : resumes.length === 0 ? (
           <EmptyState
             icon={<FileText className="w-6 h-6" />}
-            title="No Resumes Uploaded"
-            description="Upload a PDF resume above to enable automated portal attachments."
+            title="Upload your resume to build your profile"
+            description="Upload a PDF resume to extract your skills, experience, and enable automated portal attachments."
             actionLabel="Browse PDF File"
             onAction={() => fileInputRef.current?.click()}
           />
