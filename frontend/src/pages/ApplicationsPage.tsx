@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Download,
@@ -28,6 +29,7 @@ import {
 import type { Application, PlatformName, ApplicationStatus } from '../types';
 
 export const ApplicationsPage: React.FC = () => {
+  const navigate = useNavigate();
   const {
     applications,
     total,
@@ -196,16 +198,26 @@ export const ApplicationsPage: React.FC = () => {
           </div>
         ) : applications.length === 0 ? (
           <div className="p-8">
-            <EmptyState
-              icon={<Briefcase className="w-6 h-6" />}
-              title="No Applications Match Filters"
-              description="Try adjusting your keyword query, portal selection, or status filters."
-              actionLabel="Clear Filters"
-              onAction={() => {
-                setSearchQuery('');
-                updateFilters({ query: '', platform: 'All', status: 'All' });
-              }}
-            />
+            {total === 0 && !filters.query && (!filters.platform || filters.platform === 'All') && (!filters.status || filters.status === 'All') ? (
+              <EmptyState
+                icon={<Briefcase className="w-6 h-6" />}
+                title="You haven't recorded any job applications yet"
+                description="When your background automation tasks apply to jobs or you record applications, they will appear in this tracker."
+                actionLabel="Configure Job Preferences"
+                onAction={() => navigate('/preferences')}
+              />
+            ) : (
+              <EmptyState
+                icon={<Briefcase className="w-6 h-6" />}
+                title="No Applications Match Filters"
+                description="Try adjusting your keyword query, portal selection, or status filters."
+                actionLabel="Clear Filters"
+                onAction={() => {
+                  setSearchQuery('');
+                  updateFilters({ query: '', platform: 'All', status: 'All' });
+                }}
+              />
+            )}
           </div>
         ) : (
           <>
