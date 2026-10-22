@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'cyan';
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'cyan' | 'accent';
   size?: 'sm' | 'md';
 }
 
@@ -13,24 +13,36 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const sizeStyles = {
-    sm: 'text-[11px] px-2 py-0.5',
-    md: 'text-xs px-2.5 py-1',
+    sm: 'text-[12px] gap-1.5',
+    md: 'text-[13px] gap-1.5',
   };
 
-  const variantStyles = {
-    default: 'bg-theme-card text-theme-secondary border border-theme',
-    success: 'bg-theme-success-muted text-theme-success border border-emerald-500/30',
-    warning: 'bg-theme-warning-muted text-theme-warning border border-amber-500/30',
-    danger: 'bg-theme-danger-muted text-theme-danger border border-red-500/30',
-    info: 'bg-theme-info-muted text-theme-info border border-sky-500/30',
-    cyan: 'bg-theme-accent-muted text-theme-accent border border-[var(--accent)]/40',
+  const dotStyles = {
+    default: 'bg-[#6B6B6B]',
+    success: 'bg-[#166534]',
+    warning: 'bg-[#B45309]',
+    danger: 'bg-[#B91C1C]',
+    info: 'bg-[#166534]',
+    cyan: 'bg-[#166534]',
+    accent: 'bg-[#166534]',
+  };
+
+  const textStyles = {
+    default: 'text-[#6B6B6B]',
+    success: 'text-[#166534]',
+    warning: 'text-[#B45309]',
+    danger: 'text-[#B91C1C]',
+    info: 'text-[#166534]',
+    cyan: 'text-[#166534]',
+    accent: 'text-[#166534]',
   };
 
   return (
     <span
-      className={`inline-flex items-center font-medium rounded-full ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
+      className={`inline-flex items-center font-medium ${sizeStyles[size]} ${textStyles[variant]} ${className}`}
       {...props}
     >
+      <span className={`w-1.5 h-1.5 rounded-full ${dotStyles[variant]} shrink-0`} />
       {children}
     </span>
   );

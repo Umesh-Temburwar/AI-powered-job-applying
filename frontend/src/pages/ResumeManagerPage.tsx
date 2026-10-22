@@ -7,8 +7,10 @@ import {
   AlertCircle,
   FileCheck,
   Info,
+  Sparkles,
 } from 'lucide-react';
 import { useResumes } from '../hooks/useResumes';
+import { useProfile } from '../hooks/useProfile';
 import { useToast } from '../context/ToastContext';
 import {
   Card,
@@ -30,6 +32,7 @@ export const ResumeManagerPage: React.FC = () => {
     setDefaultResume,
     deleteResume,
   } = useResumes();
+  const { autofillProfile } = useProfile();
   const { showToast } = useToast();
 
   const [dragOver, setDragOver] = useState(false);
@@ -77,10 +80,18 @@ export const ResumeManagerPage: React.FC = () => {
         });
       }, 150);
 
-      await uploadResume(file);
+      const uploadRes = await uploadResume(file);
       clearInterval(progressInterval);
       setUploadProgress(100);
-      showToast(`Resume "${file.name}" uploaded successfully`, 'success');
+
+      try {
+        if (uploadRes?.resume?.id) {
+          await autofillProfile(uploadRes.resume.id);
+        }
+        showToast(`Resume "${file.name}" uploaded & profile autofilled!`, 'success');
+      } catch {
+        showToast(`Resume "${file.name}" uploaded successfully`, 'success');
+      }
     } catch (err) {
       setValidationError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -103,6 +114,18 @@ export const ResumeManagerPage: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       handleFileProcess(e.target.files[0]);
+    }
+  };
+
+  const handleAutofill = async (id: string, name: string) => {
+    try {
+      setActionLoading(true);
+      await autofillProfile(id);
+      showToast(`Profile autofilled from "${name}"! Unmentioned fields left blank.`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Autofill failed', 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -274,6 +297,16 @@ export const ResumeManagerPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAutofill(res.id, res.fileName)}
+                    disabled={actionLoading}
+                    leftIcon={<Sparkles className="w-3.5 h-3.5 text-sky-400" />}
+                  >
+                    Autofill Profile
+                  </Button>
+
                   {!res.isDefault && (
                     <Button
                       variant="outline"

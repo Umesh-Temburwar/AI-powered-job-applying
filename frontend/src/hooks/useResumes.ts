@@ -26,7 +26,6 @@ function mapBackendToResume(b: BackendResumeItem): Resume {
 
 export function useResumes() {
   const { session, getToken } = useAuth();
-  const token = session?.token;
 
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState<boolean>(true);

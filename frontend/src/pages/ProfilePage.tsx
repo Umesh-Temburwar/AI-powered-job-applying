@@ -16,8 +16,11 @@ import {
   FolderGit2,
   Award,
   ExternalLink,
+  Sparkles,
+  UploadCloud,
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
+import { useResumes } from '../hooks/useResumes';
 import { useToast } from '../context/ToastContext';
 import {
   Card,
@@ -32,8 +35,12 @@ import {
 import type { EducationItem, ExperienceItem, ProjectItem, CertificationItem } from '../types';
 
 export const ProfilePage: React.FC = () => {
-  const { profile, loading, error, updateProfile } = useProfile();
+  const { profile, loading, updateProfile, autofillProfile } = useProfile();
+  const { uploadResume } = useResumes();
   const { showToast } = useToast();
+
+  const [autofilling, setAutofilling] = useState(false);
+  const resumeFileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -275,6 +282,70 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleAutofillFromExistingResume = async () => {
+    try {
+      setAutofilling(true);
+      const updated = await autofillProfile();
+      if (updated) {
+        setFormData({
+          fullName: updated.fullName || '',
+          email: updated.email || '',
+          phone: updated.phone || '',
+          currentLocation: updated.currentLocation || '',
+          headline: updated.headline || '',
+          summary: updated.summary || '',
+          noticePeriodDays: updated.noticePeriodDays || 15,
+        });
+        setSkills(updated.skills || []);
+        setPreferredTitles(updated.preferredTitles || []);
+        setPreferredLocations(updated.preferredLocations || []);
+        setEducation(updated.education || []);
+        setExperience(updated.experience || []);
+        setProjects(updated.projects || []);
+        setCertifications(updated.certifications || []);
+        setIsDirty(false);
+      }
+      showToast('Profile autofilled successfully from resume! Unmentioned fields left blank.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Autofill failed', 'error');
+    } finally {
+      setAutofilling(false);
+    }
+  };
+
+  const handleResumeUploadAndAutofill = async (file: File) => {
+    try {
+      setAutofilling(true);
+      const res = await uploadResume(file, true);
+      const updated = await autofillProfile(res.resume.id);
+      if (updated) {
+        setFormData({
+          fullName: updated.fullName || '',
+          email: updated.email || '',
+          phone: updated.phone || '',
+          currentLocation: updated.currentLocation || '',
+          headline: updated.headline || '',
+          summary: updated.summary || '',
+          noticePeriodDays: updated.noticePeriodDays || 15,
+        });
+        setSkills(updated.skills || []);
+        setPreferredTitles(updated.preferredTitles || []);
+        setPreferredLocations(updated.preferredLocations || []);
+        setEducation(updated.education || []);
+        setExperience(updated.experience || []);
+        setProjects(updated.projects || []);
+        setCertifications(updated.certifications || []);
+        setIsDirty(false);
+      }
+      showToast(`Resume "${file.name}" uploaded and profile autofilled!`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Upload and autofill failed', 'error');
+    } finally {
+      setAutofilling(false);
+      if (resumeFileInputRef.current) resumeFileInputRef.current.value = '';
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -302,11 +373,60 @@ export const ProfilePage: React.FC = () => {
         )}
       </div>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs">
-          {error}
+      {/* Resume Autofill Action Card */}
+      <Card className="border-[var(--accent)]/30 bg-[var(--accent)]/5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-2">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center shrink-0 border border-[var(--accent)]/20">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-theme-primary flex items-center gap-2">
+                Resume Autofill & Profile Sync
+                <Badge variant="accent" size="sm">Smart Extraction</Badge>
+              </h3>
+              <p className="text-xs text-theme-secondary mt-0.5">
+                Auto-fills name, contact, summary, education, experience, projects, and skills directly from your resume. Unmentioned fields stay blank.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <input
+              ref={resumeFileInputRef}
+              type="file"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleResumeUploadAndAutofill(e.target.files[0]);
+                }
+              }}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => resumeFileInputRef.current?.click()}
+              disabled={autofilling || loading}
+              leftIcon={<UploadCloud className="w-4 h-4" />}
+            >
+              Upload New Resume
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleAutofillFromExistingResume}
+              disabled={autofilling || loading}
+              isLoading={autofilling}
+              leftIcon={<Sparkles className="w-4 h-4" />}
+            >
+              {autofilling ? 'Autofilling...' : 'Autofill from Resume'}
+            </Button>
+          </div>
         </div>
-      )}
+      </Card>
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Basic Personal Information */}

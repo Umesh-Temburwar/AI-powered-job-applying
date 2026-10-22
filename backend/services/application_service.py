@@ -59,7 +59,7 @@ class ApplicationService:
         page_size: int = 10,
     ) -> ApplicationListResponse:
         page = max(1, page)
-        page_size = max(1, min(100, page_size))
+        page_size = max(1, min(2000, page_size))
 
         if self.supabase:
             try:
@@ -134,6 +134,8 @@ class ApplicationService:
             page_size=page_size,
             total_pages=total_pages,
         )
+
+    list_applications = get_applications
 
     def create_application(
         self, user_id: str, req: ApplicationCreateRequest

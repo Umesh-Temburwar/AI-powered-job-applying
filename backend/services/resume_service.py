@@ -15,7 +15,12 @@ from schemas.resume import (
     ResumeListResponse,
     ResumeUploadResponse,
 )
-from services.resume_parser import extract_raw_text, extract_structured_data
+from services.profile_service import sync_local_profile_data
+from services.resume_parser import (
+    extract_file_links,
+    extract_raw_text,
+    extract_structured_data,
+)
 
 logger = logging.getLogger("resumes")
 
@@ -108,7 +113,8 @@ async def upload_and_parse_resume(
     # 1. Parse resume text & extract structured fields
     try:
         raw_text, ocr_needed = extract_raw_text(file_bytes, file_name, verified_mime)
-        structured = extract_structured_data(raw_text) if raw_text else {}
+        links = extract_file_links(file_bytes, file_name, verified_mime)
+        structured = extract_structured_data(raw_text, links=links) if raw_text else {}
     except ValueError as val_err:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(val_err))
     except Exception as parse_err:
@@ -155,6 +161,40 @@ async def upload_and_parse_resume(
             logger.error("Database error saving resume: %s", db_err)
     else:
         _MEMORY_RESUMES[resume_id] = record
+
+    # 5. Automatically populate candidate profile in Supabase & memory
+    profile_updates = {
+        "full_name": structured.get("full_name"),
+        "email": structured.get("email"),
+        "phone": structured.get("phone"),
+        "city": structured.get("city"),
+        "headline": structured.get("headline"),
+        "summary": structured.get("summary"),
+        "linkedin_url": structured.get("linkedin_url"),
+        "github_url": structured.get("github_url"),
+        "portfolio_url": structured.get("portfolio_url"),
+        "skills": structured.get("skills", []),
+        "education": structured.get("education", []),
+        "experience": structured.get("experience", []),
+        "projects": structured.get("projects", []),
+        "certifications": structured.get("certifications", []),
+        "additional_info": structured.get("additional_info", {}),
+        "updated_at": now_iso,
+    }
+    clean_prof = {k: v for k, v in profile_updates.items() if v is not None}
+    # Explicitly persist portfolio_url so old project URLs do not persist when resume has no portfolio
+    clean_prof["portfolio_url"] = structured.get("portfolio_url")
+    clean_prof["updated_at"] = now_iso
+
+    if client:
+        try:
+            client.table("profiles").update(clean_prof).eq("id", user_id).execute()
+        except Exception as p_err:
+            logger.debug("Could not auto-sync profile from uploaded resume: %s", p_err)
+
+    sync_local_profile_data(clean_prof)
+    from services.profile_service import invalidate_profile_cache
+    invalidate_profile_cache(user_id)
 
     parsed_profile = ProfileUpdateRequest(**structured)
     resume_item = ResumeItemResponse(

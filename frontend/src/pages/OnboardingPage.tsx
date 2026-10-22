@@ -118,15 +118,15 @@ export const OnboardingPage: React.FC = () => {
       if (profile.githubUrl) setGithubUrl(profile.githubUrl);
       if (profile.portfolioUrl) setPortfolioUrl(profile.portfolioUrl);
       if (profile.skills && profile.skills.length > 0) setSkills(profile.skills);
-      if (profile.education && profile.education.length > 0) setEducationList(profile.education);
-      if (profile.experience && profile.experience.length > 0) {
-        setExperienceList(profile.experience);
+      const hasExp = Boolean(profile.experience && profile.experience.length > 0);
+      if (hasExp) {
+        setExperienceList(profile.experience!);
         setIsFresher(false);
       }
       if (profile.projects && profile.projects.length > 0) setProjectsList(profile.projects);
       if (profile.certifications && profile.certifications.length > 0) setCertificationsList(profile.certifications);
       if (profile.additionalInfo) {
-        if (profile.additionalInfo.is_fresher !== undefined) setIsFresher(profile.additionalInfo.is_fresher);
+        if (!hasExp && profile.additionalInfo.is_fresher !== undefined) setIsFresher(profile.additionalInfo.is_fresher);
         if (profile.additionalInfo.notice_period_days !== undefined) setNoticePeriodDays(profile.additionalInfo.notice_period_days);
         if (profile.additionalInfo.willing_to_relocate !== undefined) setWillingToRelocate(profile.additionalInfo.willing_to_relocate);
         if (profile.additionalInfo.expected_salary_lakhs !== undefined) setExpectedSalaryLakhs(profile.additionalInfo.expected_salary_lakhs || undefined);
@@ -179,9 +179,11 @@ export const OnboardingPage: React.FC = () => {
       if (p.email) setEmail(p.email);
       if (p.phone) setPhone(p.phone);
       if (p.city) setCity(p.city);
-      if (p.linkedin_url) setLinkedinUrl(p.linkedin_url);
-      if (p.github_url) setGithubUrl(p.github_url);
-      if (p.portfolio_url) setPortfolioUrl(p.portfolio_url);
+      if (p.headline) setHeadline(p.headline);
+      if (p.summary) setSummary(p.summary);
+      if (p.linkedin_url !== undefined) setLinkedinUrl(p.linkedin_url || '');
+      if (p.github_url !== undefined) setGithubUrl(p.github_url || '');
+      setPortfolioUrl(p.portfolio_url || '');
       if (p.skills && p.skills.length > 0) {
         setSkills(p.skills);
         // Suggest roles from extracted skills
@@ -220,6 +222,17 @@ export const OnboardingPage: React.FC = () => {
             description: proj.description,
             technologies: proj.technologies || [],
             url: proj.url,
+          }))
+        );
+      }
+      if (p.certifications && p.certifications.length > 0) {
+        setCertificationsList(
+          p.certifications.map((c, idx) => ({
+            id: String(idx + 1),
+            name: c.name,
+            issuer: c.issuer,
+            date: c.date,
+            url: c.url,
           }))
         );
       }
@@ -395,7 +408,7 @@ export const OnboardingPage: React.FC = () => {
     }
   };
 
-  if (profileLoading) {
+  if (profileLoading && currentStep > 0 && !profile) {
     return (
       <div className="min-h-screen bg-theme-base flex items-center justify-center p-6">
         <div className="w-full max-w-xl space-y-4">
@@ -425,6 +438,12 @@ export const OnboardingPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            {profileLoading && (
+              <span className="text-xs text-theme-muted flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
+                Syncing profile...
+              </span>
+            )}
             <Badge variant="cyan" size="sm">
               Progress: {progressPercentage}%
             </Badge>
@@ -905,7 +924,6 @@ export const OnboardingPage: React.FC = () => {
                 onChange={(e) => {
                   const val = e.target.checked;
                   setIsFresher(val);
-                  if (val) setExperienceList([]);
                 }}
                 label="I am a Fresher / Looking for Entry-Level Roles"
                 description="Check this box if you are a recent graduate or transitioning without full-time corporate software experience."

@@ -2,73 +2,85 @@
 
 @layer base {
   :root {
-    --bg-base: #0B132B;
-    --bg-surface: #111D4A;
-    --bg-card: #1C2541;
-    --bg-card-hover: #223055;
-    --bg-input: #0D1630;
-    --border-color: #263859;
-    --border-color-focus: #00E5FF;
+    --bg-base: #FAFAFA;
+    --bg-surface: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --bg-card-hover: #FAFAFA;
+    --bg-input: #FFFFFF;
+    --border-color: #E5E5E5;
+    --border-color-focus: #166534;
 
-    --text-primary: #F8FAFC;
-    --text-secondary: #94A3B8;
-    --text-muted: #64748B;
+    --text-primary: #111111;
+    --text-secondary: #6B6B6B;
+    --text-muted: #888888;
 
-    --accent: #00E5FF;
-    --accent-hover: #33ECFF;
-    --accent-muted: rgba(0, 229, 255, 0.12);
-    --accent-fg: #0B132B;
+    --accent: #166534;
+    --accent-hover: #14532D;
+    --accent-muted: #F0FDF4;
+    --accent-fg: #FFFFFF;
 
-    --color-success: #10B981;
-    --color-success-muted: rgba(16, 185, 129, 0.15);
-    --color-warning: #F59E0B;
-    --color-warning-muted: rgba(245, 158, 11, 0.15);
-    --color-danger: #EF4444;
-    --color-danger-muted: rgba(239, 68, 68, 0.15);
-    --color-info: #38BDF8;
-    --color-info-muted: rgba(56, 189, 248, 0.15);
+    --color-success: #166534;
+    --color-success-muted: transparent;
+    --color-warning: #B45309;
+    --color-warning-muted: transparent;
+    --color-danger: #B91C1C;
+    --color-danger-muted: transparent;
+    --color-info: #166534;
+    --color-info-muted: transparent;
   }
 
   .light {
-    --bg-base: #F8FAFC;
-    --bg-surface: #F1F5F9;
+    --bg-base: #FAFAFA;
+    --bg-surface: #FFFFFF;
     --bg-card: #FFFFFF;
-    --bg-card-hover: #F8FAFC;
+    --bg-card-hover: #FAFAFA;
     --bg-input: #FFFFFF;
-    --border-color: #E2E8F0;
-    --border-color-focus: #0284C7;
+    --border-color: #E5E5E5;
+    --border-color-focus: #166534;
 
-    --text-primary: #0F172A;
-    --text-secondary: #475569;
-    --text-muted: #94A3B8;
+    --text-primary: #111111;
+    --text-secondary: #6B6B6B;
+    --text-muted: #888888;
 
-    --accent: #0284C7;
-    --accent-hover: #0369A1;
-    --accent-muted: rgba(2, 132, 199, 0.12);
+    --accent: #166534;
+    --accent-hover: #14532D;
+    --accent-muted: #F0FDF4;
     --accent-fg: #FFFFFF;
 
-    --color-success: #059669;
-    --color-success-muted: rgba(5, 150, 105, 0.12);
-    --color-warning: #D97706;
-    --color-warning-muted: rgba(217, 119, 6, 0.12);
-    --color-danger: #DC2626;
-    --color-danger-muted: rgba(220, 38, 38, 0.12);
-    --color-info: #0284C7;
-    --color-info-muted: rgba(2, 132, 199, 0.12);
+    --color-success: #166534;
+    --color-success-muted: transparent;
+    --color-warning: #B45309;
+    --color-warning-muted: transparent;
+    --color-danger: #B91C1C;
+    --color-danger-muted: transparent;
+    --color-info: #166534;
+    --color-info-muted: transparent;
+  }
+
+  * {
+    border-color: var(--border-color);
   }
 
   body {
     background-color: var(--bg-base);
     color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
     min-height: 100vh;
     margin: 0;
     padding: 0;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Hard ban on rounded-2xl / 3xl and heavy shadows */
+  button, input, select, textarea {
+    font-family: inherit;
+    font-size: 14px;
   }
 }
 
-/* Custom token helper utility classes mapped to design tokens */
+/* Utilitarian token helper classes */
 .bg-theme-base { background-color: var(--bg-base); }
 .bg-theme-surface { background-color: var(--bg-surface); }
 .bg-theme-card { background-color: var(--bg-card); }

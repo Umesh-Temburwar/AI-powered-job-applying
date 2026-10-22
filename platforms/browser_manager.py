@@ -98,7 +98,7 @@ def find_edge_binary():
     return None
 
 
-def launch_single_browser(browser_name, headless=False):
+def launch_single_browser(browser_name, headless=False, user_data_dir=None):
     """Initialize a WebDriver instance for the specified browser."""
     b = browser_name.lower().strip()
 
@@ -109,6 +109,8 @@ def launch_single_browser(browser_name, headless=False):
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
+        if user_data_dir:
+            options.add_argument(f"--user-data-dir={user_data_dir}")
         if headless:
             options.add_argument("--headless=new")
         edge_bin = find_edge_binary()
@@ -131,6 +133,8 @@ def launch_single_browser(browser_name, headless=False):
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
+        if user_data_dir:
+            options.add_argument(f"--user-data-dir={user_data_dir}")
         if headless:
             options.add_argument("--headless=new")
         chrome_bin = find_chrome_binary()
@@ -157,6 +161,8 @@ def launch_single_browser(browser_name, headless=False):
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
+        if user_data_dir:
+            options.add_argument(f"--user-data-dir={user_data_dir}")
         if headless:
             options.add_argument("--headless=new")
         if WEBDRIVER_MANAGER_AVAILABLE:
@@ -180,7 +186,7 @@ def launch_single_browser(browser_name, headless=False):
         raise ValueError(f"Unsupported browser: {browser_name}")
 
 
-def create_driver(target=None, headless=False):
+def create_driver(target=None, headless=False, user_data_dir=None):
     """
     Auto-detects the system default browser first, then gracefully falls back
     to any other available browser (Edge, Chrome, Brave, Firefox).
@@ -206,7 +212,7 @@ def create_driver(target=None, headless=False):
     for b in order:
         try:
             logger.info(f"Attempting to launch {b.upper()} browser...")
-            driver = launch_single_browser(b, headless=headless)
+            driver = launch_single_browser(b, headless=headless, user_data_dir=user_data_dir)
             logger.info(f"✓ Started {b.upper()} browser successfully!")
             return driver
         except Exception as e:

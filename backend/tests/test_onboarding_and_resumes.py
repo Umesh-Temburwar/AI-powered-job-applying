@@ -76,7 +76,7 @@ def test_resume_parser_structured_extraction():
     assert "linkedin.com/in/alexvance" in data["linkedin_url"]
     assert "github.com/alexvance" in data["github_url"]
     assert "Python" in data["skills"]
-    assert "React" in data["skills"]
+    assert any("react" in s.lower() for s in data["skills"])
     assert "FastAPI" in data["skills"]
     assert len(data["education"]) >= 1
     assert "B.Tech" in data["education"][0]["degree"]

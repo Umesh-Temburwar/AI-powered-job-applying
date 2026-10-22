@@ -1,6 +1,7 @@
 import logging
 from typing import Annotated, Any
 
+import anyio
 import httpx
 import jwt
 from fastapi import Depends, HTTPException, Request, status
@@ -205,7 +206,9 @@ async def get_current_user(
 
         jwks_client = get_jwks_client(active_settings.SUPABASE_URL)
         try:
-            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            signing_key = await anyio.to_thread.run_sync(
+                jwks_client.get_signing_key_from_jwt, token
+            )
         except jwt.PyJWKClientError as exc:
             logger.warning("JWKS key resolution failed: %s", exc)
             raise HTTPException(
@@ -276,61 +279,95 @@ async def get_current_user(
     # 4. Symmetric token verification (HS256) via SUPABASE_JWT_SECRET
     if alg in ALLOWED_SYMMETRIC_ALGORITHMS:
         if active_settings.SUPABASE_JWT_SECRET:
+            # Prepare potential keys: raw string/bytes and base64-decoded bytes (common in Supabase)
+            raw_secret = active_settings.SUPABASE_JWT_SECRET
+            candidate_keys: list[bytes | str] = [raw_secret]
             try:
-                payload = jwt.decode(
-                    token,
-                    active_settings.SUPABASE_JWT_SECRET,
-                    algorithms=["HS256"],
-                    audience="authenticated" if has_aud else None,
-                    issuer=valid_issuers if has_iss else None,
-                    options={
-                        "verify_exp": True,
-                        "verify_aud": has_aud,
-                        "verify_iss": has_iss,
-                    },
-                )
-                user_id = payload.get("sub")
-                if not user_id:
+                import base64
+                decoded_key = base64.b64decode(raw_secret)
+                if decoded_key and decoded_key != raw_secret.encode("utf-8"):
+                    candidate_keys.append(decoded_key)
+            except Exception:
+                pass
+
+            last_sig_error: Exception | None = None
+            for key in candidate_keys:
+                try:
+                    payload = jwt.decode(
+                        token,
+                        key,
+                        algorithms=["HS256"],
+                        audience="authenticated" if has_aud else None,
+                        issuer=valid_issuers if has_iss else None,
+                        options={
+                            "verify_exp": True,
+                            "verify_aud": has_aud,
+                            "verify_iss": has_iss,
+                        },
+                    )
+                    user_id = payload.get("sub")
+                    if not user_id:
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Token missing subject claim ('sub').",
+                        )
+                    return AuthenticatedUser(
+                        id=str(user_id),
+                        email=payload.get("email"),
+                        role=payload.get("role", "authenticated"),
+                        claims=payload,
+                    )
+                except jwt.ExpiredSignatureError as exc:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Token missing subject claim ('sub').",
-                    )
-                return AuthenticatedUser(
-                    id=str(user_id),
-                    email=payload.get("email"),
-                    role=payload.get("role", "authenticated"),
-                    claims=payload,
+                        detail="Authentication token has expired.",
+                    ) from exc
+                except jwt.InvalidSignatureError as exc:
+                    last_sig_error = exc
+                    continue
+                except jwt.InvalidAudienceError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid authentication token audience.",
+                    ) from exc
+                except jwt.InvalidIssuerError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid authentication token issuer.",
+                    ) from exc
+                except jwt.InvalidAlgorithmError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid authentication token algorithm.",
+                    ) from exc
+                except jwt.InvalidTokenError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid authentication token.",
+                    ) from exc
+
+            # If local symmetric key verification failed due to signature mismatch,
+            # query Supabase Auth API directly before failing closed to verify against project authority.
+            if last_sig_error and active_settings.SUPABASE_URL:
+                logger.info(
+                    "Local symmetric signature verification failed; attempting authoritative Supabase API verification..."
                 )
-            except jwt.ExpiredSignatureError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication token has expired.",
-                ) from exc
-            except jwt.InvalidSignatureError as exc:
+                try:
+                    return await _verify_via_supabase_api(token, active_settings)
+                except HTTPException:
+                    # Supabase API also rejected the token; raise truthful signature mismatch error
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid authentication token signature.",
+                    ) from last_sig_error
+                except Exception as exc:
+                    logger.error("Supabase API verification fallback failed: %s", exc)
+
+            if last_sig_error:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid authentication token signature.",
-                ) from exc
-            except jwt.InvalidAudienceError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid authentication token audience.",
-                ) from exc
-            except jwt.InvalidIssuerError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid authentication token issuer.",
-                ) from exc
-            except jwt.InvalidAlgorithmError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid authentication token algorithm.",
-                ) from exc
-            except jwt.InvalidTokenError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid authentication token.",
-                ) from exc
+                ) from last_sig_error
 
         # If no JWT secret is configured, fallback to remote Supabase verification if URL is set
         if active_settings.SUPABASE_URL:

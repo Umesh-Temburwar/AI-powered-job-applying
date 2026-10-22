@@ -25,14 +25,14 @@ export function Table<T>({
   onRowClick,
 }: TableProps<T>) {
   return (
-    <div className="w-full overflow-x-auto border border-theme rounded-xl bg-theme-card shadow-xs">
-      <table className="w-full text-left text-sm border-collapse">
+    <div className="w-full overflow-x-auto border border-[#E5E5E5] rounded-[6px] bg-[#FFFFFF]">
+      <table className="w-full text-left text-[13px] border-collapse">
         <thead>
-          <tr className="border-b border-theme bg-theme-surface/40">
+          <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA] sticky top-0">
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`py-3.5 px-4 font-semibold text-xs text-theme-secondary uppercase tracking-wider ${
+                className={`py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B] ${
                   col.className || ''
                 }`}
               >
@@ -41,21 +41,18 @@ export function Table<T>({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-theme">
+        <tbody className="divide-y divide-[#E5E5E5]">
           {isLoading ? (
             <tr>
-              <td colSpan={columns.length} className="py-12 text-center text-theme-muted">
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-                  <span>Loading records...</span>
-                </div>
+              <td colSpan={columns.length} className="py-10 text-center text-[#6B6B6B] text-[13px]">
+                Loading records...
               </td>
             </tr>
           ) : data.length === 0 ? (
             <tr>
               <td
                 colSpan={columns.length}
-                className="py-10 text-center text-theme-muted text-sm"
+                className="py-10 text-center text-[#6B6B6B] text-[13px]"
               >
                 {emptyText}
               </td>
@@ -65,12 +62,12 @@ export function Table<T>({
               <tr
                 key={keyExtractor(row)}
                 onClick={() => onRowClick?.(row)}
-                className={`transition-colors hover:bg-theme-card-hover ${
+                className={`transition-colors duration-150 hover:bg-[#FAFAFA] ${
                   onRowClick ? 'cursor-pointer' : ''
                 }`}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={`py-3.5 px-4 text-theme-primary ${col.className || ''}`}>
+                  <td key={col.key} className={`py-3 px-4 text-[#111111] ${col.className || ''}`}>
                     {col.render ? col.render(row) : (row as Record<string, unknown>)[col.key] as React.ReactNode}
                   </td>
                 ))}

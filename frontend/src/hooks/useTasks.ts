@@ -80,7 +80,6 @@ function mapBackendTaskToAutomationTask(item: BackendTaskItem): AutomationTask {
 
 export function useTasks() {
   const { session, getToken } = useAuth();
-  const token = session?.token;
 
   const [currentTask, setCurrentTask] = useState<AutomationTask | null>(null);
   const [history, setHistory] = useState<AutomationTask[]>([]);

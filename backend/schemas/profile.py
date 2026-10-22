@@ -4,27 +4,29 @@ from pydantic import BaseModel, Field
 
 class EducationItem(BaseModel):
     id: str | None = None
-    degree: str
-    institution: str
+    degree: str = ""
+    institution: str = ""
     year: str | None = None
     score: str | None = None
     field_of_study: str | None = None
+    location: str | None = None
 
 
 class ExperienceItem(BaseModel):
     id: str | None = None
-    company: str
-    role: str
+    company: str = ""
+    role: str = ""
     duration: str | None = None
     start_date: str | None = None
     end_date: str | None = None
     description: str | None = None
+    location: str | None = None
     is_current: bool = False
 
 
 class ProjectItem(BaseModel):
     id: str | None = None
-    title: str
+    title: str = ""
     description: str | None = None
     technologies: list[str] = Field(default_factory=list)
     url: str | None = None
@@ -32,7 +34,7 @@ class ProjectItem(BaseModel):
 
 class CertificationItem(BaseModel):
     id: str | None = None
-    name: str
+    name: str = ""
     issuer: str | None = None
     date: str | None = None
     url: str | None = None

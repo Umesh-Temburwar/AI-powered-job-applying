@@ -8,6 +8,17 @@ from core.errors import register_error_handlers
 from core.logging import register_logging_middleware, setup_logging
 
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: resume any queued tasks left unprocessed
+    import asyncio
+    from services.task_service import resume_stuck_queued_tasks
+    asyncio.create_task(resume_stuck_queued_tasks())
+    yield
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     """
     FastAPI application factory allowing tests and deployment scripts
@@ -30,6 +41,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=redoc_url,
         openapi_url=openapi_url,
         description="RESTful API backend for the Universal Job Apply Bot platform",
+        lifespan=lifespan,
     )
     app.state.settings = settings
 
@@ -39,13 +51,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 2. Attach unified standard error envelope handlers
     register_error_handlers(app)
 
-    # 3. Configure CORS: restricted strictly to explicitly allowed frontend origins
+    # 3. Configure CORS: support localhost on any dev port and Chrome/Edge Private Network requests
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.FRONTEND_ORIGINS,
+        allow_origin_regex=r"^(https?://(localhost|127\.0\.0\.1)(:[0-9]+)?|https://.*\.vercel\.app)$",
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+        allow_private_network=True,
     )
 
     # 4. Mount root health check endpoint: GET /health

@@ -26,7 +26,7 @@ def get_user_dashboard_summary(user_id: Optional[str] = None) -> DashboardSummar
     apps_resp = application_service.get_applications(user_id=user_id, page=1, page_size=2000)
     all_apps = apps_resp.items
 
-    total_apps = len(all_apps)
+    total_apps = apps_resp.total
     successful = len([a for a in all_apps if a.status in ("applied", "interview", "under_review")])
     pending_review = len([a for a in all_apps if a.status == "review_needed"])
 

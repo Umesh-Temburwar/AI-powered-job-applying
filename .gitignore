@@ -45,6 +45,8 @@ platforms/linkedin/config.yaml
 storage/
 resumes/
 temp_profiles/
+browser_sessions/
+backend/browser_sessions/
 
 # IDE/editor files
 .vscode/

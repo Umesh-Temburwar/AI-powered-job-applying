@@ -17,7 +17,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isOnboarded, loading: statusLoading } = useOnboardingStatus();
   const location = useLocation();
 
-  if (authLoading || (user && statusLoading)) {
+  // Only wait for statusLoading if we actually need to decide whether to redirect
+  const shouldCheckOnboarding = !allowIncompleteOnboarding && location.pathname !== '/onboarding';
+
+  if (authLoading || (user && shouldCheckOnboarding && statusLoading)) {
     return (
       <div className="min-h-screen bg-theme-base flex items-center justify-center p-6">
         <div className="w-full max-w-md space-y-4">
@@ -34,7 +37,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Redirect users who haven't finished onboarding to the onboarding wizard
-  if (!isOnboarded && !allowIncompleteOnboarding && location.pathname !== '/onboarding') {
+  if (!isOnboarded && shouldCheckOnboarding) {
     return <Navigate to="/onboarding" replace />;
   }
 

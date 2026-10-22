@@ -21,25 +21,25 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-base)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer';
+    'inline-flex items-center justify-center font-medium rounded-[6px] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#166534] focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm';
 
   const sizeStyles = {
-    sm: 'text-xs px-3 py-1.5 gap-1.5',
-    md: 'text-sm px-4 py-2 gap-2',
-    lg: 'text-base px-5 py-2.5 gap-2.5',
+    sm: 'h-8 px-3 text-xs gap-1.5',
+    md: 'h-9 px-4 text-sm gap-2',
+    lg: 'h-10 px-5 text-sm gap-2',
   };
 
   const variantStyles = {
     primary:
-      'bg-theme-accent font-semibold focus:ring-[var(--accent)] hover:opacity-90 shadow-sm',
+      'bg-[#166534] hover:bg-[#14532D] text-white font-medium border border-[#166534]',
     secondary:
-      'bg-theme-card text-theme-primary border border-theme hover:bg-theme-card-hover focus:ring-sky-500',
+      'bg-white text-[#111111] border border-[#E5E5E5] hover:bg-[#FAFAFA]',
     outline:
-      'bg-transparent border border-theme-accent text-theme-accent hover:bg-theme-accent-muted focus:ring-[var(--accent)]',
+      'bg-transparent border border-[#E5E5E5] text-[#111111] hover:bg-[#FAFAFA]',
     danger:
-      'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 shadow-sm',
+      'bg-[#B91C1C] hover:bg-[#991B1B] text-white border border-[#B91C1C]',
     ghost:
-      'bg-transparent text-theme-secondary hover:text-theme-primary hover:bg-theme-card focus:ring-sky-500',
+      'bg-transparent text-[#6B6B6B] hover:text-[#111111] hover:bg-[#FAFAFA]',
   };
 
   return (
@@ -49,7 +49,7 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {isLoading ? (
-        <Loader2 className="w-4 h-4 animate-spin text-current" />
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-current shrink-0 mr-1.5" />
       ) : (
         leftIcon && <span className="inline-flex shrink-0">{leftIcon}</span>
       )}

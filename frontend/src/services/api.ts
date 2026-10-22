@@ -37,15 +37,19 @@ export interface DashboardSummaryApiResponse {
   platform_breakdown: PlatformBreakdownItem[];
 }
 
-const DEFAULT_BASE_URL = 'http://127.0.0.1:8000';
-const DEFAULT_TIMEOUT_MS = 6000;
+const DEFAULT_BASE_URL = import.meta.env.DEV ? 'http://127.0.0.1:8000' : '';
+const DEFAULT_TIMEOUT_MS = 15000;
 
-export async function apiClient<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function apiClient<T>(
+  endpoint: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+): Promise<T> {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE_URL;
   const url = `${baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
 
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const reqHeaders: Record<string, string> = {};
@@ -355,6 +359,17 @@ export async function getOnboardingStatusApi(token: string): Promise<BackendOnbo
   });
 }
 
+export async function autofillProfileApi(
+  token: string,
+  resumeId?: string
+): Promise<BackendProfileResponse> {
+  const query = resumeId ? `?resume_id=${encodeURIComponent(resumeId)}` : '';
+  return apiClient<BackendProfileResponse>(`/api/v1/profile/autofill${query}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 // ============================================================================
 // RESUMES API
 // ============================================================================
@@ -402,6 +417,7 @@ export async function uploadResumeApi(
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
+    timeoutMs: 30000,
   });
 }
 
@@ -565,5 +581,78 @@ export async function exportApplicationsCsvApi(token: string): Promise<string> {
   if (!res.ok) throw new Error('Failed to export CSV');
   return res.text();
 }
+
+// ============================================================================
+// WEBSITE CONNECTIONS API
+// ============================================================================
+
+export type ConnectionStatus =
+  | 'not_connected'
+  | 'connecting'
+  | 'connected'
+  | 'login_required'
+  | 'verification_required'
+  | 'unsupported'
+  | 'error';
+
+export interface BackendConnectionItem {
+  id?: string | null;
+  user_id: string;
+  platform: string;
+  status: ConnectionStatus;
+  account_email?: string | null;
+  last_verified?: string | null;
+  error_message?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface ConnectionListApiResponse {
+  connections: BackendConnectionItem[];
+}
+
+export interface ConnectionActionApiResponse {
+  success: boolean;
+  platform: string;
+  status: ConnectionStatus;
+  message: string;
+  connection?: BackendConnectionItem | null;
+}
+
+export async function getConnectionsApi(token: string): Promise<ConnectionListApiResponse> {
+  return apiClient<ConnectionListApiResponse>('/api/v1/connections', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function connectPlatformApi(
+  token: string,
+  platform: string
+): Promise<ConnectionActionApiResponse> {
+  return apiClient<ConnectionActionApiResponse>(`/api/v1/connections/${encodeURIComponent(platform)}/connect`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function verifyConnectionApi(
+  token: string,
+  platform: string
+): Promise<ConnectionActionApiResponse> {
+  return apiClient<ConnectionActionApiResponse>(`/api/v1/connections/${encodeURIComponent(platform)}/verify`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function disconnectPlatformApi(
+  token: string,
+  platform: string
+): Promise<ConnectionActionApiResponse> {
+  return apiClient<ConnectionActionApiResponse>(`/api/v1/connections/${encodeURIComponent(platform)}/disconnect`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 
 

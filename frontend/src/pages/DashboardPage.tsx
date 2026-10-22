@@ -1,77 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  Briefcase,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
-  PlayCircle,
-  Play,
-  Square,
-  RotateCcw,
-  FileText,
-  Sliders,
-  ArrowRight,
-  TrendingUp,
-  Clock,
-  ExternalLink,
-  RefreshCw,
-  X,
-  Target,
-  MapPin,
-  ShieldCheck,
-  AlertCircle,
-  Sparkles,
-} from 'lucide-react';
-import { useDashboard } from '../hooks/useApplications';
+import { useDashboard, useApplications } from '../hooks/useApplications';
 import { useTasks } from '../hooks/useTasks';
 import { usePreferences } from '../hooks/usePreferences';
-import { useProfile } from '../hooks/useProfile';
-import { useResumes } from '../hooks/useResumes';
-import { useOnboardingStatus } from '../hooks/useOnboardingStatus';
+import { useConnections } from '../hooks/useConnections';
 import { useToast } from '../context/ToastContext';
-import {
-  Card,
-  CardHeader,
-  Badge,
-  Button,
-  ProgressBar,
-  Skeleton,
-  Modal,
-  Select,
-  Input,
-  Checkbox,
-} from '../components/ui';
+import { Button, Input, Select, Modal } from '../components/ui';
 import type { PlatformName } from '../types';
 
 export const DashboardPage: React.FC = () => {
-  const {
-    metrics,
-    apiSummary,
-    activities,
-    loading: dashLoading,
-    error: dashError,
-    refreshDashboard,
-  } = useDashboard();
-
+  const { metrics, error: dashError } = useDashboard();
   const {
     currentTask,
-    loading: tasksLoading,
     actionLoading,
     error: taskError,
     startTask,
     cancelTask,
     retryTask,
-    refreshTasks,
   } = useTasks();
 
+  const {
+    connections,
+    loading: connectionsLoading,
+    actionLoading: actionPlatform,
+    error: connError,
+    refreshConnections,
+    connectPlatform,
+    verifyConnection,
+    disconnectPlatform,
+  } = useConnections();
+
   const { preferences } = usePreferences();
-  const { profile } = useProfile();
-  const { resumes, defaultResume } = useResumes();
-  const { isOnboarded, completionPercentage, missingFields } = useOnboardingStatus();
   const { showToast } = useToast();
 
-  // Dynamic Task Launch Modal & Form State
+  // Applications table state
+  const [portalFilter, setPortalFilter] = useState<string>('all');
+  const {
+    applications,
+    total,
+    totalPages,
+    page,
+    setPage,
+    updateFilters,
+    loading: appsLoading,
+  } = useApplications({ pageSize: 10 });
+
+  // Task Launch Modal & Form State
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformName | 'All Platforms'>('All Platforms');
   const [taskType, setTaskType] = useState<'job_apply' | 'profile_update' | 'screening_test'>('job_apply');
@@ -85,7 +58,7 @@ export const DashboardPage: React.FC = () => {
   const [force, setForce] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Sync saved user preferences when loaded
+  // Sync saved user preferences
   useEffect(() => {
     if (preferences) {
       if (preferences.targetTitles && preferences.targetTitles.length > 0) {
@@ -103,7 +76,13 @@ export const DashboardPage: React.FC = () => {
     }
   }, [preferences]);
 
-  // Keyword tags handling
+  // Handle portal filter change
+  const handlePortalFilterChange = (val: string) => {
+    setPortalFilter(val);
+    updateFilters({ platform: val === 'all' ? undefined : val });
+  };
+
+  // Keyword tag handlers
   const handleAddKeyword = (e?: React.KeyboardEvent | React.MouseEvent) => {
     if (e && 'key' in e && e.key !== 'Enter') return;
     if (e) e.preventDefault();
@@ -119,7 +98,7 @@ export const DashboardPage: React.FC = () => {
     setKeywords((prev) => prev.filter((k) => k !== tag));
   };
 
-  // Location tags handling
+  // Location tag handlers
   const handleAddLocation = (e?: React.KeyboardEvent | React.MouseEvent) => {
     if (e && 'key' in e && e.key !== 'Enter') return;
     if (e) e.preventDefault();
@@ -134,7 +113,7 @@ export const DashboardPage: React.FC = () => {
     setLocations((prev) => prev.filter((l) => l !== tag));
   };
 
-  // Dynamic POST /api/v1/tasks Enqueue Handler
+  // Start task submit
   const handleStartTask = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setValidationError(null);
@@ -150,7 +129,7 @@ export const DashboardPage: React.FC = () => {
     }
 
     if (!dryRun && !confirmLiveSubmission) {
-      setValidationError('Live submissions require explicit user confirmation. Please check the safety box below.');
+      setValidationError('Live submissions require explicit confirmation.');
       return;
     }
 
@@ -166,10 +145,7 @@ export const DashboardPage: React.FC = () => {
         force,
       });
 
-      showToast(
-        `Task queued successfully on ${selectedPlatform} (${dryRun ? 'Dry-Run Simulation' : 'Live'})`,
-        'success'
-      );
+      showToast(`Task queued on ${selectedPlatform}`, 'success');
       setIsLaunchModalOpen(false);
       setValidationError(null);
     } catch (err) {
@@ -179,665 +155,466 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  // Task Cancellation
-  const handleCancelTask = async (taskId: string) => {
-    try {
-      await cancelTask(taskId);
-      showToast('Task cancellation requested successfully.', 'info');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to cancel task';
-      showToast(msg, 'error');
-    }
-  };
-
-  // Task Retry
-  const handleRetryTask = async (taskId: string) => {
-    try {
-      await retryTask(taskId);
-      showToast('Task re-enqueued for retry.', 'success');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to retry task';
-      showToast(msg, 'error');
-    }
-  };
-
-  const platformBreakdown = apiSummary?.platform_breakdown || [];
-
-
+  // Platform and task options for the modal
   const platformOptions = [
-    { value: 'All Platforms', label: 'All Core Platforms (Naukri + Internshala + Indeed)' },
-    { value: 'Naukri', label: 'Naukri.com' },
+    { value: 'All Platforms', label: 'All Portals' },
+    { value: 'Naukri', label: 'Naukri' },
     { value: 'Internshala', label: 'Internshala' },
     { value: 'Indeed', label: 'Indeed' },
     { value: 'LinkedIn', label: 'LinkedIn' },
   ];
 
   const taskTypeOptions = [
-    { value: 'job_apply', label: 'Automated Job Applications (ATS Match)' },
-    { value: 'profile_update', label: 'Candidate Profile Refresh & Sync' },
-    { value: 'screening_test', label: 'Screening Questionnaire Simulation' },
+    { value: 'job_apply', label: 'Automated Job Applications' },
+    { value: 'profile_update', label: 'Candidate Profile Refresh' },
+    { value: 'screening_test', label: 'Screening Simulation' },
   ];
 
-  const getStatusBadgeVariant = (status?: string): 'default' | 'success' | 'warning' | 'danger' | 'cyan' => {
-    switch (status) {
-      case 'running':
-        return 'cyan';
-      case 'completed':
-        return 'success';
-      case 'failed':
-        return 'danger';
-      case 'cancelled':
-        return 'warning';
-      case 'review_required':
-        return 'warning';
-      default:
-        return 'default';
+  // Clean status indicator
+  const renderStatus = (status: string) => {
+    const s = (status || '').toLowerCase();
+    if (s.includes('submit') || s.includes('applied') || s === 'completed' || s === 'active') {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-[#166534] font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#166534] shrink-0" />
+          Submitted
+        </span>
+      );
+    }
+    if (s.includes('review') || s === 'pending' || s === 'queued') {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-[#B45309] font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#B45309] shrink-0" />
+          Review
+        </span>
+      );
+    }
+    if (s.includes('fail') || s.includes('error') || s === 'rejected') {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-[#B91C1C] font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C] shrink-0" />
+          Failed
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[13px] text-[#6B6B6B] font-medium">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#6B6B6B] shrink-0" />
+        {status}
+      </span>
+    );
+  };
+
+  // Connection action handlers
+  const handleConnect = async (platform: string) => {
+    try {
+      await connectPlatform(platform);
+      showToast(`Opened browser login for ${platform}`, 'info');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : `Failed to connect ${platform}`, 'error');
     }
   };
 
-  const checklistItems = [
-    {
-      label: `Candidate Profile Details (${profile?.fullName || (profile?.email ? profile.email.split('@')[0] : 'Incomplete')})`,
-      completed: Boolean(profile && profile.fullName && (profile.skills?.length || 0) > 0),
-      link: '/profile',
-    },
-    {
-      label: defaultResume
-        ? `Primary Resume: ${defaultResume.fileName}`
-        : resumes && resumes.length > 0
-        ? `Uploaded: ${resumes[0].fileName}`
-        : 'Upload PDF / DOCX Resume',
-      completed: Boolean(defaultResume || (resumes && resumes.length > 0)),
-      link: '/resumes',
-    },
-    {
-      label: `Job Search Preferences (${preferences?.targetTitles?.length ? `${preferences.targetTitles.length} roles` : 'Not set'})`,
-      completed: Boolean(preferences && (preferences.targetTitles?.length || 0) > 0),
-      link: '/preferences',
-    },
-    {
-      label: 'Run first automated simulation cycle',
-      completed: Boolean(currentTask && currentTask.status !== 'idle'),
-      link: '/automation',
-    },
-  ];
+  const handleVerify = async (platform: string) => {
+    try {
+      const res = await verifyConnection(platform);
+      if (res?.status === 'connected') {
+        showToast(`Verified session on ${platform}`, 'success');
+      } else {
+        showToast(`No active session on ${platform}. Please log in first.`, 'info');
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : `Failed to verify ${platform}`, 'error');
+    }
+  };
+
+  const handleDisconnect = async (platform: string) => {
+    try {
+      await disconnectPlatform(platform);
+      showToast(`Disconnected ${platform}`, 'info');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : `Failed to disconnect ${platform}`, 'error');
+    }
+  };
+
+  const renderConnectionBadge = (status: string) => {
+    switch (status) {
+      case 'connected':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#166534] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#166534]" />
+            Connected
+          </span>
+        );
+      case 'connecting':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#B45309] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B45309] animate-pulse" />
+            Connecting
+          </span>
+        );
+      case 'login_required':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#B45309] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B45309]" />
+            Login required
+          </span>
+        );
+      case 'verification_required':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#B45309] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B45309]" />
+            Verification required
+          </span>
+        );
+      case 'error':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#B91C1C] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" />
+            Error
+          </span>
+        );
+      case 'unsupported':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#6B6B6B] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#6B6B6B]" />
+            Unsupported
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#6B6B6B] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#6B6B6B]" />
+            Not connected
+          </span>
+        );
+    }
+  };
+
+  const getTaskBannerTitle = () => {
+    if (!currentTask) return '';
+    const mode = currentTask.dryRun ? 'Dry-run' : 'Live';
+    switch (currentTask.status) {
+      case 'queued':
+        return `Queued: ${currentTask.platform} (${mode}) — Waiting for worker`;
+      case 'running':
+        return `Running: ${currentTask.platform} (${mode}) — ${currentTask.progressPercent || 0}%`;
+      case 'completed':
+        return `Completed: ${currentTask.platform} (${mode})`;
+      case 'failed':
+        return `Failed: ${currentTask.platform} (${mode})`;
+      case 'cancelled':
+        return `Cancelled: ${currentTask.platform}`;
+      default:
+        return `${currentTask.status.toUpperCase()}: ${currentTask.platform} (${mode})`;
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Smart Onboarding Status Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-theme bg-theme-surface/70">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-theme-card flex items-center justify-center text-[var(--accent)] border border-theme shrink-0">
-            <Sparkles className="w-5 h-5 text-indigo-400" />
-          </div>
+    <div className="w-full">
+      {/* Top Header */}
+      <div className="flex items-center justify-between pb-6 border-b border-[#E5E5E5] mb-6">
+        <div>
+          <h1 className="text-[20px] font-bold text-[#111111] leading-tight">
+            Dashboard
+          </h1>
+          <p className="text-[13px] text-[#6B6B6B] mt-0.5">
+            Automation Worker Status: {currentTask?.status?.toUpperCase() || 'IDLE'}
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          onClick={() => setIsLaunchModalOpen(true)}
+        >
+          Launch Task
+        </Button>
+      </div>
+
+      {/* Error Notices */}
+      {dashError && (
+        <div className="mb-6 p-3 rounded-[6px] border border-[#B91C1C] text-[#B91C1C] text-[13px] bg-[#FFFFFF]">
+          {dashError}
+        </div>
+      )}
+      {taskError && (
+        <div className="mb-6 p-3 rounded-[6px] border border-[#B45309] text-[#B45309] text-[13px] bg-[#FFFFFF]">
+          {taskError}
+        </div>
+      )}
+
+      {/* Truthful Active Task Banner */}
+      {currentTask && currentTask.status !== 'idle' && (
+        <div className="mb-6 p-4 rounded-[6px] border border-[#E5E5E5] bg-[#FFFFFF] flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-theme-primary">
-                {isOnboarded ? 'Candidate Profile Active & Verified' : 'Profile Onboarding In Progress'}
-              </h3>
-              <Badge variant={isOnboarded ? 'success' : 'warning'} size="sm">
-                {completionPercentage}% Complete
-              </Badge>
+              <span className="text-[13px] font-medium text-[#111111]">
+                {getTaskBannerTitle()}
+              </span>
+              <span className="text-[11px] font-mono text-[#6B6B6B] bg-[#F5F5F5] px-1.5 py-0.5 rounded-[3px]">
+                ID: {currentTask.id.slice(0, 8)}
+              </span>
             </div>
-            <p className="text-xs text-theme-muted mt-0.5">
-              {isOnboarded
-                ? `Default resume: ${defaultResume?.fileName || 'Attached'} · ${preferences?.targetTitles?.length || 0} target roles configured.`
-                : missingFields && missingFields.length > 0
-                ? `Missing recommendations: ${missingFields.slice(0, 3).join(', ')}.`
-                : 'Complete the step-by-step wizard to maximize ATS matching accuracy.'}
+            <div className="text-[12px] text-[#6B6B6B] mt-0.5">
+              {currentTask.currentStepMessage || `Progress: ${currentTask.progressPercent || 0}%`}
+            </div>
+            {currentTask.status === 'failed' && currentTask.errorDetails && (
+              <div className="text-[11px] text-[#B91C1C] mt-1">
+                Reason: {currentTask.errorDetails}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {(currentTask.status === 'queued' || currentTask.status === 'running') && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => cancelTask(currentTask.id)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </Button>
+            )}
+            {currentTask.status === 'failed' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => retryTask(currentTask.id)}
+                disabled={actionLoading}
+              >
+                Retry
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Website Connections Section */}
+      <div className="border border-[#E5E5E5] rounded-[6px] bg-[#FFFFFF] p-5 mb-8">
+        <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E5] mb-4">
+          <div>
+            <h2 className="text-[14px] font-semibold text-[#111111]">
+              Website Connections
+            </h2>
+            <p className="text-[12px] text-[#6B6B6B] mt-0.5">
+              Candidate-isolated browser sessions for official job portals. Passwords are never stored.
             </p>
           </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link to="/onboarding">
-            <Button variant={isOnboarded ? 'outline' : 'primary'} size="sm" className="text-xs">
-              {isOnboarded ? 'Review Profile Wizard' : 'Resume Onboarding →'}
-            </Button>
-          </Link>
-        </div>
-      </div>
-      {/* Backend API Error Banner */}
-      {dashError && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-red-500/40 bg-red-950/40 text-red-200 text-xs">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-            <span className="font-semibold">Backend API Error:</span>
-            <span>{dashError}</span>
-          </div>
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
-            onClick={() => void refreshDashboard()}
-            className="text-xs border-red-500/50 hover:bg-red-900/30 text-red-200 shrink-0"
-            leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+            onClick={() => refreshConnections()}
+            disabled={connectionsLoading}
           >
-            Retry
+            Refresh
           </Button>
         </div>
-      )}
 
-      {/* Task Queue Hook Error Banner */}
-      {taskError && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-amber-500/40 bg-amber-950/40 text-amber-200 text-xs">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="font-semibold">Task Queue Status:</span>
-            <span>{taskError}</span>
+        {connError && (
+          <div className="mb-4 p-2.5 rounded-[4px] border border-[#B91C1C] text-[#B91C1C] text-[12px] bg-[#FFFFFF]">
+            {connError}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void refreshTasks()}
-            className="text-xs border-amber-500/50 hover:bg-amber-900/30 text-amber-200 shrink-0"
-            leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-          >
-            Refresh Queue
-          </Button>
-        </div>
-      )}
+        )}
 
-      {/* Backend API / Connected Status Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-sky-500/30 bg-sky-950/40 text-sky-200 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse shrink-0" />
-          <span className="font-semibold">
-            {apiSummary?.mode === 'live' ? 'Live Candidate Session' : 'Backend API Connected'}
-          </span>
-          <span className="text-sky-300/80">
-            — {apiSummary?.message || 'Task queue connected to POST /api/v1/tasks. Multi-user safety enabled.'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="cyan" size="sm">
-            {apiSummary?.mode === 'live' ? 'Live Session' : 'API Active'}
-          </Badge>
-          <Badge variant="default" size="sm">
-            Worker: {currentTask?.status?.toUpperCase() || apiSummary?.automation_status?.toUpperCase() || 'IDLE'}
-          </Badge>
-        </div>
-      </div>
-
-      {/* Top 4 Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-theme-secondary uppercase tracking-wider">
-              Total Processed
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-theme-surface flex items-center justify-center text-[var(--accent)]">
-              <Briefcase className="w-4 h-4" />
-            </div>
-          </div>
-          {dashLoading ? (
-            <Skeleton height="2rem" className="mt-2 w-16" />
-          ) : (
-            <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-theme-primary">
-                {metrics?.totalApplied ?? 0}
-              </span>
-              <span className="text-[11px] text-theme-muted font-medium">
-                {metrics?.totalApplied ? 'Live recorded' : 'No records yet'}
-              </span>
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-theme-secondary uppercase tracking-wider">
-              Successful Submissions
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-950/60 flex items-center justify-center text-emerald-400">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          {dashLoading ? (
-            <Skeleton height="2rem" className="mt-2 w-16" />
-          ) : (
-            <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400">
-                {metrics?.successful ?? 0}
-              </span>
-              <span className="text-[11px] text-emerald-500/80 font-medium">
-                {metrics?.totalApplied && metrics.totalApplied > 0
-                  ? `${Math.round(((metrics.successful ?? 0) / metrics.totalApplied) * 100)}% rate`
-                  : '0% rate'}
-              </span>
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-theme-secondary uppercase tracking-wider">
-              Review Required
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-amber-950/60 flex items-center justify-center text-amber-400">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-          </div>
-          {dashLoading ? (
-            <Skeleton height="2rem" className="mt-2 w-16" />
-          ) : (
-            <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-amber-400">
-                {metrics?.pendingReview ?? 0}
-              </span>
-              <span className="text-[11px] text-amber-400/80 font-medium">
-                {metrics?.pendingReview ? 'Requires candidate input' : 'Zero pending'}
-              </span>
-            </div>
-          )}
-        </Card>
-
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-theme-secondary uppercase tracking-wider">
-              Failed / Blocked
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-red-950/60 flex items-center justify-center text-red-400">
-              <XCircle className="w-4 h-4" />
-            </div>
-          </div>
-          {dashLoading ? (
-            <Skeleton height="2rem" className="mt-2 w-16" />
-          ) : (
-            <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-extrabold text-red-400">
-                {metrics?.failedOrSkipped ?? 0}
-              </span>
-              <span className="text-[11px] text-red-400/80 font-medium">
-                {metrics?.failedOrSkipped ? 'Errors logged' : 'Zero failures'}
-              </span>
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Middle Row: Automation Runner Card + Platform Distribution Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Automation Status Card with Real Queue Controls */}
-        <Card className="lg:col-span-2">
-          <CardHeader
-            title="Automation Worker Status"
-            subtitle="Background Selenium executor with per-task sandbox profile"
-            action={
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void refreshTasks()}
-                  disabled={tasksLoading}
-                  leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${tasksLoading ? 'animate-spin' : ''}`} />}
-                  aria-label="Refresh Queue"
-                >
-                  Sync
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setIsLaunchModalOpen(true)}
-                  leftIcon={<Play className="w-3.5 h-3.5" />}
-                >
-                  Launch Task
-                </Button>
-                <Link to="/automation">
-                  <Button variant="ghost" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
-                    Control Center
-                  </Button>
-                </Link>
-              </div>
-            }
-          />
-
-          {tasksLoading && !currentTask ? (
-            <div className="p-4 rounded-xl border border-theme bg-theme-surface space-y-3">
-              <Skeleton height="1.5rem" className="w-1/3" />
-              <Skeleton height="2rem" className="w-full" />
-              <div className="grid grid-cols-3 gap-2 pt-2">
-                <Skeleton height="3rem" />
-                <Skeleton height="3rem" />
-                <Skeleton height="3rem" />
-              </div>
-            </div>
-          ) : currentTask ? (
-            <div className="p-4 rounded-xl border border-theme bg-theme-surface space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {connections.map((conn) => {
+            const isConnecting = actionPlatform === conn.platform;
+            return (
+              <div
+                key={conn.platform}
+                className="p-3.5 rounded-[6px] border border-[#E5E5E5] bg-[#FAFAFA] flex flex-col justify-between"
+              >
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-theme-muted uppercase tracking-wider">
-                      Target Platform
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-semibold text-[#111111]">
+                      {conn.platform}
                     </span>
-                    <Badge variant={currentTask.dryRun ? 'success' : 'warning'} size="sm">
-                      {currentTask.dryRun ? 'Dry-Run Simulation' : 'Live Submission'}
-                    </Badge>
+                    {renderConnectionBadge(conn.status)}
                   </div>
-                  <p className="text-base font-bold text-theme-primary mt-0.5">
-                    {currentTask.platform}
-                    <span className="text-xs font-normal text-theme-muted ml-2">
-                      ({(currentTask.taskType || 'job_apply').replace('_', ' ')})
-                    </span>
+                  <p className="text-[11px] text-[#6B6B6B] mt-1.5 line-clamp-2">
+                    {conn.error_message ||
+                      (conn.last_verified
+                        ? `Verified at ${new Date(conn.last_verified).toLocaleTimeString()}`
+                        : conn.status === 'connected'
+                        ? 'Active verified session'
+                        : 'Official browser login flow')}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={getStatusBadgeVariant(currentTask.status)}>
-                    {currentTask.status === 'running' && (
-                      <RefreshCw className="w-3 h-3 animate-spin mr-1 inline" />
-                    )}
-                    Status: {currentTask.status.toUpperCase()}
-                  </Badge>
-                </div>
-              </div>
 
-              {/* Progress Bar */}
-              <ProgressBar
-                progress={currentTask.progressPercent || 0}
-                label={currentTask.currentStepMessage || 'Task processing...'}
-              />
-
-              {/* Stats Counters */}
-              <div className="grid grid-cols-3 gap-2 pt-1 text-center text-xs">
-                <div className="p-2 bg-theme-card rounded-lg">
-                  <span className="text-theme-muted block">Attempted</span>
-                  <span className="font-bold text-theme-primary text-sm">
-                    {currentTask.applicationsAttempted || 0}
-                  </span>
-                </div>
-                <div className="p-2 bg-theme-card rounded-lg">
-                  <span className="text-theme-muted block">Verified Steps</span>
-                  <span className="font-bold text-emerald-400 text-sm">
-                    {currentTask.applicationsSuccessful || 0}
-                  </span>
-                </div>
-                <div className="p-2 bg-theme-card rounded-lg">
-                  <span className="text-theme-muted block">
-                    {currentTask.status === 'failed' ? 'Retries' : 'Checkpoints'}
-                  </span>
-                  <span className="font-bold text-amber-400 text-sm">
-                    {(currentTask.retryCount ?? 0) > 0
-                      ? `${currentTask.retryCount}/${currentTask.maxRetries ?? 3}`
-                      : currentTask.applicationsFailed || 0}
-                  </span>
-                </div>
-              </div>
-
-              {/* Failed Error Message & Retry Control */}
-              {currentTask.status === 'failed' && (
-                <div className="p-3 rounded-lg border border-red-500/40 bg-red-950/40 text-red-200 text-xs space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-semibold block">Execution Failed</span>
-                        <p className="text-red-300">
-                          {currentTask.errorDetails || currentTask.currentStepMessage || 'Task terminated with an error.'}
-                        </p>
-                      </div>
-                    </div>
-                    {(currentTask.retryCount ?? 0) < (currentTask.maxRetries ?? 3) && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRetryTask(currentTask.id)}
-                        disabled={actionLoading}
-                        leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
-                        className="border-red-500/50 hover:bg-red-900/30 text-red-200 shrink-0"
-                      >
-                        Retry Task
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Active Task Cancellation Control */}
-              {(currentTask.status === 'queued' || currentTask.status === 'running') && (
-                <div className="flex items-center justify-between pt-2 border-t border-theme/60 text-xs">
-                  <span className="text-theme-secondary flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-theme-muted" />
-                    Task is currently in worker queue
-                  </span>
+                <div className="flex items-center gap-2 mt-3.5 pt-3 border-t border-[#E5E5E5]">
+                  {conn.status !== 'connected' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleConnect(conn.platform)}
+                      disabled={isConnecting}
+                    >
+                      {isConnecting ? 'Opening...' : 'Connect'}
+                    </Button>
+                  )}
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
-                    onClick={() => handleCancelTask(currentTask.id)}
-                    disabled={actionLoading}
-                    leftIcon={<Square className="w-3.5 h-3.5" />}
-                    className="text-xs border-amber-500/50 text-amber-300 hover:bg-amber-950/30"
+                    onClick={() => handleVerify(conn.platform)}
+                    disabled={isConnecting}
                   >
-                    Cancel Task
+                    Verify
                   </Button>
+                  {conn.status === 'connected' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleDisconnect(conn.platform)}
+                      disabled={isConnecting}
+                    >
+                      Disconnect
+                    </Button>
+                  )}
                 </div>
-              )}
-
-              {/* Completed / Cancelled Actions */}
-              {(currentTask.status === 'completed' || currentTask.status === 'cancelled') && (
-                <div className="flex items-center justify-between pt-2 border-t border-theme/60 text-xs">
-                  <span className="text-theme-muted">
-                    Execution finished at {currentTask.completedAt ? new Date(currentTask.completedAt).toLocaleTimeString() : 'N/A'}
-                  </span>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setIsLaunchModalOpen(true)}
-                    leftIcon={<Play className="w-3.5 h-3.5" />}
-                    className="text-xs"
-                  >
-                    New Simulation Run
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-6 rounded-xl border border-dashed border-theme bg-theme-surface/40 text-center space-y-3">
-              <div className="w-10 h-10 rounded-full bg-theme-card flex items-center justify-center mx-auto text-theme-muted">
-                <PlayCircle className="w-5 h-5 text-[var(--accent)]" />
               </div>
-              <div>
-                <h4 className="text-sm font-semibold text-theme-primary">No Active Automation Task</h4>
-                <p className="text-xs text-theme-secondary max-w-md mx-auto mt-1">
-                  The task queue is currently idle. Launch a background dry-run simulation to automatically match ATS keywords and fill applications.
-                </p>
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsLaunchModalOpen(true)}
-                leftIcon={<Play className="w-3.5 h-3.5" />}
-              >
-                Configure & Launch Task
-              </Button>
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-theme-secondary">
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-theme-muted" />
-              Safety mode enabled: 15-second humanized random intervals · Dry-run safe
-            </span>
-            <Link to="/automation" className="text-[var(--accent)] hover:underline font-semibold">
-              View task live terminal logs →
-            </Link>
-          </div>
-        </Card>
-
-        {/* Platform Share Visual Chart */}
-        <Card>
-          <CardHeader
-            title="Applications by Portal"
-            subtitle="Distribution of processed candidate submissions"
-          />
-
-          <div className="space-y-4">
-            {platformBreakdown.length > 0 ? (
-              platformBreakdown.map((item) => (
-                <div key={item.platform} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-theme-primary">{item.platform}</span>
-                    <span className="text-theme-secondary font-mono">
-                      {item.applied} jobs ({item.percentage}%)
-                    </span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-theme-surface overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${item.color}`}
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-6 px-4 rounded-xl border border-dashed border-theme bg-theme-surface/30">
-                <Briefcase className="w-8 h-8 text-theme-muted mx-auto mb-2 opacity-50" />
-                <p className="text-xs text-theme-secondary font-medium">No application records found yet</p>
-                <p className="text-[11px] text-theme-muted mt-1">
-                  Launch an automation task or log applications to see your platform distribution.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-theme">
-            <Link to="/applications">
-              <Button variant="ghost" size="sm" className="w-full text-xs">
-                Browse Full Applications Table →
-              </Button>
-            </Link>
-          </div>
-        </Card>
-      </div>
-
-      {/* Bottom Row: Getting Started Checklist + Recent Activity Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Onboarding Checklist */}
-        <Card>
-          <CardHeader
-            title="Candidate Setup Checklist"
-            subtitle="Complete these milestones to maximize ATS match accuracy"
-          />
-
-          <div className="space-y-3">
-            {checklistItems.map((item, idx) => (
-              <Link
-                key={idx}
-                to={item.link}
-                className="flex items-center justify-between p-3 rounded-xl border border-theme bg-theme-surface/50 hover:bg-theme-card transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                      item.completed
-                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/40'
-                        : 'bg-slate-800 text-slate-500 border border-slate-700'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </div>
-                  <span
-                    className={`text-xs sm:text-sm font-medium ${
-                      item.completed ? 'text-theme-primary' : 'text-theme-secondary'
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                </div>
-                <ExternalLink className="w-3.5 h-3.5 text-theme-muted group-hover:text-[var(--accent)] transition-colors" />
-              </Link>
-            ))}
-          </div>
-        </Card>
-
-        {/* Recent Activity Log */}
-        <Card>
-          <CardHeader
-            title="Recent Platform Activity"
-            subtitle="Audit log of automation events and status transitions"
-            action={
-              <Link to="/applications">
-                <Button variant="ghost" size="sm" className="text-xs">
-                  View All
-                </Button>
-              </Link>
-            }
-          />
-
-          <div className="space-y-3">
-            {activities.length === 0 ? (
-              <p className="text-xs text-theme-muted text-center py-6">No recent activity logged.</p>
-            ) : (
-              activities.slice(0, 4).map((act) => (
-                <div
-                  key={act.id}
-                  className="flex items-start justify-between gap-3 p-3 rounded-xl border border-theme bg-theme-surface/30"
-                >
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-semibold text-theme-primary">{act.title}</p>
-                    <p className="text-[11px] text-theme-secondary">{act.description}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-[10px] text-theme-muted block">{act.timestamp}</span>
-                    {act.statusBadge && (
-                      <span className="inline-block mt-1">
-                        <Badge
-                          variant={
-                            act.statusBadge === 'applied'
-                              ? 'success'
-                              : act.statusBadge === 'review_needed'
-                              ? 'warning'
-                              : act.statusBadge === 'interview'
-                              ? 'cyan'
-                              : 'default'
-                          }
-                          size="sm"
-                        >
-                          {act.statusBadge}
-                        </Badge>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Quick Action Navigation Bar */}
-      <div className="p-4 rounded-xl border border-theme bg-theme-card flex flex-wrap items-center justify-between gap-3">
-        <span className="text-xs font-medium text-theme-secondary">Quick Shortcuts:</span>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsLaunchModalOpen(true)}
-            leftIcon={<PlayCircle className="w-3.5 h-3.5" />}
-          >
-            Launch Task
-          </Button>
-          <Link to="/automation">
-            <Button variant="secondary" size="sm" leftIcon={<Play className="w-3.5 h-3.5" />}>
-              Full Control Center
-            </Button>
-          </Link>
-          <Link to="/resumes">
-            <Button variant="secondary" size="sm" leftIcon={<FileText className="w-3.5 h-3.5" />}>
-              Manage Resumes
-            </Button>
-          </Link>
-          <Link to="/preferences">
-            <Button variant="secondary" size="sm" leftIcon={<Sliders className="w-3.5 h-3.5" />}>
-              Target Keywords
-            </Button>
-          </Link>
-          <Link to="/applications">
-            <Button variant="secondary" size="sm" leftIcon={<TrendingUp className="w-3.5 h-3.5" />}>
-              CRM Records
-            </Button>
-          </Link>
+            );
+          })}
         </div>
       </div>
 
-      {/* Dynamic Task Queue Launch Modal (Connected to POST /api/v1/tasks) */}
+      {/* Stats: Single row of 4 plain numbers with 1px vertical dividers */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 border border-[#E5E5E5] rounded-[6px] bg-[#FFFFFF] divide-y sm:divide-y-0 sm:divide-x divide-[#E5E5E5] mb-8">
+        <div className="p-4 sm:p-5">
+          <div className="text-[12px] text-[#6B6B6B]">Total Processed</div>
+          <div className="text-[24px] font-bold text-[#111111] mt-1">
+            {metrics?.totalApplied ?? 0}
+          </div>
+        </div>
+        <div className="p-4 sm:p-5">
+          <div className="text-[12px] text-[#6B6B6B]">Submitted</div>
+          <div className="text-[24px] font-bold text-[#166534] mt-1">
+            {metrics?.successful ?? 0}
+          </div>
+        </div>
+        <div className="p-4 sm:p-5">
+          <div className="text-[12px] text-[#6B6B6B]">Review Required</div>
+          <div className="text-[24px] font-bold text-[#B45309] mt-1">
+            {metrics?.pendingReview ?? 0}
+          </div>
+        </div>
+        <div className="p-4 sm:p-5">
+          <div className="text-[12px] text-[#6B6B6B]">Failed</div>
+          <div className="text-[24px] font-bold text-[#B91C1C] mt-1">
+            {metrics?.failedOrSkipped ?? 0}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Table Section */}
+      <div className="space-y-3">
+        {/* Filter Bar Above Table */}
+        <div className="flex items-center justify-between">
+          <span className="text-[14px] font-semibold text-[#111111]">
+            Applications
+          </span>
+          <div className="w-48">
+            <select
+              value={portalFilter}
+              onChange={(e) => handlePortalFilterChange(e.target.value)}
+              className="h-9 w-full bg-[#FFFFFF] border border-[#E5E5E5] rounded-[6px] px-3 text-[13px] text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#166534]"
+            >
+              <option value="all">All Portals</option>
+              <option value="Naukri">Naukri</option>
+              <option value="Internshala">Internshala</option>
+              <option value="Indeed">Indeed</option>
+              <option value="LinkedIn">LinkedIn</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Clean Data Table */}
+        <div className="w-full overflow-x-auto border border-[#E5E5E5] rounded-[6px] bg-[#FFFFFF]">
+          <table className="w-full text-left text-[13px] border-collapse">
+            <thead>
+              <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA] sticky top-0">
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Job title</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Company</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Portal</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Status</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E5E5E5]">
+              {appsLoading ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-[#6B6B6B]">
+                    Loading applications...
+                  </td>
+                </tr>
+              ) : applications.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-[#6B6B6B]">
+                    No applications found.{' '}
+                    <button
+                      onClick={() => setIsLaunchModalOpen(true)}
+                      className="text-[#166534] font-medium hover:underline cursor-pointer ml-1"
+                    >
+                      Start run
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                applications.map((app) => (
+                  <tr
+                    key={app.id}
+                    className="hover:bg-[#FAFAFA] transition-colors duration-150"
+                  >
+                    <td className="py-3 px-4 font-medium text-[#111111]">
+                      {app.jobTitle}
+                    </td>
+                    <td className="py-3 px-4 text-[#6B6B6B]">
+                      {app.company}
+                    </td>
+                    <td className="py-3 px-4 text-[#6B6B6B]">
+                      {app.platform}
+                    </td>
+                    <td className="py-3 px-4">
+                      {renderStatus(app.status)}
+                    </td>
+                    <td className="py-3 px-4 text-[#6B6B6B]">
+                      {app.appliedDate ? new Date(app.appliedDate).toLocaleDateString() : '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Below Table */}
+        <div className="flex items-center justify-between pt-3 text-[13px] text-[#6B6B6B]">
+          <div>
+            Showing {applications.length} of {total} applications
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Previous
+            </Button>
+            <span className="px-2">
+              Page {page} of {Math.max(1, totalPages)}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Task Queue Launch Modal */}
       <Modal
         isOpen={isLaunchModalOpen}
         onClose={() => {
@@ -851,9 +628,8 @@ export const DashboardPage: React.FC = () => {
       >
         <form onSubmit={handleStartTask} className="space-y-4">
           {validationError && (
-            <div className="p-3 rounded-lg border border-red-500/40 bg-red-950/40 text-red-200 text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-              <span>{validationError}</span>
+            <div className="p-2.5 rounded-[6px] border border-[#B91C1C] text-[#B91C1C] text-[13px]">
+              {validationError}
             </div>
           )}
 
@@ -875,26 +651,25 @@ export const DashboardPage: React.FC = () => {
             />
           </div>
 
-          {/* Dynamic Job Keywords */}
+          {/* Job Keywords */}
           <div>
-            <label className="block text-xs font-semibold text-theme-secondary uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
               Target Job Roles / Keywords
             </label>
-            <div className="flex flex-wrap gap-1.5 mb-2 min-h-7">
+            <div className="flex flex-wrap gap-1.5 mb-2">
               {keywords.map((kw) => (
                 <span
                   key={kw}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-theme-surface border border-theme text-theme-primary font-medium"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[12px] bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111]"
                 >
-                  <Target className="w-3 h-3 text-[var(--accent)]" />
                   {kw}
                   <button
                     type="button"
                     onClick={() => handleRemoveKeyword(kw)}
-                    className="hover:text-red-400 p-0.5 text-theme-muted"
+                    className="hover:text-[#B91C1C] text-[#6B6B6B] ml-1"
                     aria-label={`Remove keyword ${kw}`}
                   >
-                    <X className="w-3 h-3" />
+                    ×
                   </button>
                 </span>
               ))}
@@ -910,38 +685,33 @@ export const DashboardPage: React.FC = () => {
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
                 onClick={handleAddKeyword}
                 disabled={!keywordInput.trim() || actionLoading}
               >
                 Add
               </Button>
             </div>
-            <p className="text-[11px] text-theme-muted mt-1">
-              Synchronized from your profile preferences. Add or adjust roles dynamically for this run.
-            </p>
           </div>
 
-          {/* Dynamic Preferred Locations */}
+          {/* Locations */}
           <div>
-            <label className="block text-xs font-semibold text-theme-secondary uppercase tracking-wider mb-1.5">
+            <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
               Target Locations
             </label>
-            <div className="flex flex-wrap gap-1.5 mb-2 min-h-7">
+            <div className="flex flex-wrap gap-1.5 mb-2">
               {locations.map((loc) => (
                 <span
                   key={loc}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-theme-surface border border-theme text-theme-primary font-medium"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[12px] bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111]"
                 >
-                  <MapPin className="w-3 h-3 text-sky-400" />
                   {loc}
                   <button
                     type="button"
                     onClick={() => handleRemoveLocation(loc)}
-                    className="hover:text-red-400 p-0.5 text-theme-muted"
+                    className="hover:text-[#B91C1C] text-[#6B6B6B] ml-1"
                     aria-label={`Remove location ${loc}`}
                   >
-                    <X className="w-3 h-3" />
+                    ×
                   </button>
                 </span>
               ))}
@@ -957,7 +727,6 @@ export const DashboardPage: React.FC = () => {
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
                 onClick={handleAddLocation}
                 disabled={!locationInput.trim() || actionLoading}
               >
@@ -966,7 +735,7 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Application Limits & Force Duplicate Toggle */}
+          {/* Application Limit */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Application Limit (Per Cycle)"
@@ -976,65 +745,71 @@ export const DashboardPage: React.FC = () => {
               value={maxApplications}
               onChange={(e) => setMaxApplications(parseInt(e.target.value, 10) || 1)}
               disabled={actionLoading}
-              helperText="Safety limit: capped between 1 and 100 applications"
             />
 
             <div className="pt-6">
-              <Checkbox
-                checked={force}
-                onChange={(e) => setForce(e.target.checked)}
-                disabled={actionLoading}
-                label="Allow Duplicate / Force Enqueue"
-                description="Overrides active task collision check"
-              />
+              <label className="flex items-center gap-2 text-[13px] text-[#6B6B6B] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={force}
+                  onChange={(e) => setForce(e.target.checked)}
+                  disabled={actionLoading}
+                  className="rounded-[4px] border-[#E5E5E5] text-[#166534] focus:ring-[#166534]"
+                />
+                <span>Allow Duplicate / Force Enqueue</span>
+              </label>
             </div>
           </div>
 
           {/* Safety Settings: Dry Run Simulation */}
-          <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-2">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="text-xs font-semibold text-emerald-300">Safety Verification Guard</span>
-            </div>
-            <Checkbox
-              checked={dryRun}
-              onChange={(e) => {
-                const isChecked = e.target.checked;
-                setDryRun(isChecked);
-                if (isChecked) {
-                  setConfirmLiveSubmission(false);
-                }
-              }}
-              disabled={actionLoading}
-              label="Enable Dry-Run Simulation Mode (Recommended)"
-              description="Performs keyword search, ATS scoring, and form filling without final submission or portal mutation."
-            />
+          <div className="p-3 rounded-[6px] border border-[#E5E5E5] bg-[#FAFAFA] space-y-1">
+            <label className="flex items-start gap-2 text-[13px] text-[#111111] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dryRun}
+                onChange={(e) => {
+                  const isChecked = e.target.checked;
+                  setDryRun(isChecked);
+                  if (isChecked) {
+                    setConfirmLiveSubmission(false);
+                  }
+                }}
+                disabled={actionLoading}
+                className="mt-0.5 rounded-[4px] border-[#E5E5E5] text-[#166534] focus:ring-[#166534]"
+              />
+              <div>
+                <span className="font-medium block">
+                  Enable Dry-Run Simulation Mode (Recommended)
+                </span>
+                <span className="text-[12px] text-[#6B6B6B]">
+                  Performs searches and form filling without final submission.
+                </span>
+              </div>
+            </label>
           </div>
 
-          {/* Explicit Confirmation when Dry Run is turned OFF */}
           {!dryRun && (
-            <div className="p-3.5 rounded-xl border border-red-500/40 bg-red-950/30 space-y-2">
-              <div className="flex items-center gap-2 text-red-300">
-                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                <span className="text-xs font-semibold">Caution: Live Application Submissions</span>
-              </div>
-              <p className="text-[11px] text-red-200/90">
-                Real applications will be submitted to employers. Never run live mode for testing.
-              </p>
-              <Checkbox
-                checked={confirmLiveSubmission}
-                onChange={(e) => setConfirmLiveSubmission(e.target.checked)}
-                disabled={actionLoading}
-                label="I confirm real portal job submission for this run"
-              />
+            <div className="p-3 rounded-[6px] border border-[#B91C1C] bg-[#FFFFFF] space-y-1">
+              <label className="flex items-start gap-2 text-[13px] text-[#B91C1C] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={confirmLiveSubmission}
+                  onChange={(e) => setConfirmLiveSubmission(e.target.checked)}
+                  disabled={actionLoading}
+                  className="mt-0.5 rounded-[4px] border-[#B91C1C] text-[#B91C1C]"
+                />
+                <span className="font-medium">
+                  I confirm real portal job submission for this run
+                </span>
+              </label>
             </div>
           )}
 
           {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-theme">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E5E5E5]">
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               onClick={() => setIsLaunchModalOpen(false)}
               disabled={actionLoading}
             >
@@ -1044,7 +819,6 @@ export const DashboardPage: React.FC = () => {
               type="submit"
               variant="primary"
               disabled={actionLoading}
-              leftIcon={<Play className="w-4 h-4" />}
             >
               {actionLoading ? 'Enqueueing Task...' : 'Enqueue Task (POST /api/v1/tasks)'}
             </Button>

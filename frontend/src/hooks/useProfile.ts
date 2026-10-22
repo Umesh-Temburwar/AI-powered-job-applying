@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { UserProfile } from '../types';
 import {
+  autofillProfileApi,
   getProfileApi,
   updateProfileApi,
   type BackendProfileResponse,
@@ -64,7 +65,6 @@ function mapBackendToUserProfile(b: BackendProfileResponse): UserProfile {
 
 export function useProfile() {
   const { session, user, getToken } = useAuth();
-  const token = session?.token;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -185,9 +185,40 @@ export function useProfile() {
     }
   };
 
+  const autofillProfile = async (resumeId?: string) => {
+    try {
+      setUpdating(true);
+      setError(null);
+
+      const activeToken = await getActiveToken();
+      if (!activeToken) {
+        throw new Error('Candidate is not authenticated.');
+      }
+
+      const updated = await autofillProfileApi(activeToken, resumeId);
+      const mapped = mapBackendToUserProfile(updated);
+      setProfile(mapped);
+      return mapped;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to autofill profile from resume';
+      setError(msg);
+      throw new Error(msg);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
 
-  return { profile, loading, updating, error, refreshProfile: fetchProfile, updateProfile };
+  return {
+    profile,
+    loading,
+    updating,
+    error,
+    refreshProfile: fetchProfile,
+    updateProfile,
+    autofillProfile,
+  };
 }

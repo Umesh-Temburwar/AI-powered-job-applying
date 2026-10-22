@@ -26,7 +26,6 @@ function mapBackendToPreferences(b: BackendJobPreferences): JobPreferences {
 
 export function usePreferences() {
   const { session, getToken } = useAuth();
-  const token = session?.token;
 
   const [preferences, setPreferences] = useState<JobPreferences | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

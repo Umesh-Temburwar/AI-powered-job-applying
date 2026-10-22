@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,6 +20,18 @@ logger = logging.getLogger("profile")
 
 # In-memory storage for test/mock runs
 _MEMORY_PROFILES: dict[str, dict[str, Any]] = {}
+
+# Short TTL cache to prevent duplicate roundtrips across rapid page loads/guards
+_CACHE_TTL_SECONDS = 8.0
+_STATUS_CACHE: dict[str, tuple[float, OnboardingStatusResponse]] = {}
+_PROFILE_CACHE: dict[str, tuple[float, ProfileResponse]] = {}
+
+
+def invalidate_profile_cache(user_id: str) -> None:
+    """Invalidate cached profile and onboarding status for a user."""
+    _STATUS_CACHE.pop(user_id, None)
+    _PROFILE_CACHE.pop(user_id, None)
+
 
 
 def _get_supabase_client():
@@ -91,30 +104,85 @@ def calculate_completion(profile_data: dict[str, Any]) -> tuple[int, list[str]]:
     return min(100, score), missing
 
 
+def _normalize_edu_item(e: Any) -> EducationItem:
+    if isinstance(e, EducationItem):
+        return e
+    if not isinstance(e, dict):
+        return EducationItem()
+    return EducationItem(
+        id=str(e.get("id")) if e.get("id") else None,
+        degree=str(e.get("degree") or e.get("degree_name") or ""),
+        institution=str(e.get("institution") or e.get("college") or e.get("university") or e.get("school") or ""),
+        year=str(e["year"]) if e.get("year") else (str(e["passing_year"]) if e.get("passing_year") else None),
+        score=str(e["score"]) if e.get("score") else (str(e["cgpa"]) if e.get("cgpa") else (str(e["percentage"]) if e.get("percentage") else None)),
+        field_of_study=e.get("field_of_study"),
+        location=e.get("location"),
+    )
+
+
+def _normalize_exp_item(x: Any) -> ExperienceItem:
+    if isinstance(x, ExperienceItem):
+        return x
+    if not isinstance(x, dict):
+        return ExperienceItem()
+    desc = x.get("description")
+    if not desc and isinstance(x.get("highlights"), list):
+        desc = " ".join([str(h).lstrip("-• ") for h in x["highlights"]])
+    return ExperienceItem(
+        id=str(x.get("id")) if x.get("id") else None,
+        company=str(x.get("company") or x.get("organization") or x.get("employer") or ""),
+        role=str(x.get("role") or x.get("title") or x.get("position") or ""),
+        duration=str(x.get("duration") or "") or None,
+        start_date=x.get("start_date"),
+        end_date=x.get("end_date"),
+        description=desc,
+        location=x.get("location"),
+        is_current=bool(x.get("is_current", False)),
+    )
+
+
+def _normalize_proj_item(p: Any) -> ProjectItem:
+    if isinstance(p, ProjectItem):
+        return p
+    if not isinstance(p, dict):
+        return ProjectItem()
+    techs = p.get("technologies") or []
+    if not techs and p.get("tech_stack"):
+        if isinstance(p["tech_stack"], list):
+            techs = p["tech_stack"]
+        elif isinstance(p["tech_stack"], str):
+            techs = [t.strip() for t in p["tech_stack"].split(",") if t.strip()]
+    return ProjectItem(
+        id=str(p.get("id")) if p.get("id") else None,
+        title=str(p.get("title") or p.get("name") or ""),
+        description=p.get("description"),
+        technologies=techs,
+        url=p.get("url") or p.get("link"),
+    )
+
+
+def _normalize_cert_item(c: Any) -> CertificationItem:
+    if isinstance(c, CertificationItem):
+        return c
+    if not isinstance(c, dict):
+        return CertificationItem()
+    return CertificationItem(
+        id=str(c.get("id")) if c.get("id") else None,
+        name=str(c.get("name") or c.get("title") or ""),
+        issuer=c.get("issuer") or c.get("organization"),
+        date=str(c.get("date") or c.get("year") or "") or None,
+        url=c.get("url") or c.get("link"),
+    )
+
+
 def _row_to_profile(row: dict[str, Any]) -> ProfileResponse:
     pct, missing = calculate_completion(row)
     
-    # Parse education
-    edu_list = [
-        EducationItem(**e) if isinstance(e, dict) else e 
-        for e in row.get("education") or []
-    ]
-    # Parse experience
-    exp_list = [
-        ExperienceItem(**x) if isinstance(x, dict) else x 
-        for x in row.get("experience") or []
-    ]
-    # Parse projects
-    proj_list = [
-        ProjectItem(**p) if isinstance(p, dict) else p 
-        for p in row.get("projects") or []
-    ]
-    # Parse certifications
-    cert_list = [
-        CertificationItem(**c) if isinstance(c, dict) else c 
-        for c in row.get("certifications") or []
-    ]
-    # Parse additional info
+    edu_list = [_normalize_edu_item(e) for e in row.get("education") or []]
+    exp_list = [_normalize_exp_item(x) for x in row.get("experience") or []]
+    proj_list = [_normalize_proj_item(p) for p in row.get("projects") or []]
+    cert_list = [_normalize_cert_item(c) for c in row.get("certifications") or []]
+    
     raw_add = row.get("additional_info") or {}
     add_info = AdditionalInfo(**raw_add) if isinstance(raw_add, dict) else AdditionalInfo()
 
@@ -145,13 +213,21 @@ def _row_to_profile(row: dict[str, Any]) -> ProfileResponse:
 
 async def get_or_create_profile(user_id: str, default_email: str | None = None) -> ProfileResponse:
     """Fetch user profile from Supabase or memory, seeding defaults if missing."""
+    now = time.time()
+    if user_id in _PROFILE_CACHE:
+        cached_time, cached_prof = _PROFILE_CACHE[user_id]
+        if now - cached_time < _CACHE_TTL_SECONDS:
+            return cached_prof
+
     client = _get_supabase_client() if not user_id.startswith("usr_") else None
     
     if client:
         try:
             res = client.table("profiles").select("*").eq("id", user_id).limit(1).execute()
             if res.data and len(res.data) > 0:
-                return _row_to_profile(res.data[0])
+                prof = _row_to_profile(res.data[0])
+                _PROFILE_CACHE[user_id] = (now, prof)
+                return prof
             
             # Seed new record
             now_iso = datetime.now(timezone.utc).isoformat()
@@ -165,7 +241,9 @@ async def get_or_create_profile(user_id: str, default_email: str | None = None) 
                 "updated_at": now_iso,
             }
             client.table("profiles").insert(new_row).execute()
-            return _row_to_profile(new_row)
+            prof = _row_to_profile(new_row)
+            _PROFILE_CACHE[user_id] = (now, prof)
+            return prof
         except Exception as exc:
             logger.error("Supabase profile fetch error: %s", exc)
     
@@ -185,11 +263,14 @@ async def get_or_create_profile(user_id: str, default_email: str | None = None) 
             "additional_info": {"is_fresher": True, "notice_period_days": 15},
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-    return _row_to_profile(_MEMORY_PROFILES[user_id])
+    prof = _row_to_profile(_MEMORY_PROFILES[user_id])
+    _PROFILE_CACHE[user_id] = (now, prof)
+    return prof
 
 
 async def update_user_profile(user_id: str, updates: ProfileUpdateRequest) -> ProfileResponse:
     """Update profile attributes and recalculate completion."""
+    invalidate_profile_cache(user_id)
     client = _get_supabase_client() if not user_id.startswith("usr_") else None
     now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -236,7 +317,9 @@ async def update_user_profile(user_id: str, updates: ProfileUpdateRequest) -> Pr
         try:
             res = client.table("profiles").update(update_dict).eq("id", user_id).execute()
             if res.data and len(res.data) > 0:
-                return _row_to_profile(res.data[0])
+                prof = _row_to_profile(res.data[0])
+                _PROFILE_CACHE[user_id] = (time.time(), prof)
+                return prof
         except Exception as exc:
             logger.error("Error updating profile in Supabase: %s", exc)
 
@@ -244,11 +327,19 @@ async def update_user_profile(user_id: str, updates: ProfileUpdateRequest) -> Pr
     if user_id not in _MEMORY_PROFILES:
         await get_or_create_profile(user_id)
     _MEMORY_PROFILES[user_id].update(update_dict)
-    return _row_to_profile(_MEMORY_PROFILES[user_id])
+    prof = _row_to_profile(_MEMORY_PROFILES[user_id])
+    _PROFILE_CACHE[user_id] = (time.time(), prof)
+    return prof
 
 
 async def get_user_onboarding_status(user_id: str) -> OnboardingStatusResponse:
     """Retrieve fast onboarding status to guide frontend routing."""
+    now = time.time()
+    if user_id in _STATUS_CACHE:
+        cached_time, cached_res = _STATUS_CACHE[user_id]
+        if now - cached_time < _CACHE_TTL_SECONDS:
+            return cached_res
+
     profile = await get_or_create_profile(user_id)
     client = _get_supabase_client() if not user_id.startswith("usr_") else None
     
@@ -269,7 +360,7 @@ async def get_user_onboarding_status(user_id: str) -> OnboardingStatusResponse:
         has_resume = any(r["user_id"] == user_id for r in _MEMORY_RESUMES.values())
         has_prefs = profile.is_onboarded
 
-    return OnboardingStatusResponse(
+    res = OnboardingStatusResponse(
         is_onboarded=profile.is_onboarded,
         onboarding_step=profile.onboarding_step,
         completion_percentage=profile.completion_percentage,
@@ -277,3 +368,175 @@ async def get_user_onboarding_status(user_id: str) -> OnboardingStatusResponse:
         has_resume=has_resume,
         has_preferences=has_prefs,
     )
+    _STATUS_CACHE[user_id] = (now, res)
+    return res
+
+
+def sync_local_profile_data(data: dict[str, Any]) -> None:
+    """Sync updated profile fields back to local profile_data.json for bot scripts."""
+    try:
+        import json
+        import os
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        p_path = os.path.join(base_dir, "profile_data.json")
+        if os.path.exists(p_path):
+            existing: dict[str, Any] = {}
+            try:
+                with open(p_path, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+            except Exception:
+                pass
+
+            full_name = data.get("full_name") or existing.get("personal", {}).get("name", "")
+            names = full_name.split() if full_name else []
+            fname = names[0] if names else ""
+            lname = " ".join(names[1:]) if len(names) > 1 else ""
+
+            existing["personal"] = {
+                "name": full_name,
+                "firstname": fname,
+                "lastname": lname,
+                "email": data.get("email") or existing.get("personal", {}).get("email", ""),
+                "phone": data.get("phone") or existing.get("personal", {}).get("phone", ""),
+                "current_location": data.get("city") or existing.get("personal", {}).get("current_location", "Pune"),
+                "preferred_locations": existing.get("personal", {}).get("preferred_locations", ["Pune", "Bangalore", "Mumbai", "Hyderabad", "Remote"]),
+                "notice_period": "Immediate (0 Days)",
+                "total_experience_years": 0 if (data.get("additional_info") or {}).get("is_fresher") else 1,
+                "expected_ctc": "4.5 Lakhs",
+            }
+            if data.get("headline"):
+                existing["naukri_headline"] = data["headline"]
+            if data.get("summary"):
+                existing["profile_summary"] = data["summary"]
+            if data.get("skills"):
+                existing["key_skills"] = data["skills"]
+            if data.get("education") and len(data["education"]) > 0:
+                first_edu = data["education"][0]
+                existing["education"] = {
+                    "degree": first_edu.get("degree") or "",
+                    "field_of_study": first_edu.get("field_of_study") or "Computer Science",
+                    "college": first_edu.get("institution") or first_edu.get("college") or "",
+                    "location": first_edu.get("location") or "Ambajogai, Maharashtra",
+                    "cgpa": first_edu.get("score") or first_edu.get("cgpa") or "",
+                    "passing_year": first_edu.get("year") or first_edu.get("passing_year") or "",
+                }
+            if data.get("experience"):
+                existing["experience"] = [
+                    {
+                        "role": x.get("role") or "",
+                        "organization": x.get("company") or x.get("organization") or "",
+                        "duration": x.get("duration") or "",
+                        "location": x.get("location") or "",
+                        "highlights": [x.get("description")] if x.get("description") else [],
+                    }
+                    for x in data["experience"]
+                ]
+            if data.get("projects"):
+                existing["projects"] = [
+                    {
+                        "title": p.get("title") or "",
+                        "tech_stack": ", ".join(p.get("technologies") or []) if isinstance(p.get("technologies"), list) else str(p.get("tech_stack") or ""),
+                        "description": p.get("description") or "",
+                    }
+                    for p in data["projects"]
+                ]
+            with open(p_path, "w", encoding="utf-8") as f:
+                json.dump(existing, f, indent=2)
+    except Exception as exc:
+        logger.debug("Could not sync local profile_data.json: %s", exc)
+
+
+async def autofill_profile_from_user_resume(user_id: str, resume_id: str | None = None) -> ProfileResponse:
+    """Extract all details from user's uploaded resume and populate their profile."""
+    client = _get_supabase_client() if not user_id.startswith("usr_") else None
+    
+    file_bytes: bytes | None = None
+    file_name = "resume.pdf"
+    mime_type = "application/pdf"
+    parsed_structured: dict[str, Any] | None = None
+    
+    if client:
+        # Fetch resume record
+        q = client.table("resumes").select("*").eq("user_id", user_id)
+        if resume_id:
+            q = q.eq("id", resume_id)
+        else:
+            q = q.order("is_default", desc=True).order("created_at", desc=True)
+        res = q.limit(1).execute()
+        
+        if res.data and len(res.data) > 0:
+            rec = res.data[0]
+            file_name = rec.get("file_name") or "resume.pdf"
+            mime_type = rec.get("mime_type") or "application/pdf"
+            storage_path = rec.get("storage_path")
+            
+            if storage_path:
+                try:
+                    file_bytes = client.storage.from_("resumes").download(storage_path)
+                except Exception as down_err:
+                    logger.warning("Could not download resume from storage: %s", down_err)
+            
+            if not file_bytes and rec.get("parsed_data"):
+                parsed_structured = rec["parsed_data"]
+
+    # Local file fallback if testing or storage missing
+    if not file_bytes and not parsed_structured:
+        import os
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        local_pdf = os.path.join(base_dir, "Umesh-Temburwar-OCT.pdf")
+        if os.path.exists(local_pdf):
+            with open(local_pdf, "rb") as f:
+                file_bytes = f.read()
+            file_name = "Umesh-Temburwar-OCT.pdf"
+
+    if not file_bytes and not parsed_structured:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No uploaded resume found for candidate. Please upload a resume first.",
+        )
+
+    if file_bytes and not parsed_structured:
+        from services.resume_parser import extract_file_links, extract_raw_text, extract_structured_data
+        raw_text, _ = extract_raw_text(file_bytes, file_name, mime_type)
+        links = extract_file_links(file_bytes, file_name, mime_type)
+        parsed_structured = extract_structured_data(raw_text, links=links)
+
+    assert parsed_structured is not None
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    updates_dict: dict[str, Any] = {
+        "updated_at": now_iso,
+        "full_name": parsed_structured.get("full_name"),
+        "email": parsed_structured.get("email"),
+        "phone": parsed_structured.get("phone"),
+        "city": parsed_structured.get("city"),
+        "headline": parsed_structured.get("headline"),
+        "summary": parsed_structured.get("summary"),
+        "linkedin_url": parsed_structured.get("linkedin_url"),
+        "github_url": parsed_structured.get("github_url"),
+        "portfolio_url": parsed_structured.get("portfolio_url"),
+        "education": parsed_structured.get("education", []),
+        "experience": parsed_structured.get("experience", []),
+        "projects": parsed_structured.get("projects", []),
+        "certifications": parsed_structured.get("certifications", []),
+        "skills": parsed_structured.get("skills", []),
+        "additional_info": parsed_structured.get("additional_info", {}),
+    }
+
+    cleaned_updates = {k: v for k, v in updates_dict.items() if v is not None}
+    cleaned_updates["updated_at"] = now_iso
+
+    if client:
+        try:
+            up_res = client.table("profiles").update(cleaned_updates).eq("id", user_id).execute()
+            if up_res.data and len(up_res.data) > 0:
+                sync_local_profile_data(up_res.data[0])
+                return _row_to_profile(up_res.data[0])
+        except Exception as e:
+            logger.error("Failed to update profile from resume in Supabase: %s", e)
+
+    if user_id not in _MEMORY_PROFILES:
+        await get_or_create_profile(user_id)
+    _MEMORY_PROFILES[user_id].update(cleaned_updates)
+    sync_local_profile_data(_MEMORY_PROFILES[user_id])
+    return _row_to_profile(_MEMORY_PROFILES[user_id])

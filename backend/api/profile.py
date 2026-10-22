@@ -9,12 +9,13 @@ from schemas.profile import (
     ProfileUpdateRequest,
 )
 from services.profile_service import (
+    autofill_profile_from_user_resume,
     get_or_create_profile,
     get_user_onboarding_status,
     update_user_profile,
 )
 
-router = APIRouter(prefix="/profile", tags=["Profile & Onboarding"])
+router = APIRouter(prefix="/profile", tags=["Profile"])
 
 
 @router.get(
@@ -55,3 +56,17 @@ async def get_onboarding_status(
 ) -> OnboardingStatusResponse:
     """Verify onboarding completion state and missing fields."""
     return await get_user_onboarding_status(user_id=current_user.id)
+
+
+@router.post(
+    "/autofill",
+    response_model=ProfileResponse,
+    summary="Autofill profile from resume",
+    description="Extract details from candidate resume document and auto-fill profile details.",
+)
+async def autofill_profile(
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    resume_id: str | None = None,
+) -> ProfileResponse:
+    """Extract candidate resume fields and auto-populate profile."""
+    return await autofill_profile_from_user_resume(user_id=current_user.id, resume_id=resume_id)

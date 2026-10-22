@@ -14,10 +14,16 @@ from schemas.tasks import (
     TaskResponse,
 )
 
+import asyncio
+from schemas.application import ApplicationCreateRequest
+from services.application_service import application_service
+from services.platform_automation.runner import run_platform_automation_task
+
 logger = logging.getLogger("tasks")
 
 # Thread-safe in-memory task registry for test / mock runs or fallback
 _MEMORY_TASKS: dict[str, dict[str, Any]] = {}
+_RUNNING_ASYNC_TASKS: dict[str, asyncio.Task] = {}
 
 
 def _get_supabase_client():
@@ -60,6 +66,63 @@ def _format_task_dict(row: dict[str, Any]) -> TaskResponse:
         cancelled_at=row.get("cancelled_at"),
         created_at=row.get("created_at"),
     )
+
+
+async def _execute_task_pipeline(task_id: str, user_id: str, record: dict[str, Any], client) -> None:
+    """Asynchronous background pipeline for processing automation tasks.
+    
+    Cooperatively transitions:
+    queued -> running (15% -> 35% -> 60% -> 85% -> 100%) -> completed/failed/cancelled
+    Persists discovered vacancies and application audits into public.applications.
+    """
+    payload = record.get("payload") or {}
+    platform = payload.get("platform") or "All Platforms"
+    task_type = record.get("task_type") or "job_apply"
+    dry_run = bool(record.get("dry_run", True))
+    keywords = payload.get("keywords") or ["Full Stack Developer"]
+    locations = payload.get("locations") or ["Remote"]
+    max_apps = min(int(payload.get("max_applications") or 25), 50)
+    user_confirmed = bool(payload.get("user_confirmed_real_submission", False))
+
+    def update_task_state(status_val: str, progress_val: int, message_val: str, **kwargs):
+        updates = {
+            "status": status_val,
+            "progress": progress_val,
+            "message": message_val,
+            **kwargs,
+        }
+        if client:
+            try:
+                client.table("automation_tasks").update(updates).eq("id", task_id).execute()
+            except Exception as e:
+                logger.warning("Failed to update task state in db: %s", e)
+        if task_id in _MEMORY_TASKS:
+            _MEMORY_TASKS[task_id].update(updates)
+
+    def is_cancelled() -> bool:
+        if client:
+            try:
+                res = client.table("automation_tasks").select("status, cancelled_at").eq("id", task_id).execute()
+                if res.data and len(res.data) > 0:
+                    row = res.data[0]
+                    return row.get("status") == "cancelled" or bool(row.get("cancelled_at"))
+            except Exception:
+                pass
+        if task_id in _MEMORY_TASKS:
+            t = _MEMORY_TASKS[task_id]
+            return t.get("status") == "cancelled" or bool(t.get("cancelled_at"))
+        return False
+
+    try:
+        await run_platform_automation_task(
+            task_id=task_id,
+            user_id=user_id,
+            record=record,
+            update_task_state=update_task_state,
+            is_cancelled=is_cancelled,
+        )
+    finally:
+        _RUNNING_ASYNC_TASKS.pop(task_id, None)
 
 
 async def enqueue_task(user_id: str, request: TaskCreateRequest) -> TaskResponse:
@@ -164,7 +227,7 @@ async def enqueue_task(user_id: str, request: TaskCreateRequest) -> TaskResponse
         "created_at": now_iso,
     }
 
-    # 3. Persist to Supabase or Memory
+    # 3. Persist to Supabase or Memory and launch background execution
     if client:
         try:
             res = client.table("automation_tasks").insert(record).execute()
@@ -173,18 +236,25 @@ async def enqueue_task(user_id: str, request: TaskCreateRequest) -> TaskResponse
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Database failed to insert new task.",
                 )
+            if not is_mock_user:
+                task_runner = asyncio.create_task(_execute_task_pipeline(task_id, user_id, record, client))
+                _RUNNING_ASYNC_TASKS[task_id] = task_runner
             return _format_task_dict(res.data[0])
         except HTTPException:
             raise
         except Exception as exc:
-            logger.error("Supabase task enqueue failed: %s", exc)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to enqueue task into database: {str(exc)}",
-            ) from exc
+            logger.warning("Supabase task enqueue failed (%s), falling back to memory store.", exc)
+            _MEMORY_TASKS[task_id] = record
+            if not is_mock_user:
+                task_runner = asyncio.create_task(_execute_task_pipeline(task_id, user_id, record, None))
+                _RUNNING_ASYNC_TASKS[task_id] = task_runner
+            return _format_task_dict(record)
 
     # Memory fallback
     _MEMORY_TASKS[task_id] = record
+    if not is_mock_user:
+        task_runner = asyncio.create_task(_execute_task_pipeline(task_id, user_id, record, None))
+        _RUNNING_ASYNC_TASKS[task_id] = task_runner
     return _format_task_dict(record)
 
 
@@ -327,6 +397,8 @@ async def cancel_task(task_id: str, user_id: str) -> TaskActionResponse:
                 .eq("id", task_id)
                 .execute()
             )
+            if task_id in _RUNNING_ASYNC_TASKS:
+                _RUNNING_ASYNC_TASKS[task_id].cancel()
             return TaskActionResponse(
                 success=True,
                 task_id=task_id,
@@ -364,6 +436,8 @@ async def cancel_task(task_id: str, user_id: str) -> TaskActionResponse:
     task["cancelled_at"] = now_iso
     task["completed_at"] = now_iso
     task["message"] = "Task was cancelled by user."
+    if task_id in _RUNNING_ASYNC_TASKS:
+        _RUNNING_ASYNC_TASKS[task_id].cancel()
     return TaskActionResponse(
         success=True,
         task_id=task_id,
@@ -429,6 +503,9 @@ async def retry_task(task_id: str, user_id: str) -> TaskActionResponse:
                 .eq("id", task_id)
                 .execute()
             )
+            if not is_mock_user:
+                task_runner = asyncio.create_task(_execute_task_pipeline(task_id, user_id, row, client))
+                _RUNNING_ASYNC_TASKS[task_id] = task_runner
             return TaskActionResponse(
                 success=True,
                 task_id=task_id,
@@ -478,9 +555,40 @@ async def retry_task(task_id: str, user_id: str) -> TaskActionResponse:
     task["cancelled_at"] = None
     task["message"] = f"Retry #{retry_count + 1} queued for execution"
 
+    if not is_mock_user:
+        task_runner = asyncio.create_task(_execute_task_pipeline(task_id, user_id, task, None))
+        _RUNNING_ASYNC_TASKS[task_id] = task_runner
+
     return TaskActionResponse(
         success=True,
         task_id=task_id,
         status="queued",
         message=f"Task re-enqueued for retry attempt #{retry_count + 1}.",
     )
+
+
+async def resume_stuck_queued_tasks() -> None:
+    """Safely check and resume any queued tasks left unprocessed upon startup."""
+    client = _get_supabase_client()
+    if not client:
+        return
+    try:
+        res = (
+            client.table("automation_tasks")
+            .select("*")
+            .eq("status", "queued")
+            .order("created_at", desc=False)
+            .limit(5)
+            .execute()
+        )
+        if res.data:
+            for row in res.data:
+                t_id = str(row["id"])
+                u_id = str(row["user_id"])
+                if t_id not in _RUNNING_ASYNC_TASKS:
+                    logger.info("Resuming unprocessed queued task %s for candidate %s", t_id, u_id)
+                    task_runner = asyncio.create_task(_execute_task_pipeline(t_id, u_id, row, client))
+                    _RUNNING_ASYNC_TASKS[t_id] = task_runner
+    except Exception as e:
+        logger.warning("Could not resume stuck queued tasks: %s", e)
+

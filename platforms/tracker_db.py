@@ -9,13 +9,70 @@ import os
 import sqlite3
 import csv
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional, Tuple
 
 logger = logging.getLogger("TrackerDB")
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DB_PATH = os.path.join(BASE_DIR, "jobs_tracker.db")
 UNIVERSAL_CSV = os.path.join(BASE_DIR, "universal_applied_jobs.csv")
+
+_supabase_client = None
+_default_user_id = None
+
+
+def get_supabase_client():
+    """Get or initialize cached Supabase client from environment variables."""
+    global _supabase_client
+    if _supabase_client is not None:
+        return _supabase_client
+
+    # Check env vars
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
+    # If missing, try loading from .env
+    if not url or not key:
+        env_path = os.path.join(BASE_DIR, ".env")
+        if os.path.exists(env_path):
+            try:
+                from dotenv import load_dotenv
+                load_dotenv(env_path)
+                url = os.getenv("SUPABASE_URL")
+                key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+            except Exception:
+                pass
+
+    if not url or not key:
+        return None
+
+    try:
+        from supabase import create_client
+        _supabase_client = create_client(url, key)
+        return _supabase_client
+    except Exception as e:
+        logger.debug(f"Supabase init notice: {e}")
+        return None
+
+
+def get_default_user_id() -> Optional[str]:
+    """Retrieve the primary user ID from Supabase auth.users or profiles."""
+    global _default_user_id
+    if _default_user_id:
+        return _default_user_id
+
+    client = get_supabase_client()
+    if not client:
+        return None
+
+    try:
+        res = client.table("profiles").select("id").limit(1).execute()
+        if res.data and len(res.data) > 0:
+            _default_user_id = str(res.data[0]["id"])
+            return _default_user_id
+    except Exception:
+        pass
+    return None
 
 
 def get_connection() -> sqlite3.Connection:
@@ -98,7 +155,7 @@ def import_existing_csvs():
 
 
 def has_applied(url: str = "", job_id: str = "", company: str = "", title: str = "") -> bool:
-    """Check if job has already been applied across any identifier."""
+    """Check if job has already been applied across SQLite, CSV, and Supabase."""
     if not (url or job_id or (company and title)):
         return False
 
@@ -119,6 +176,24 @@ def has_applied(url: str = "", job_id: str = "", company: str = "", title: str =
             if row:
                 return True
 
+    # Check Supabase as fallback
+    try:
+        client = get_supabase_client()
+        user_id = get_default_user_id()
+        if client and user_id and url:
+            res = (
+                client.table("applications")
+                .select("id")
+                .eq("user_id", user_id)
+                .eq("job_url", url.strip())
+                .limit(1)
+                .execute()
+            )
+            if res.data and len(res.data) > 0:
+                return True
+    except Exception:
+        pass
+
     return False
 
 
@@ -132,10 +207,10 @@ def record_application(
     status: str = "Applied",
     notes: str = ""
 ) -> int:
-    """Record a newly applied job into SQLite and auto-sync to universal_applied_jobs.csv."""
+    """Record a newly applied job into SQLite, auto-sync to universal_applied_jobs.csv, and persist to Supabase."""
     applied_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Insert into SQLite
+    # 1. Insert into SQLite
     with get_connection() as conn:
         cursor = conn.execute("""
             INSERT INTO applications (platform, job_id, job_title, company, location, url, status, applied_date, notes)
@@ -144,7 +219,7 @@ def record_application(
         conn.commit()
         record_id = cursor.lastrowid
 
-    # Append to universal_applied_jobs.csv
+    # 2. Append to universal_applied_jobs.csv
     try:
         file_exists = os.path.exists(UNIVERSAL_CSV) and os.stat(UNIVERSAL_CSV).st_size > 0
         with open(UNIVERSAL_CSV, "a", newline="", encoding="utf-8") as f:
@@ -159,6 +234,36 @@ def record_application(
             })
     except Exception as e:
         logger.debug(f"Sync to universal CSV notice: {e}")
+
+    # 3. Real-time persistent sync to Supabase public.applications
+    try:
+        client = get_supabase_client()
+        user_id = get_default_user_id()
+        if client and user_id:
+            valid_url = url or f"https://{platform.lower()}.com/job/{record_id}"
+            iso_applied_at = datetime.now(timezone.utc).isoformat()
+            status_val = status.lower() if status else "applied"
+            if status_val not in ('applied', 'review_needed', 'interview', 'rejected', 'saved', 'failed', 'under_review'):
+                status_val = 'applied'
+
+            supabase_row = {
+                "user_id": user_id,
+                "job_title": job_title,
+                "company": company or "N/A",
+                "job_url": valid_url,
+                "platform": platform,
+                "status": status_val,
+                "location": location or None,
+                "notes": notes or None,
+                "applied_at": iso_applied_at,
+            }
+            client.table("applications").upsert(
+                supabase_row,
+                on_conflict="user_id,job_url"
+            ).execute()
+            logger.info(f"☁️ Synced Application to Supabase: [{platform}] {job_title}")
+    except Exception as e:
+        logger.debug(f"Sync to Supabase notice: {e}")
 
     logger.info(f"💾 Recorded Application: [{platform}] {job_title} @ {company or 'N/A'}")
     return record_id

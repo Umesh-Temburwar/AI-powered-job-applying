@@ -49,7 +49,7 @@ function mapBackendToActivity(b: BackendActivityItem): ActivityItem {
 }
 
 export function useApplications(initialParams?: ApplicationFilterParams) {
-  const { session } = useAuth();
+  const { session, getToken } = useAuth();
   const token = session?.token;
 
   const [applications, setApplications] = useState<Application[]>([]);
@@ -62,7 +62,8 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchApplications = useCallback(async () => {
-    if (!token) {
+    const activeToken = (await getToken?.()) || token;
+    if (!activeToken) {
       setApplications([]);
       setTotal(0);
       setTotalPages(0);
@@ -73,7 +74,7 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
     try {
       setLoading(true);
       setError(null);
-      const res = await getApplicationsApi(token, {
+      const res = await getApplicationsApi(activeToken, {
         ...filters,
         page,
         pageSize,
@@ -88,7 +89,7 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
     } finally {
       setLoading(false);
     }
-  }, [token, filters, page, pageSize]);
+  }, [getToken, token, filters, page, pageSize]);
 
   useEffect(() => {
     fetchApplications();
@@ -100,21 +101,24 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
   };
 
   const createApplication = async (data: Partial<BackendApplicationItem>) => {
-    if (!token) throw new Error('Not authenticated');
-    const created = await createApplicationApi(token, data);
+    const activeToken = (await getToken?.()) || token;
+    if (!activeToken) throw new Error('Not authenticated');
+    const created = await createApplicationApi(activeToken, data);
     await fetchApplications();
     return mapBackendToApplication(created);
   };
 
   const deleteApplication = async (id: string) => {
-    if (!token) throw new Error('Not authenticated');
-    await deleteApplicationApi(token, id);
+    const activeToken = (await getToken?.()) || token;
+    if (!activeToken) throw new Error('Not authenticated');
+    await deleteApplicationApi(activeToken, id);
     await fetchApplications();
   };
 
   const exportCsv = async () => {
-    if (!token) return '';
-    return await exportApplicationsCsvApi(token);
+    const activeToken = (await getToken?.()) || token;
+    if (!activeToken) return '';
+    return await exportApplicationsCsvApi(activeToken);
   };
 
   return {
@@ -135,7 +139,7 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
 }
 
 export function useDashboard() {
-  const { session } = useAuth();
+  const { session, getToken } = useAuth();
   const token = session?.token;
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -148,9 +152,10 @@ export function useDashboard() {
     try {
       setLoading(true);
       setError(null);
+      const activeToken = (await getToken?.()) || token;
       const [summary, acts] = await Promise.all([
-        getDashboardSummary(token),
-        token ? getDashboardActivitiesApi(token) : Promise.resolve([]),
+        getDashboardSummary(activeToken || undefined),
+        activeToken ? getDashboardActivitiesApi(activeToken) : Promise.resolve([]),
       ]);
 
       setApiSummary(summary);
@@ -167,7 +172,7 @@ export function useDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [getToken, token]);
 
   useEffect(() => {
     fetchDashboardData();

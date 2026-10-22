@@ -10,44 +10,44 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helperText, leftIcon, rightIcon, id, className = '', ...props }, ref) => {
-    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+    const inputId = id || (label ? label.toLowerCase().replace(/[^a-z0-9]+/g, '-') : undefined);
 
     return (
       <div className="w-full">
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-semibold text-theme-secondary uppercase tracking-wider mb-1.5"
+            className="block text-xs font-medium text-[#111111] mb-1.5"
           >
             {label}
           </label>
         )}
         <div className="relative flex items-center">
           {leftIcon && (
-            <div className="absolute left-3 flex items-center pointer-events-none text-theme-muted">
+            <div className="absolute left-3 flex items-center pointer-events-none text-[#6B6B6B]">
               {leftIcon}
             </div>
           )}
           <input
             id={inputId}
             ref={ref}
-            className={`w-full bg-theme-input text-theme-primary border rounded-lg px-3.5 py-2 text-sm transition-colors placeholder:text-theme-muted focus:outline-none focus:ring-1 focus:ring-[var(--accent)] focus:border-theme-focus disabled:opacity-50 disabled:cursor-not-allowed ${
-              leftIcon ? 'pl-10' : ''
-            } ${rightIcon ? 'pr-10' : ''} ${
-              error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-theme'
+            className={`w-full h-9 bg-white text-[#111111] border rounded-[6px] px-3 text-sm transition-colors duration-150 placeholder:text-[#888888] focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent disabled:bg-[#FAFAFA] disabled:opacity-60 disabled:cursor-not-allowed ${
+              leftIcon ? 'pl-9' : ''
+            } ${rightIcon ? 'pr-9' : ''} ${
+              error ? 'border-[#B91C1C] focus:ring-[#B91C1C]' : 'border-[#E5E5E5]'
             } ${className}`}
             {...props}
           />
           {rightIcon && (
-            <div className="absolute right-3 flex items-center text-theme-muted">
+            <div className="absolute right-3 flex items-center text-[#6B6B6B]">
               {rightIcon}
             </div>
           )}
         </div>
         {error ? (
-          <p className="mt-1 text-xs text-red-400">{error}</p>
+          <p className="mt-1 text-xs text-[#B91C1C]">{error}</p>
         ) : helperText ? (
-          <p className="mt-1 text-xs text-theme-muted">{helperText}</p>
+          <p className="mt-1 text-xs text-[#6B6B6B]">{helperText}</p>
         ) : null}
       </div>
     );

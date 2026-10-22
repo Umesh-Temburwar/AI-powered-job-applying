@@ -17,7 +17,7 @@ from services.task_service import (
     retry_task,
 )
 
-router = APIRouter(prefix="/tasks", tags=["Task Queue"])
+router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
 @router.post(
