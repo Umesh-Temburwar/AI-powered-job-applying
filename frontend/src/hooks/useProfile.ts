@@ -63,7 +63,7 @@ function mapBackendToUserProfile(b: BackendProfileResponse): UserProfile {
 }
 
 export function useProfile() {
-  const { session, user } = useAuth();
+  const { session, user, getToken } = useAuth();
   const token = session?.token;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -75,8 +75,13 @@ export function useProfile() {
   const userEmail = user?.email || session?.user?.email || '';
   const userFullName = user?.fullName || '';
 
+  const getActiveToken = useCallback(async (): Promise<string | null> => {
+    return (await getToken?.()) || session?.token || null;
+  }, [getToken, session?.token]);
+
   const fetchProfile = useCallback(async () => {
-    if (!token) {
+    const activeToken = await getActiveToken();
+    if (!activeToken) {
       setProfile(null);
       setLoading(false);
       return;
@@ -85,7 +90,7 @@ export function useProfile() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getProfileApi(token);
+      const data = await getProfileApi(activeToken);
       setProfile(mapBackendToUserProfile(data));
     } catch (err) {
       setProfile({
@@ -118,14 +123,15 @@ export function useProfile() {
     } finally {
       setLoading(false);
     }
-  }, [token, userId, userEmail, userFullName]);
+  }, [getActiveToken, userId, userEmail, userFullName]);
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     try {
       setUpdating(true);
       setError(null);
 
-      if (token) {
+      const activeToken = await getActiveToken();
+      if (activeToken) {
         const payload: Partial<BackendProfileResponse> = {};
         if (updates.fullName !== undefined) payload.full_name = updates.fullName;
         if (updates.email !== undefined) payload.email = updates.email;
@@ -163,7 +169,7 @@ export function useProfile() {
         if (updates.isOnboarded !== undefined) payload.is_onboarded = updates.isOnboarded;
         if (updates.onboardingStep !== undefined) payload.onboarding_step = updates.onboardingStep;
 
-        const updated = await updateProfileApi(token, payload);
+        const updated = await updateProfileApi(activeToken, payload);
         const mapped = mapBackendToUserProfile(updated);
         setProfile(mapped);
         return mapped;

@@ -25,15 +25,20 @@ function mapBackendToResume(b: BackendResumeItem): Resume {
 }
 
 export function useResumes() {
-  const { session } = useAuth();
+  const { session, getToken } = useAuth();
   const token = session?.token;
 
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getActiveToken = useCallback(async (): Promise<string | null> => {
+    return (await getToken?.()) || session?.token || null;
+  }, [getToken, session?.token]);
+
   const fetchResumes = useCallback(async () => {
-    if (!token) {
+    const activeToken = await getActiveToken();
+    if (!activeToken) {
       setResumes([]);
       setLoading(false);
       return;
@@ -42,7 +47,7 @@ export function useResumes() {
     try {
       setLoading(true);
       setError(null);
-      const data = await listResumesApi(token);
+      const data = await listResumesApi(activeToken);
       setResumes((data.resumes || []).map(mapBackendToResume));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch candidate resumes');
@@ -50,16 +55,17 @@ export function useResumes() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [getActiveToken]);
 
   const uploadResume = async (file: File, isDefault = true): Promise<BackendResumeUploadResponse> => {
-    if (!token) {
+    const activeToken = await getActiveToken();
+    if (!activeToken) {
       throw new Error('Candidate is not authenticated.');
     }
 
     try {
       setError(null);
-      const uploadRes = await uploadResumeApi(token, file, isDefault);
+      const uploadRes = await uploadResumeApi(activeToken, file, isDefault);
       const mapped = mapBackendToResume(uploadRes.resume);
 
       setResumes((prev) => {
@@ -76,11 +82,12 @@ export function useResumes() {
   };
 
   const setDefaultResume = async (id: string) => {
-    if (!token) throw new Error('Candidate is not authenticated.');
+    const activeToken = await getActiveToken();
+    if (!activeToken) throw new Error('Candidate is not authenticated.');
 
     try {
       setError(null);
-      await setDefaultResumeApi(token, id);
+      await setDefaultResumeApi(activeToken, id);
       setResumes((prev) =>
         prev.map((r) => ({
           ...r,
@@ -95,11 +102,12 @@ export function useResumes() {
   };
 
   const deleteResume = async (id: string) => {
-    if (!token) throw new Error('Candidate is not authenticated.');
+    const activeToken = await getActiveToken();
+    if (!activeToken) throw new Error('Candidate is not authenticated.');
 
     try {
       setError(null);
-      await deleteResumeApi(token, id);
+      await deleteResumeApi(activeToken, id);
       setResumes((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to delete resume';
@@ -109,8 +117,9 @@ export function useResumes() {
   };
 
   const getDownloadUrl = async (id: string): Promise<string> => {
-    if (!token) throw new Error('Candidate is not authenticated.');
-    const res = await getResumeDownloadUrlApi(token, id);
+    const activeToken = await getActiveToken();
+    if (!activeToken) throw new Error('Candidate is not authenticated.');
+    const res = await getResumeDownloadUrlApi(activeToken, id);
     return res.download_url;
   };
 

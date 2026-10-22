@@ -25,15 +25,20 @@ function mapBackendToPreferences(b: BackendJobPreferences): JobPreferences {
 }
 
 export function usePreferences() {
-  const { session } = useAuth();
+  const { session, getToken } = useAuth();
   const token = session?.token;
 
   const [preferences, setPreferences] = useState<JobPreferences | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getActiveToken = useCallback(async (): Promise<string | null> => {
+    return (await getToken?.()) || session?.token || null;
+  }, [getToken, session?.token]);
+
   const fetchPreferences = useCallback(async () => {
-    if (!token) {
+    const activeToken = await getActiveToken();
+    if (!activeToken) {
       setPreferences(null);
       setLoading(false);
       return;
@@ -42,7 +47,7 @@ export function usePreferences() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getPreferencesApi(token);
+      const data = await getPreferencesApi(activeToken);
       setPreferences(mapBackendToPreferences(data));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch job preferences');
@@ -50,10 +55,11 @@ export function usePreferences() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [getActiveToken]);
 
   const updatePreferences = async (updates: Partial<JobPreferences>) => {
-    if (!token) throw new Error('Candidate is not authenticated.');
+    const activeToken = await getActiveToken();
+    if (!activeToken) throw new Error('Candidate is not authenticated.');
 
     try {
       setLoading(true);
@@ -70,7 +76,7 @@ export function usePreferences() {
       if (updates.dailyApplicationLimit !== undefined) payload.daily_application_limit = updates.dailyApplicationLimit;
       if (updates.requireReviewBeforeSubmit !== undefined) payload.require_manual_review = updates.requireReviewBeforeSubmit;
 
-      const updated = await updatePreferencesApi(token, payload);
+      const updated = await updatePreferencesApi(activeToken, payload);
       const mapped = mapBackendToPreferences(updated);
       setPreferences(mapped);
       return mapped;
@@ -84,9 +90,10 @@ export function usePreferences() {
   };
 
   const suggestRoles = async (skills: string[]): Promise<string[]> => {
-    if (!token || skills.length === 0) return [];
+    const activeToken = await getActiveToken();
+    if (!activeToken || skills.length === 0) return [];
     try {
-      const res = await suggestPreferencesApi(token, skills);
+      const res = await suggestPreferencesApi(activeToken, skills);
       return res.suggested_titles || [];
     } catch {
       return [];

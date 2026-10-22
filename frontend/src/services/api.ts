@@ -86,6 +86,20 @@ export async function apiClient<T>(endpoint: string, options: RequestInit = {}):
           errObj.details
         );
       }
+      if (typeof data === 'object' && data !== null && 'detail' in data) {
+        const detail = (data as { detail: unknown }).detail;
+        const msg =
+          typeof detail === 'string'
+            ? detail
+            : Array.isArray(detail)
+            ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(', ')
+            : JSON.stringify(detail);
+        throw new ApiError(msg, `HTTP_${response.status}`, response.status);
+      }
+      if (typeof data === 'object' && data !== null && 'message' in data) {
+        const msg = (data as { message: string }).message;
+        throw new ApiError(msg, `HTTP_${response.status}`, response.status);
+      }
       throw new ApiError(
         typeof data === 'string' && data ? data : `Request failed with status ${response.status}`,
         `HTTP_${response.status}`,

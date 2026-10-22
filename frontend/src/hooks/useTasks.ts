@@ -79,7 +79,7 @@ function mapBackendTaskToAutomationTask(item: BackendTaskItem): AutomationTask {
 }
 
 export function useTasks() {
-  const { session } = useAuth();
+  const { session, getToken } = useAuth();
   const token = session?.token;
 
   const [currentTask, setCurrentTask] = useState<AutomationTask | null>(null);
@@ -89,8 +89,13 @@ export function useTasks() {
   const [error, setError] = useState<string | null>(null);
   const [isLiveBackend, setIsLiveBackend] = useState<boolean>(false);
 
+  const getActiveToken = useCallback(async (): Promise<string | null> => {
+    return (await getToken?.()) || session?.token || null;
+  }, [getToken, session?.token]);
+
   const fetchTaskState = useCallback(async () => {
-    if (!token) {
+    const activeToken = await getActiveToken();
+    if (!activeToken) {
       setCurrentTask(null);
       setHistory([]);
       setLoading(false);
@@ -99,7 +104,7 @@ export function useTasks() {
     }
 
     try {
-      const response = await listTasksApi(token, 30);
+      const response = await listTasksApi(activeToken, 30);
       setIsLiveBackend(true);
       if (response.tasks && response.tasks.length > 0) {
         const mapped = response.tasks.map(mapBackendTaskToAutomationTask);
@@ -123,13 +128,14 @@ export function useTasks() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [getActiveToken]);
 
   const startTask = async (
     platformOrOptions: PlatformName | 'All Platforms' | StartTaskOptions,
     maybeDryRun?: boolean
   ): Promise<AutomationTask> => {
-    if (!token) throw new Error('Candidate is not authenticated.');
+    const activeToken = await getActiveToken();
+    if (!activeToken) throw new Error('Candidate is not authenticated.');
 
     let options: StartTaskOptions;
     if (typeof platformOrOptions === 'string') {
@@ -146,7 +152,7 @@ export function useTasks() {
       setActionLoading(true);
       setError(null);
 
-      const enqueued = await enqueueTaskApi(token, {
+      const enqueued = await enqueueTaskApi(activeToken, {
         platform: options.platform,
         task_type: options.taskType || 'job_apply',
         dry_run: options.dryRun ?? true,
@@ -172,12 +178,13 @@ export function useTasks() {
   };
 
   const cancelTask = async (taskId: string) => {
-    if (!token) throw new Error('Candidate is not authenticated.');
+    const activeToken = await getActiveToken();
+    if (!activeToken) throw new Error('Candidate is not authenticated.');
 
     try {
       setActionLoading(true);
       setError(null);
-      await cancelTaskApi(token, taskId);
+      await cancelTaskApi(activeToken, taskId);
       await fetchTaskState();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to cancel task';
@@ -189,12 +196,13 @@ export function useTasks() {
   };
 
   const retryTask = async (taskId: string) => {
-    if (!token) throw new Error('Candidate is not authenticated.');
+    const activeToken = await getActiveToken();
+    if (!activeToken) throw new Error('Candidate is not authenticated.');
 
     try {
       setActionLoading(true);
       setError(null);
-      await retryTaskApi(token, taskId);
+      await retryTaskApi(activeToken, taskId);
       await fetchTaskState();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to retry task';

@@ -19,6 +19,7 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
   signInWithGithub: () => Promise<void>;
+  getToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -260,6 +261,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const getToken = useCallback(async (): Promise<string | null> => {
+    if (!isSupabaseConfigured) {
+      return session?.token || null;
+    }
+    try {
+      const { data, error: sessionErr } = await supabase.auth.getSession();
+      if (sessionErr || !data.session) {
+        return session?.token || null;
+      }
+      if (data.session.access_token && data.session.access_token !== session?.token) {
+        syncSession(data.session);
+      }
+      return data.session.access_token;
+    } catch {
+      return session?.token || null;
+    }
+  }, [session?.token, syncSession]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -275,6 +294,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatePassword,
         resendVerificationEmail,
         signInWithGithub,
+        getToken,
       }}
     >
       {children}

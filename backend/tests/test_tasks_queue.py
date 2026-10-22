@@ -331,3 +331,104 @@ def test_enqueue_task_live_submission_with_confirmation_succeeds(test_client: Te
     res = test_client.post("/api/tasks", headers=headers, json=payload)
     assert res.status_code == 201
     assert res.json()["dry_run"] is False
+
+
+def test_enqueue_task_invalid_jwt_signature():
+    """Enqueueing task with invalid JWT signature must return 401."""
+    import time
+    import jwt
+
+    test_secret = "test-secret-at-least-32-bytes-long-123456"
+    test_settings = Settings(
+        ENVIRONMENT="production",
+        SUPABASE_JWT_SECRET=test_secret,
+    )
+    client = TestClient(create_app(settings=test_settings))
+
+    payload = {
+        "sub": "55555555-5555-5555-5555-555555555555",
+        "email": "hacker@example.com",
+        "role": "authenticated",
+        "aud": "authenticated",
+        "exp": int(time.time()) + 3600,
+    }
+    bad_token = jwt.encode(payload, "wrong-secret-key-at-least-32-bytes-long", algorithm="HS256")
+    headers = {"Authorization": f"Bearer {bad_token}"}
+
+    res = client.post("/api/v1/tasks", headers=headers, json={"platform": "Naukri", "dry_run": True})
+    assert res.status_code == 401
+    assert "invalid authentication token signature" in res.json()["error"]["message"].lower()
+
+
+def test_enqueue_task_expired_jwt_token():
+    """Enqueueing task with expired JWT token must return 401 with expired message."""
+    import time
+    import jwt
+
+    test_secret = "test-secret-at-least-32-bytes-long-123456"
+    test_settings = Settings(
+        ENVIRONMENT="production",
+        SUPABASE_JWT_SECRET=test_secret,
+    )
+    client = TestClient(create_app(settings=test_settings))
+
+    payload = {
+        "sub": "55555555-5555-5555-5555-555555555555",
+        "email": "expired@example.com",
+        "role": "authenticated",
+        "aud": "authenticated",
+        "exp": int(time.time()) - 3600,
+    }
+    expired_token = jwt.encode(payload, test_secret, algorithm="HS256")
+    headers = {"Authorization": f"Bearer {expired_token}"}
+
+    res = client.post("/api/v1/tasks", headers=headers, json={"platform": "Naukri", "dry_run": True})
+    assert res.status_code == 401
+    assert "expired" in res.json()["error"]["message"].lower()
+
+
+def test_enqueue_task_with_valid_asymmetric_es256_token():
+    """Enqueueing task with a valid asymmetric ES256 Supabase token succeeds."""
+    import time
+    import jwt
+    from unittest.mock import MagicMock, patch
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from core.auth import clear_jwks_cache
+
+    clear_jwks_cache()
+
+    priv_key = ec.generate_private_key(ec.SECP256R1())
+    pub_key = priv_key.public_key()
+
+    test_settings = Settings(
+        ENVIRONMENT="production",
+        SUPABASE_URL="https://prodproj.supabase.co",
+    )
+    client = TestClient(create_app(settings=test_settings))
+
+    target_user_id = "66666666-6666-6666-6666-666666666666"
+    payload = {
+        "sub": target_user_id,
+        "email": "task.es256@example.com",
+        "role": "authenticated",
+        "aud": "authenticated",
+        "iss": "https://prodproj.supabase.co/auth/v1",
+        "exp": int(time.time()) + 3600,
+    }
+    token = jwt.encode(payload, priv_key, algorithm="ES256", headers={"kid": "key-es256-tasks"})
+
+    mock_signing_key = MagicMock()
+    mock_signing_key.key = pub_key
+
+    mock_jwks_client = MagicMock()
+    mock_jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
+
+    headers = {"Authorization": f"Bearer {token}"}
+    task_payload = {"platform": "Naukri", "dry_run": True, "keywords": ["Python Developer"]}
+
+    with patch("core.auth.get_jwks_client", return_value=mock_jwks_client):
+        res = client.post("/api/v1/tasks", headers=headers, json=task_payload)
+        assert res.status_code == 201
+        data = res.json()
+        assert data["user_id"] == target_user_id
+        assert data["status"] == "queued"
