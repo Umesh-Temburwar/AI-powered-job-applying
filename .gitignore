@@ -1,0 +1,52 @@
+# Environment variables (contains sensitive credentials)
+.env
+.env.*
+!.env.example
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Output CSV files and application history
+naukriapplied.csv
+application_answers.csv
+*_applied.csv
+universal_applied_jobs.csv
+platforms/linkedin/out.csv
+platforms/linkedin/qa.csv
+
+# Logs
+logs/
+*.log
+
+# Personal data and credentials
+profile_data.json
+resume.ini
+
+# Resume and personal documents
+*.pdf
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+.venv/
