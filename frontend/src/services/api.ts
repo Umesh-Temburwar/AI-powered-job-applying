@@ -18,13 +18,23 @@ export class ApiError extends Error {
   }
 }
 
+export interface PlatformBreakdownItem {
+  platform: string;
+  applied: number;
+  percentage: number;
+  color: string;
+}
+
 export interface DashboardSummaryApiResponse {
-  mode: 'demo';
+  mode: string;
   total_applications: number;
+  successful_submissions: number;
   pending_review: number;
   failed_tasks: number;
-  automation_status: 'idle' | 'running' | 'paused' | 'review_required' | 'error';
+  active_tasks: number;
+  automation_status: 'idle' | 'queued' | 'running' | 'paused' | 'review_required' | 'completed' | 'failed' | 'error';
   message: string;
+  platform_breakdown: PlatformBreakdownItem[];
 }
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:8000';
@@ -37,14 +47,23 @@ export async function apiClient<T>(endpoint: string, options: RequestInit = {}):
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const reqHeaders: Record<string, string> = {};
+  if (!isFormData) {
+    reqHeaders['Content-Type'] = 'application/json';
+  }
+  if (options.headers) {
+    Object.assign(reqHeaders, options.headers);
+  }
+  if (isFormData && reqHeaders['Content-Type']) {
+    delete reqHeaders['Content-Type'];
+  }
+
   try {
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers: reqHeaders,
     });
 
     clearTimeout(timeoutId);
@@ -106,8 +125,25 @@ export interface UserIdentityResponse {
   created_at: string | null;
 }
 
-export async function getDashboardSummary(): Promise<DashboardSummaryApiResponse> {
-  return apiClient<DashboardSummaryApiResponse>('/api/v1/dashboard/summary');
+export interface BackendActivityItem {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  type: string;
+  status_badge?: string;
+}
+
+export async function getDashboardSummary(token?: string): Promise<DashboardSummaryApiResponse> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return apiClient<DashboardSummaryApiResponse>('/api/v1/dashboard/summary', { headers });
+}
+
+export async function getDashboardActivitiesApi(token: string): Promise<BackendActivityItem[]> {
+  return apiClient<BackendActivityItem[]>('/api/v1/dashboard/activities', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }
 
 export async function getAuthMe(token: string): Promise<UserIdentityResponse> {
@@ -117,4 +153,403 @@ export async function getAuthMe(token: string): Promise<UserIdentityResponse> {
     },
   });
 }
+
+export interface BackendTaskItem {
+  id: string;
+  user_id: string;
+  task_type: string;
+  platform: string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'idle' | 'paused' | 'review_required';
+  progress: number;
+  message: string;
+  retry_count: number;
+  max_retries: number;
+  error_details?: string | null;
+  dry_run: boolean;
+  payload: Record<string, unknown>;
+  started_at?: string | null;
+  completed_at?: string | null;
+  cancelled_at?: string | null;
+  created_at: string;
+}
+
+export interface TaskListResponse {
+  tasks: BackendTaskItem[];
+  total: number;
+}
+
+export interface TaskActionResponse {
+  success: boolean;
+  task_id: string;
+  status: string;
+  message: string;
+}
+
+export interface TaskCreatePayload {
+  platform: string;
+  task_type?: 'job_apply' | 'profile_update' | 'screening_test';
+  dry_run?: boolean;
+  user_confirmed_real_submission?: boolean;
+  max_applications?: number;
+  keywords?: string[];
+  locations?: string[];
+  force?: boolean;
+}
+
+export async function enqueueTaskApi(
+  token: string,
+  data: TaskCreatePayload
+): Promise<BackendTaskItem> {
+  return apiClient<BackendTaskItem>('/api/v1/tasks', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function listTasksApi(
+  token: string,
+  limit = 50,
+  offset = 0
+): Promise<TaskListResponse> {
+  return apiClient<TaskListResponse>(`/api/v1/tasks?limit=${limit}&offset=${offset}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function getTaskApi(token: string, taskId: string): Promise<BackendTaskItem> {
+  return apiClient<BackendTaskItem>(`/api/v1/tasks/${taskId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function cancelTaskApi(token: string, taskId: string): Promise<TaskActionResponse> {
+  return apiClient<TaskActionResponse>(`/api/v1/tasks/${taskId}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function retryTaskApi(token: string, taskId: string): Promise<TaskActionResponse> {
+  return apiClient<TaskActionResponse>(`/api/v1/tasks/${taskId}/retry`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ============================================================================
+// PROFILE & ONBOARDING API
+// ============================================================================
+
+export interface BackendEducationItem {
+  id?: string;
+  degree: string;
+  institution: string;
+  year?: string;
+  score?: string;
+  field_of_study?: string;
+}
+
+export interface BackendExperienceItem {
+  id?: string;
+  company: string;
+  role: string;
+  duration?: string;
+  start_date?: string;
+  end_date?: string;
+  description?: string;
+  is_current?: boolean;
+}
+
+export interface BackendProjectItem {
+  id?: string;
+  title: string;
+  description?: string;
+  technologies?: string[];
+  url?: string;
+}
+
+export interface BackendCertificationItem {
+  id?: string;
+  name: string;
+  issuer?: string;
+  date?: string;
+  url?: string;
+}
+
+export interface BackendAdditionalInfo {
+  notice_period_days?: number;
+  work_authorization?: string;
+  willing_to_relocate?: boolean;
+  expected_salary_lakhs?: number | null;
+  is_fresher?: boolean;
+}
+
+export interface BackendProfileResponse {
+  id: string;
+  full_name: string;
+  email?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  headline?: string | null;
+  summary?: string | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+  portfolio_url?: string | null;
+  education: BackendEducationItem[];
+  experience: BackendExperienceItem[];
+  skills: string[];
+  projects: BackendProjectItem[];
+  certifications: BackendCertificationItem[];
+  additional_info: BackendAdditionalInfo;
+  is_onboarded: boolean;
+  onboarding_step: number;
+  onboarded_at?: string | null;
+  completion_percentage: number;
+  missing_fields: string[];
+}
+
+export interface BackendOnboardingStatus {
+  is_onboarded: boolean;
+  onboarding_step: number;
+  completion_percentage: number;
+  missing_fields: string[];
+  has_resume: boolean;
+  has_preferences: boolean;
+}
+
+export async function getProfileApi(token: string): Promise<BackendProfileResponse> {
+  return apiClient<BackendProfileResponse>('/api/v1/profile', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function updateProfileApi(
+  token: string,
+  data: Partial<BackendProfileResponse>
+): Promise<BackendProfileResponse> {
+  return apiClient<BackendProfileResponse>('/api/v1/profile', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getOnboardingStatusApi(token: string): Promise<BackendOnboardingStatus> {
+  return apiClient<BackendOnboardingStatus>('/api/v1/profile/status', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ============================================================================
+// RESUMES API
+// ============================================================================
+
+export interface BackendResumeItem {
+  id: string;
+  user_id: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  is_default: boolean;
+  created_at: string;
+  ocr_needed?: boolean;
+}
+
+export interface BackendResumeUploadResponse {
+  resume: BackendResumeItem;
+  parsed_profile: Partial<BackendProfileResponse>;
+  ocr_needed: boolean;
+  message: string;
+  extracted_skills_count: number;
+}
+
+export interface BackendResumeListResponse {
+  resumes: BackendResumeItem[];
+  primary_resume_id?: string | null;
+}
+
+export interface BackendResumeDownloadResponse {
+  download_url: string;
+  expires_in_seconds: number;
+  file_name: string;
+}
+
+export async function uploadResumeApi(
+  token: string,
+  file: File,
+  setAsDefault = true
+): Promise<BackendResumeUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('set_as_default', String(setAsDefault));
+
+  return apiClient<BackendResumeUploadResponse>('/api/v1/resumes/upload', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+}
+
+export async function listResumesApi(token: string): Promise<BackendResumeListResponse> {
+  return apiClient<BackendResumeListResponse>('/api/v1/resumes', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function setDefaultResumeApi(token: string, resumeId: string): Promise<{ message: string }> {
+  return apiClient<{ message: string }>(`/api/v1/resumes/${resumeId}/set-default`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function deleteResumeApi(token: string, resumeId: string): Promise<{ message: string }> {
+  return apiClient<{ message: string }>(`/api/v1/resumes/${resumeId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function getResumeDownloadUrlApi(
+  token: string,
+  resumeId: string
+): Promise<BackendResumeDownloadResponse> {
+  return apiClient<BackendResumeDownloadResponse>(`/api/v1/resumes/${resumeId}/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// ============================================================================
+// JOB PREFERENCES API
+// ============================================================================
+
+export interface BackendJobPreferences {
+  id: string;
+  user_id: string;
+  job_titles: string[];
+  locations: string[];
+  experience_level: string;
+  employment_types: string[];
+  min_salary?: number | null;
+  max_salary?: number | null;
+  selected_platforms: string[];
+  daily_application_limit: number;
+  require_manual_review: boolean;
+  updated_at?: string | null;
+}
+
+export interface BackendPreferenceSuggestions {
+  suggested_titles: string[];
+  suggested_keywords: string[];
+  source_skills: string[];
+}
+
+export async function getPreferencesApi(token: string): Promise<BackendJobPreferences> {
+  return apiClient<BackendJobPreferences>('/api/v1/preferences', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function updatePreferencesApi(
+  token: string,
+  data: Partial<BackendJobPreferences>
+): Promise<BackendJobPreferences> {
+  return apiClient<BackendJobPreferences>('/api/v1/preferences', {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function suggestPreferencesApi(
+  token: string,
+  skills: string[]
+): Promise<BackendPreferenceSuggestions> {
+  return apiClient<BackendPreferenceSuggestions>('/api/v1/preferences/suggest', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ skills }),
+  });
+}
+
+// ============================================================================
+// APPLICATIONS API
+// ============================================================================
+
+export interface BackendApplicationItem {
+  id: string;
+  user_id: string;
+  task_id?: string | null;
+  job_title: string;
+  company: string;
+  job_url: string;
+  platform: string;
+  status: string;
+  location?: string | null;
+  salary?: string | null;
+  notes?: string | null;
+  applied_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackendApplicationListResponse {
+  items: BackendApplicationItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export async function getApplicationsApi(
+  token: string,
+  params?: {
+    status?: string;
+    platform?: string;
+    query?: string;
+    page?: number;
+    pageSize?: number;
+  }
+): Promise<BackendApplicationListResponse> {
+  const q = new URLSearchParams();
+  if (params?.status && params.status !== 'all') q.set('status', params.status);
+  if (params?.platform && params.platform !== 'all') q.set('platform', params.platform);
+  if (params?.query) q.set('query', params.query);
+  if (params?.page) q.set('page', String(params.page));
+  if (params?.pageSize) q.set('page_size', String(params.pageSize));
+
+  const queryStr = q.toString() ? `?${q.toString()}` : '';
+  return apiClient<BackendApplicationListResponse>(`/api/v1/applications${queryStr}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function createApplicationApi(
+  token: string,
+  data: Partial<BackendApplicationItem>
+): Promise<BackendApplicationItem> {
+  return apiClient<BackendApplicationItem>('/api/v1/applications', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteApplicationApi(token: string, id: string): Promise<{ message: string }> {
+  return apiClient<{ message: string }>(`/api/v1/applications/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function exportApplicationsCsvApi(token: string): Promise<string> {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE_URL;
+  const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/applications/export`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Failed to export CSV');
+  return res.text();
+}
+
 

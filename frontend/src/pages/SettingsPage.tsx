@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
+import { supabase } from '../lib/supabaseClient';
 import {
   Card,
   CardHeader,
@@ -36,7 +37,7 @@ export const SettingsPage: React.FC = () => {
   const [notifyReview, setNotifyReview] = useState(true);
   const [notifyDigest, setNotifyDigest] = useState(false);
 
-  // Password change simulation
+  // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -46,10 +47,10 @@ export const SettingsPage: React.FC = () => {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  const handlePasswordUpdate = (e: React.FormEvent) => {
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentPassword || !newPassword) {
-      showToast('Please fill out all password fields', 'error');
+    if (!newPassword || newPassword.length < 6) {
+      showToast('New password must be at least 6 characters', 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -57,13 +58,21 @@ export const SettingsPage: React.FC = () => {
       return;
     }
     setPasswordLoading(true);
-    setTimeout(() => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        showToast(error.message, 'error');
+      } else {
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        showToast('Password updated successfully', 'success');
+      }
+    } catch {
+      showToast('Failed to update password', 'error');
+    } finally {
       setPasswordLoading(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      showToast('Password updated in demo session', 'success');
-    }, 500);
+    }
   };
 
   const handleLogoutConfirmed = async () => {
@@ -73,7 +82,7 @@ export const SettingsPage: React.FC = () => {
 
   const handleDeleteAccountConfirmed = async () => {
     setDeleteConfirmOpen(false);
-    showToast('Demo account reset successfully', 'info');
+    showToast('Session terminated', 'info');
     await logout();
     navigate('/');
   };
@@ -85,7 +94,7 @@ export const SettingsPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-sky-400 shrink-0" />
           <span>
-            User profile and session settings. Unconnected backend features are labeled "Demo only".
+            Candidate profile and security settings. Managed with Supabase Authentication.
           </span>
         </div>
         <Badge variant="cyan" size="sm">
@@ -138,7 +147,7 @@ export const SettingsPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Candidate Display Name"
-              value={user?.fullName || 'Alex Vance'}
+              value={user?.fullName || 'Candidate'}
               disabled
               helperText="Managed in My Profile section."
               leftIcon={<User className="w-4 h-4" />}
@@ -146,7 +155,7 @@ export const SettingsPage: React.FC = () => {
 
             <Input
               label="Primary Email"
-              value={user?.email || 'alex.developer@example.com'}
+              value={user?.email || ''}
               disabled
               helperText="Verified candidate email."
               leftIcon={<Lock className="w-4 h-4" />}
@@ -161,8 +170,8 @@ export const SettingsPage: React.FC = () => {
           title="Change Password"
           subtitle="Update account authentication secret"
           action={
-            <Badge variant="default" size="sm">
-              Demo Only
+            <Badge variant="cyan" size="sm">
+              Security
             </Badge>
           }
         />
@@ -218,7 +227,7 @@ export const SettingsPage: React.FC = () => {
           subtitle="Configure system and desktop notifications"
           action={
             <Badge variant="default" size="sm">
-              Demo Only
+              Preferences
             </Badge>
           }
         />
@@ -328,7 +337,7 @@ export const SettingsPage: React.FC = () => {
         onClose={() => setLogoutConfirmOpen(false)}
         onConfirm={handleLogoutConfirmed}
         title="Sign Out"
-        description="Are you sure you want to end your current session? You can return at any time using the demo credentials."
+        description="Are you sure you want to end your current session? You can log back in at any time with your authenticated account."
         confirmLabel="Sign Out"
       />
 

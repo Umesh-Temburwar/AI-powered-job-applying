@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Play,
-  Pause,
-  Square,
   RotateCcw,
+  Square,
   AlertTriangle,
   Terminal,
   ShieldAlert,
+  RefreshCw,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Database,
+  X,
+  Sliders,
+  Target,
+  MapPin,
 } from 'lucide-react';
-import { useTasks } from '../hooks/useTasks';
+import { useTasks, type StartTaskOptions } from '../hooks/useTasks';
+import { usePreferences } from '../hooks/usePreferences';
 import { useToast } from '../context/ToastContext';
 import {
   Card,
@@ -17,6 +26,8 @@ import {
   Badge,
   ProgressBar,
   Select,
+  Input,
+  Checkbox,
   ConfirmDialog,
   Skeleton,
 } from '../components/ui';
@@ -26,235 +37,521 @@ export const AutomationPage: React.FC = () => {
   const {
     currentTask,
     history,
-    loading,
+    loading: tasksLoading,
     actionLoading,
-    error,
+    error: taskError,
+    isLiveBackend,
     startTask,
-    pauseTask,
-    resumeTask,
-    stopTask,
+    cancelTask,
+    retryTask,
+    refreshTasks,
   } = useTasks();
 
+  const { preferences, loading: prefsLoading } = usePreferences();
   const { showToast } = useToast();
 
+  // Dynamic Form State pre-populated from Saved Preferences
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformName | 'All Platforms'>('All Platforms');
-  const [confirmStartOpen, setConfirmStartOpen] = useState(false);
+  const [taskType, setTaskType] = useState<'job_apply' | 'profile_update' | 'screening_test'>('job_apply');
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [keywordInput, setKeywordInput] = useState('');
+  const [locations, setLocations] = useState<string[]>([]);
+  const [locationInput, setLocationInput] = useState('');
+  const [maxApplications, setMaxApplications] = useState<number>(25);
+  const [dryRun, setDryRun] = useState<boolean>(true);
+  const [confirmLiveSubmission, setConfirmLiveSubmission] = useState<boolean>(false);
+  const [force, setForce] = useState<boolean>(false);
+  const [showConfig, setShowConfig] = useState<boolean>(true);
 
+  const [confirmStartOpen, setConfirmStartOpen] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Initialize or synchronize form state from user's saved preferences
+  useEffect(() => {
+    if (preferences) {
+      if (preferences.targetTitles && preferences.targetTitles.length > 0) {
+        setKeywords(preferences.targetTitles);
+      } else {
+        setKeywords(['Full Stack Developer', 'React Developer']);
+      }
+
+      if (preferences.targetLocations && preferences.targetLocations.length > 0) {
+        setLocations(preferences.targetLocations);
+      } else {
+        setLocations(['Remote', 'Pune', 'Bengaluru']);
+      }
+
+      if (preferences.dailyApplicationLimit) {
+        setMaxApplications(preferences.dailyApplicationLimit);
+      }
+
+      if (preferences.selectedPlatforms && preferences.selectedPlatforms.length > 0) {
+        setSelectedPlatform(preferences.selectedPlatforms[0]);
+      }
+    } else {
+      setKeywords(['Full Stack Developer', 'Frontend Developer']);
+      setLocations(['Remote', 'India']);
+    }
+  }, [preferences]);
+
+  const isQueued = currentTask?.status === 'queued';
   const isRunning = currentTask?.status === 'running';
-  const isPaused = currentTask?.status === 'paused';
-  const isReviewRequired = currentTask?.status === 'review_required';
-  const isIdle = !currentTask || currentTask.status === 'idle' || currentTask.status === 'completed' || currentTask.status === 'stopped' || currentTask.status === 'failed';
+  const isFailed = currentTask?.status === 'failed';
+  const isCancelled = currentTask?.status === 'cancelled';
+  const isCompleted = currentTask?.status === 'completed';
+  const isIdle = !currentTask || isCompleted || isCancelled || (!isQueued && !isRunning && !isFailed);
+
+  // Keyword manipulation
+  const handleAddKeyword = (e: React.KeyboardEvent | React.MouseEvent) => {
+    if ('key' in e && e.key !== 'Enter') return;
+    e.preventDefault();
+    const val = keywordInput.trim();
+    if (val && !keywords.includes(val)) {
+      setKeywords((prev) => [...prev, val]);
+      setKeywordInput('');
+      setValidationError(null);
+    }
+  };
+
+  const handleRemoveKeyword = (tag: string) => {
+    setKeywords((prev) => prev.filter((k) => k !== tag));
+  };
+
+  // Location manipulation
+  const handleAddLocation = (e: React.KeyboardEvent | React.MouseEvent) => {
+    if ('key' in e && e.key !== 'Enter') return;
+    e.preventDefault();
+    const val = locationInput.trim();
+    if (val && !locations.includes(val)) {
+      setLocations((prev) => [...prev, val]);
+      setLocationInput('');
+    }
+  };
+
+  const handleRemoveLocation = (tag: string) => {
+    setLocations((prev) => prev.filter((l) => l !== tag));
+  };
+
+  // Launch validation & prompt
+  const handleInitiateTask = () => {
+    setValidationError(null);
+
+    if (keywords.length === 0) {
+      setValidationError('Please specify at least one job role or keyword.');
+      return;
+    }
+
+    if (maxApplications < 1 || maxApplications > 100) {
+      setValidationError('Maximum applications must be between 1 and 100.');
+      return;
+    }
+
+    if (!dryRun && !confirmLiveSubmission) {
+      setValidationError('Live submissions require explicit user confirmation. Check the safety box below.');
+      return;
+    }
+
+    setConfirmStartOpen(true);
+  };
 
   const handleStartConfirmed = async () => {
     setConfirmStartOpen(false);
     try {
-      await startTask(selectedPlatform);
-      showToast(`Automation simulation started for ${selectedPlatform}`, 'info');
+      const taskOptions: StartTaskOptions = {
+        platform: selectedPlatform,
+        taskType,
+        dryRun,
+        userConfirmedRealSubmission: !dryRun && confirmLiveSubmission,
+        maxApplications,
+        keywords,
+        locations,
+        force,
+      };
+
+      await startTask(taskOptions);
+      showToast(`Automation task dynamically queued for ${selectedPlatform}`, 'info');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to launch task', 'error');
+      showToast(err instanceof Error ? err.message : 'Failed to enqueue task', 'error');
     }
   };
 
-  const handlePause = async () => {
-    if (!currentTask) return;
+  const handleCancel = async (taskId?: string) => {
+    const id = taskId || currentTask?.id;
+    if (!id) return;
     try {
-      await pauseTask(currentTask.id);
-      showToast('Automation task paused', 'warning');
+      await cancelTask(id);
+      showToast('Task cancellation requested', 'warning');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to pause', 'error');
+      showToast(err instanceof Error ? err.message : 'Failed to cancel task', 'error');
     }
   };
 
-  const handleResume = async () => {
-    if (!currentTask) return;
+  const handleRetry = async (taskId?: string) => {
+    const id = taskId || currentTask?.id;
+    if (!id) return;
     try {
-      await resumeTask(currentTask.id);
-      showToast('Automation task resumed', 'info');
+      await retryTask(id);
+      showToast('Task re-enqueued for retry', 'info');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to resume', 'error');
-    }
-  };
-
-  const handleStop = async () => {
-    if (!currentTask) return;
-    try {
-      await stopTask(currentTask.id);
-      showToast('Automation task aborted', 'error');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to stop', 'error');
+      showToast(err instanceof Error ? err.message : 'Failed to retry task', 'error');
     }
   };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Simulation Banner Notice */}
+      {/* Dry Run Safety Notice Banner */}
       <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-950/30 text-amber-200 text-xs flex items-start gap-3">
         <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
         <div>
           <span className="font-bold block text-amber-300 mb-0.5">
-            Demo Simulation Mode — No Real Applications Are Submitted
+            Safe Automation Mode — Dry-Run Simulation Active by Default
           </span>
           <span>
-            This view simulates the background worker lifecycle (browser sandbox initialization,
-            search parsing, screening checks, and review checkpoints). The real Selenium engine
-            runs only via the backend worker in Phase 7.
+            Tasks are executed by the background automation worker using your customized preferences. In dry-run mode,
+            job matching, listing reviews, and answers are simulated without sending live applications.
           </span>
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs">
-          {error}
+      {(taskError || validationError) && (
+        <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+            <span>{validationError || taskError}</span>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => setValidationError(null)}>
+            Dismiss
+          </Button>
         </div>
       )}
 
       {/* Main Automation Control Panel */}
       <Card>
         <CardHeader
-          title="Automation Execution Center"
-          subtitle="Configure target portal and manage task execution state"
+          title="Dynamic Automation Execution Center"
+          subtitle="Configure real-time targeting parameters derived from your preferences"
           action={
-            <Badge
-              variant={
-                isRunning
-                  ? 'cyan'
-                  : isReviewRequired
-                  ? 'warning'
-                  : isPaused
-                  ? 'warning'
-                  : currentTask?.status === 'completed'
-                  ? 'success'
-                  : 'default'
-              }
-              size="md"
-            >
-              Task: {currentTask?.status?.toUpperCase() || 'IDLE'}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-[11px] flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
+                  isLiveBackend
+                    ? 'border-emerald-500/30 bg-emerald-950/30 text-emerald-300'
+                    : 'border-slate-700 bg-slate-900 text-slate-400'
+                }`}
+              >
+                <Database className="w-3 h-3" />
+                {isLiveBackend ? 'Supabase Queue Live' : 'Demo Mode'}
+              </span>
+
+              <Badge
+                variant={
+                  isRunning
+                    ? 'cyan'
+                    : isQueued
+                    ? 'warning'
+                    : isCompleted
+                    ? 'success'
+                    : isFailed
+                    ? 'danger'
+                    : 'default'
+                }
+                size="md"
+              >
+                Status: {currentTask?.status?.toUpperCase() || 'IDLE'}
+              </Badge>
+            </div>
           }
         />
 
-        {loading ? (
+        {tasksLoading || prefsLoading ? (
           <div className="space-y-4">
             <Skeleton height="3rem" />
-            <Skeleton height="6rem" />
+            <Skeleton height="8rem" />
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Platform Selector & Action Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-              <div className="sm:col-span-1">
-                <Select
-                  label="Target Job Portal"
-                  value={selectedPlatform}
-                  disabled={isRunning || isPaused || isReviewRequired}
-                  onChange={(e) => setSelectedPlatform(e.target.value as PlatformName | 'All Platforms')}
-                  options={[
-                    { value: 'All Platforms', label: 'All Core Portals' },
-                    { value: 'Naukri', label: 'Naukri.com' },
-                    { value: 'Internshala', label: 'Internshala' },
-                    { value: 'Indeed', label: 'Indeed India' },
-                    { value: 'LinkedIn', label: 'LinkedIn Easy Apply' },
-                  ]}
-                />
+            {/* Dynamic Configuration Form Panel */}
+            <div className="p-4 rounded-xl border border-theme bg-theme-surface/50 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-theme">
+                <span className="text-xs font-bold text-theme-primary flex items-center gap-1.5 uppercase tracking-wider">
+                  <Sliders className="w-3.5 h-3.5 text-[var(--accent)]" />
+                  Task Parameters (Pre-filled from Preferences)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowConfig(!showConfig)}
+                  className="text-xs text-[var(--accent)] hover:underline"
+                >
+                  {showConfig ? 'Collapse Form' : 'Expand Form'}
+                </button>
               </div>
 
-              <div className="sm:col-span-2 flex flex-wrap gap-2.5 justify-start sm:justify-end">
-                {isIdle && (
-                  <Button
-                    variant="primary"
-                    onClick={() => setConfirmStartOpen(true)}
-                    disabled={actionLoading}
-                    leftIcon={<Play className="w-4 h-4" />}
-                  >
-                    Start Simulation Run
-                  </Button>
-                )}
+              {showConfig && (
+                <div className="space-y-4 pt-1">
+                  {/* Row 1: Platform & Task Type */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Select
+                      label="Target Portal"
+                      value={selectedPlatform}
+                      disabled={isRunning || isQueued}
+                      onChange={(e) => setSelectedPlatform(e.target.value as PlatformName | 'All Platforms')}
+                      options={[
+                        { value: 'All Platforms', label: 'All Core Portals' },
+                        { value: 'Naukri', label: 'Naukri.com' },
+                        { value: 'Internshala', label: 'Internshala' },
+                        { value: 'Indeed', label: 'Indeed India' },
+                        { value: 'LinkedIn', label: 'LinkedIn Easy Apply' },
+                      ]}
+                    />
 
-                {isRunning && (
-                  <Button
-                    variant="secondary"
-                    onClick={handlePause}
-                    disabled={actionLoading}
-                    leftIcon={<Pause className="w-4 h-4" />}
-                  >
-                    Pause Task
-                  </Button>
-                )}
+                    <Select
+                      label="Automation Task Type"
+                      value={taskType}
+                      disabled={isRunning || isQueued}
+                      onChange={(e) => setTaskType(e.target.value as 'job_apply' | 'profile_update' | 'screening_test')}
+                      options={[
+                        { value: 'job_apply', label: 'Automated Job Application Cycle' },
+                        { value: 'profile_update', label: 'Profile & Key Skills Freshness Updater' },
+                        { value: 'screening_test', label: 'Screening Questionnaire Compatibility Check' },
+                      ]}
+                    />
+                  </div>
 
-                {(isPaused || isReviewRequired) && (
-                  <Button
-                    variant="primary"
-                    onClick={handleResume}
-                    disabled={actionLoading}
-                    leftIcon={<RotateCcw className="w-4 h-4" />}
-                  >
-                    {isReviewRequired ? 'Confirm & Continue' : 'Resume Task'}
-                  </Button>
-                )}
+                  {/* Row 2: Target Keywords / Roles */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-theme-secondary flex items-center gap-1">
+                      <Target className="w-3.5 h-3.5 text-[var(--accent)]" />
+                      Target Job Roles & Keywords
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 p-2 rounded-lg border border-theme bg-theme-card min-h-[2.5rem]">
+                      {keywords.map((kw) => (
+                        <span
+                          key={kw}
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-theme-surface border border-theme text-theme-primary"
+                        >
+                          {kw}
+                          {!isRunning && !isQueued && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveKeyword(kw)}
+                              className="text-theme-muted hover:text-red-400"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                      {!isRunning && !isQueued && (
+                        <input
+                          type="text"
+                          placeholder="Type title & press Enter..."
+                          value={keywordInput}
+                          onChange={(e) => setKeywordInput(e.target.value)}
+                          onKeyDown={handleAddKeyword}
+                          className="bg-transparent border-none outline-none text-xs text-theme-primary placeholder-theme-muted px-2 py-0.5 flex-1 min-w-[140px]"
+                        />
+                      )}
+                    </div>
+                  </div>
 
-                {(isRunning || isPaused || isReviewRequired) && (
-                  <Button
-                    variant="danger"
-                    onClick={handleStop}
-                    disabled={actionLoading}
-                    leftIcon={<Square className="w-4 h-4" />}
-                  >
-                    Stop & Wipe Sandbox
-                  </Button>
-                )}
-              </div>
+                  {/* Row 3: Target Locations & Max Applications */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className="text-xs font-medium text-theme-secondary flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-[var(--accent)]" />
+                        Preferred Locations
+                      </label>
+                      <div className="flex flex-wrap gap-1.5 p-2 rounded-lg border border-theme bg-theme-card min-h-[2.5rem]">
+                        {locations.map((loc) => (
+                          <span
+                            key={loc}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-theme-surface border border-theme text-theme-primary"
+                          >
+                            {loc}
+                            {!isRunning && !isQueued && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveLocation(loc)}
+                                className="text-theme-muted hover:text-red-400"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                        {!isRunning && !isQueued && (
+                          <input
+                            type="text"
+                            placeholder="Add location & press Enter..."
+                            value={locationInput}
+                            onChange={(e) => setLocationInput(e.target.value)}
+                            onKeyDown={handleAddLocation}
+                            className="bg-transparent border-none outline-none text-xs text-theme-primary placeholder-theme-muted px-2 py-0.5 flex-1 min-w-[120px]"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-1">
+                      <Input
+                        label="Max Applications"
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={maxApplications}
+                        disabled={isRunning || isQueued}
+                        onChange={(e) => setMaxApplications(parseInt(e.target.value, 10) || 1)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 4: Safety Checkboxes */}
+                  <div className="pt-2 border-t border-theme flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between text-xs">
+                    <div className="flex items-center gap-4">
+                      <Checkbox
+                        label="Dry-Run Mode (Recommended)"
+                        checked={dryRun}
+                        disabled={isRunning || isQueued}
+                        onChange={(e) => {
+                          setDryRun(e.target.checked);
+                          if (e.target.checked) setConfirmLiveSubmission(false);
+                        }}
+                      />
+
+                      <Checkbox
+                        label="Force execution (Allow duplicate)"
+                        checked={force}
+                        disabled={isRunning || isQueued}
+                        onChange={(e) => setForce(e.target.checked)}
+                      />
+                    </div>
+
+                    {!dryRun && (
+                      <div className="p-2.5 rounded-lg border border-red-500/40 bg-red-950/40 text-red-200">
+                        <Checkbox
+                          label="I confirm real live submission to external portals"
+                          checked={confirmLiveSubmission}
+                          disabled={isRunning || isQueued}
+                          onChange={(e) => setConfirmLiveSubmission(e.target.checked)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Current Step Progress Card */}
+            {/* Action Buttons Row */}
+            <div className="flex flex-wrap gap-2.5 justify-end">
+              <Button
+                variant="ghost"
+                onClick={refreshTasks}
+                disabled={actionLoading}
+                leftIcon={<RefreshCw className={`w-4 h-4 ${actionLoading ? 'animate-spin' : ''}`} />}
+              >
+                Refresh Queue
+              </Button>
+
+              {isIdle && (
+                <Button
+                  variant="primary"
+                  onClick={handleInitiateTask}
+                  disabled={actionLoading}
+                  leftIcon={<Play className="w-4 h-4" />}
+                >
+                  Enqueue Task with Current Settings
+                </Button>
+              )}
+
+              {(isRunning || isQueued) && (
+                <Button
+                  variant="danger"
+                  onClick={() => handleCancel()}
+                  disabled={actionLoading}
+                  leftIcon={<Square className="w-4 h-4" />}
+                >
+                  Cancel Task
+                </Button>
+              )}
+
+              {isFailed && (
+                <Button
+                  variant="primary"
+                  onClick={() => handleRetry()}
+                  disabled={actionLoading}
+                  leftIcon={<RotateCcw className="w-4 h-4" />}
+                >
+                  Retry Task
+                </Button>
+              )}
+            </div>
+
+            {/* Current Task Progress Card */}
             <div className="p-4 rounded-xl border border-theme bg-theme-surface/70 space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-theme-secondary uppercase tracking-wider">
-                  Active Execution Step
+                <span className="font-semibold text-theme-secondary uppercase tracking-wider flex items-center gap-1.5">
+                  {isQueued && <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />}
+                  {isRunning && <RefreshCw className="w-3.5 h-3.5 text-sky-400 animate-spin" />}
+                  {isCompleted && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                  {isFailed && <XCircle className="w-3.5 h-3.5 text-red-400" />}
+                  {currentTask ? `${currentTask.platform} (${currentTask.taskType || 'job_apply'})` : 'No Active Task'}
                 </span>
                 <span className="text-[11px] text-theme-muted font-mono">
-                  Task ID: {currentTask?.id || 'idle-standby'}
+                  ID: {currentTask?.id || 'standby'}
                 </span>
               </div>
 
               <ProgressBar
                 progress={currentTask?.progressPercent || 0}
-                label={currentTask?.currentStepMessage || 'No active simulation running.'}
-                color={isReviewRequired ? 'amber' : isRunning ? 'cyan' : 'emerald'}
+                label={currentTask?.currentStepMessage || 'Queue is currently idle. Configure parameters above and enqueue a task.'}
+                color={
+                  isFailed
+                    ? 'red'
+                    : isQueued
+                    ? 'amber'
+                    : isRunning
+                    ? 'cyan'
+                    : 'emerald'
+                }
               />
 
-              {/* Review Required Alert Bar */}
-              {isReviewRequired && (
-                <div className="p-3 rounded-lg border border-amber-500/40 bg-amber-950/50 text-amber-200 text-xs flex items-center justify-between">
+              {/* Error Details alert when failed */}
+              {isFailed && currentTask?.errorDetails && (
+                <div className="p-3 rounded-lg border border-red-500/40 bg-red-950/40 text-red-200 text-xs flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>
-                      Screening questionnaire checkpoint reached. Click "Confirm &amp; Continue" to approve responses.
-                    </span>
+                    <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                    <span>Error: {currentTask.errorDetails}</span>
                   </div>
-                  <Button size="sm" variant="primary" onClick={handleResume}>
-                    Approve
+                  <Button size="sm" variant="primary" onClick={() => handleRetry()}>
+                    Retry Now
                   </Button>
                 </div>
               )}
 
-              {/* Step counter stats */}
-              <div className="grid grid-cols-3 gap-3 pt-2 text-center text-xs">
+              {/* Dynamic Task statistics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-center text-xs">
                 <div className="p-3 bg-theme-card border border-theme rounded-lg">
-                  <span className="text-theme-muted block">Listings Scanned</span>
+                  <span className="text-theme-muted block">Applications Target</span>
                   <span className="text-lg font-bold text-theme-primary">
-                    {currentTask?.applicationsAttempted || 0}
+                    {currentTask?.applicationsAttempted || maxApplications}
                   </span>
                 </div>
                 <div className="p-3 bg-theme-card border border-theme rounded-lg">
-                  <span className="text-theme-muted block">Simulated Steps Verified</span>
-                  <span className="text-lg font-bold text-emerald-400">
-                    {currentTask?.applicationsSuccessful || 0}
-                  </span>
-                </div>
-                <div className="p-3 bg-theme-card border border-theme rounded-lg">
-                  <span className="text-theme-muted block">Review Checkpoints</span>
+                  <span className="text-theme-muted block">Retries Used</span>
                   <span className="text-lg font-bold text-amber-400">
-                    {currentTask?.applicationsFailed || 0}
+                    {currentTask?.retryCount || 0} / {currentTask?.maxRetries || 3}
+                  </span>
+                </div>
+                <div className="p-3 bg-theme-card border border-theme rounded-lg">
+                  <span className="text-theme-muted block">Target Roles</span>
+                  <span className="text-xs font-semibold text-theme-primary truncate block mt-1">
+                    {keywords.slice(0, 2).join(', ') || 'Auto-matched'}
+                  </span>
+                </div>
+                <div className="p-3 bg-theme-card border border-theme rounded-lg">
+                  <span className="text-theme-muted block">Execution Mode</span>
+                  <span className="text-xs font-bold text-emerald-400 mt-1 block">
+                    {currentTask?.dryRun !== false ? 'Dry-Run (Safe)' : 'Live Submissions'}
                   </span>
                 </div>
               </div>
@@ -266,19 +563,19 @@ export const AutomationPage: React.FC = () => {
       {/* Live Terminal Log Viewer */}
       <Card>
         <CardHeader
-          title="Simulated Terminal & Event Stream"
-          subtitle="Real-time execution log from the automation worker process"
+          title="Automation Worker Event Stream"
+          subtitle="Real-time progress checkpoints and queue events"
           action={
             <span className="text-xs text-theme-muted flex items-center gap-1.5 font-mono">
               <Terminal className="w-3.5 h-3.5 text-[var(--accent)]" />
-              stdout / stderr stream
+              worker stdout
             </span>
           }
         />
 
         <div className="rounded-xl border border-theme bg-[#060D1E] p-4 font-mono text-xs text-slate-300 max-h-72 overflow-y-auto space-y-1.5 shadow-inner">
           {!currentTask?.logs || currentTask.logs.length === 0 ? (
-            <p className="text-slate-600 text-center py-6">Logs will appear here when task runs.</p>
+            <p className="text-slate-600 text-center py-6">No logs for current task. Enqueue a task to see real-time events.</p>
           ) : (
             currentTask.logs.map((log) => (
               <div key={log.id} className="flex items-start gap-2 leading-relaxed">
@@ -318,8 +615,8 @@ export const AutomationPage: React.FC = () => {
       {/* Task Execution History */}
       <Card>
         <CardHeader
-          title="Past Task Runs"
-          subtitle="Audit log of prior simulation runs"
+          title="Past Task Runs & Queue History"
+          subtitle="Audit log of prior background automation executions"
         />
 
         <div className="space-y-3">
@@ -334,17 +631,42 @@ export const AutomationPage: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-theme-primary">{hist.platform}</span>
-                    <Badge variant={hist.status === 'completed' ? 'success' : 'default'} size="sm">
+                    <Badge
+                      variant={
+                        hist.status === 'completed'
+                          ? 'success'
+                          : hist.status === 'failed'
+                          ? 'danger'
+                          : hist.status === 'cancelled'
+                          ? 'default'
+                          : 'cyan'
+                      }
+                      size="sm"
+                    >
                       {hist.status}
                     </Badge>
+                    <span className="text-[11px] text-theme-muted font-mono">{hist.id.slice(0, 8)}</span>
                   </div>
                   <p className="text-theme-muted mt-0.5">{hist.currentStepMessage}</p>
                 </div>
-                <div className="text-right text-theme-muted shrink-0">
-                  <span>Completed at {new Date(hist.completedAt || Date.now()).toLocaleTimeString()}</span>
-                  <p className="text-emerald-400 font-mono mt-0.5">
-                    {hist.applicationsSuccessful} verified steps
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right text-theme-muted shrink-0">
+                    <span>{hist.completedAt ? new Date(hist.completedAt).toLocaleTimeString() : 'In Queue'}</span>
+                    <p className="text-emerald-400 font-mono mt-0.5">
+                      {hist.dryRun !== false ? 'Dry-Run' : 'Live Submission'}
+                    </p>
+                  </div>
+                  {hist.status === 'failed' && (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => handleRetry(hist.id)}
+                      disabled={actionLoading}
+                      leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                    >
+                      Retry
+                    </Button>
+                  )}
                 </div>
               </div>
             ))
@@ -352,14 +674,14 @@ export const AutomationPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Start Confirmation Dialog */}
+      {/* Start Confirmation Dialog with Dynamic Summary */}
       <ConfirmDialog
         isOpen={confirmStartOpen}
         onClose={() => setConfirmStartOpen(false)}
         onConfirm={handleStartConfirmed}
-        title="Start Simulation Run"
-        description={`This will launch a simulated background automation cycle for ${selectedPlatform}. Notice: this is a frontend simulation; no external job portal requests or actual submissions will occur.`}
-        confirmLabel="Confirm & Launch"
+        title="Enqueue Automation Task"
+        description={`This will enqueue an automation task for ${selectedPlatform} (${taskType}) targeting ${keywords.length} roles in ${locations.length} locations with a limit of ${maxApplications} applications. Execution mode: ${dryRun ? 'Safe Dry-Run' : 'LIVE SUBMISSION'}.`}
+        confirmLabel="Confirm & Enqueue"
       />
     </div>
   );

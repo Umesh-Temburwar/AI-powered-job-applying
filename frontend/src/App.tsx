@@ -14,6 +14,7 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 
 import { DashboardPage } from './pages/DashboardPage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ResumeManagerPage } from './pages/ResumeManagerPage';
 import { PreferencesPage } from './pages/PreferencesPage';
@@ -37,6 +38,16 @@ export function App() {
               <Route path="/auth/confirm" element={<AuthCallbackPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/forgot-password" element={<Navigate to="/reset-password" replace />} />
+
+              {/* Onboarding Wizard Route */}
+              <Route
+                path="/onboarding"
+                element={
+                  <ProtectedRoute allowIncompleteOnboarding={true}>
+                    <OnboardingPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Protected App Routes */}
               <Route

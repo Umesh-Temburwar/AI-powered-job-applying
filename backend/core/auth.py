@@ -146,3 +146,19 @@ async def get_current_user(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Supabase authentication is not configured on the server.",
     )
+
+
+async def get_optional_user(
+    request: Request,
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(security_bearer)
+    ],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> AuthenticatedUser | None:
+    """Extract authenticated user if valid token is provided, or return None."""
+    if not credentials or credentials.scheme.lower() != "bearer":
+        return None
+    try:
+        return await get_current_user(request, credentials, settings)
+    except HTTPException:
+        return None

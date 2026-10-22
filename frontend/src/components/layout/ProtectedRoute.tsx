@@ -1,12 +1,23 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useOnboardingStatus } from '../../hooks/useOnboardingStatus';
 import { Skeleton } from '../ui/Skeleton';
 
-export const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const { user, isLoading } = useAuth();
+export interface ProtectedRouteProps {
+  children?: React.ReactNode;
+  allowIncompleteOnboarding?: boolean;
+}
 
-  if (isLoading) {
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  allowIncompleteOnboarding = false,
+}) => {
+  const { user, isLoading: authLoading } = useAuth();
+  const { isOnboarded, loading: statusLoading } = useOnboardingStatus();
+  const location = useLocation();
+
+  if (authLoading || (user && statusLoading)) {
     return (
       <div className="min-h-screen bg-theme-base flex items-center justify-center p-6">
         <div className="w-full max-w-md space-y-4">
@@ -20,6 +31,11 @@ export const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ child
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Redirect users who haven't finished onboarding to the onboarding wizard
+  if (!isOnboarded && !allowIncompleteOnboarding && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return children ? <>{children}</> : <Outlet />;

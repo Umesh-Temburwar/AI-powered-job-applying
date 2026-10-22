@@ -37,7 +37,16 @@ async def http_exception_handler(
         status.HTTP_401_UNAUTHORIZED: ("UNAUTHORIZED", "Authentication required"),
         status.HTTP_403_FORBIDDEN: ("FORBIDDEN", "Access forbidden"),
         status.HTTP_400_BAD_REQUEST: ("BAD_REQUEST", "Invalid request parameters"),
+        status.HTTP_409_CONFLICT: ("CONFLICT", "Resource conflict or duplicate"),
     }
+
+    if isinstance(exc.detail, dict):
+        code = exc.detail.get("code") or status_code_map.get(exc.status_code, (f"HTTP_{exc.status_code}", ""))[0]
+        message = exc.detail.get("message") or "An error occurred"
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=make_error_envelope(code=code, message=message, details=exc.detail.get("details")),
+        )
 
     code, default_msg = status_code_map.get(
         exc.status_code,
