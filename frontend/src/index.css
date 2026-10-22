@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-base: #0B132B;
+    --bg-surface: #111D4A;
+    --bg-card: #1C2541;
+    --bg-card-hover: #223055;
+    --bg-input: #0D1630;
+    --border-color: #263859;
+    --border-color-focus: #00E5FF;
+
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+
+    --accent: #00E5FF;
+    --accent-hover: #33ECFF;
+    --accent-muted: rgba(0, 229, 255, 0.12);
+    --accent-fg: #0B132B;
+
+    --color-success: #10B981;
+    --color-success-muted: rgba(16, 185, 129, 0.15);
+    --color-warning: #F59E0B;
+    --color-warning-muted: rgba(245, 158, 11, 0.15);
+    --color-danger: #EF4444;
+    --color-danger-muted: rgba(239, 68, 68, 0.15);
+    --color-info: #38BDF8;
+    --color-info-muted: rgba(56, 189, 248, 0.15);
+  }
+
+  .light {
+    --bg-base: #F8FAFC;
+    --bg-surface: #F1F5F9;
+    --bg-card: #FFFFFF;
+    --bg-card-hover: #F8FAFC;
+    --bg-input: #FFFFFF;
+    --border-color: #E2E8F0;
+    --border-color-focus: #0284C7;
+
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+
+    --accent: #0284C7;
+    --accent-hover: #0369A1;
+    --accent-muted: rgba(2, 132, 199, 0.12);
+    --accent-fg: #FFFFFF;
+
+    --color-success: #059669;
+    --color-success-muted: rgba(5, 150, 105, 0.12);
+    --color-warning: #D97706;
+    --color-warning-muted: rgba(217, 119, 6, 0.12);
+    --color-danger: #DC2626;
+    --color-danger-muted: rgba(220, 38, 38, 0.12);
+    --color-info: #0284C7;
+    --color-info-muted: rgba(2, 132, 199, 0.12);
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* Custom token helper utility classes mapped to design tokens */
+.bg-theme-base { background-color: var(--bg-base); }
+.bg-theme-surface { background-color: var(--bg-surface); }
+.bg-theme-card { background-color: var(--bg-card); }
+.bg-theme-card-hover:hover { background-color: var(--bg-card-hover); }
+.bg-theme-input { background-color: var(--bg-input); }
+
+.border-theme { border-color: var(--border-color); }
+.border-theme-focus:focus { border-color: var(--border-color-focus); }
+
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.text-theme-muted { color: var(--text-muted); }
+
+.bg-theme-accent { background-color: var(--accent); color: var(--accent-fg); }
+.bg-theme-accent:hover { background-color: var(--accent-hover); }
+.text-theme-accent { color: var(--accent); }
+.border-theme-accent { border-color: var(--accent); }
+.bg-theme-accent-muted { background-color: var(--accent-muted); color: var(--accent); }
+
+.text-theme-success { color: var(--color-success); }
+.bg-theme-success-muted { background-color: var(--color-success-muted); color: var(--color-success); }
+
+.text-theme-warning { color: var(--color-warning); }
+.bg-theme-warning-muted { background-color: var(--color-warning-muted); color: var(--color-warning); }
+
+.text-theme-danger { color: var(--color-danger); }
+.bg-theme-danger-muted { background-color: var(--color-danger-muted); color: var(--color-danger); }
+
+.text-theme-info { color: var(--color-info); }
+.bg-theme-info-muted { background-color: var(--color-info-muted); color: var(--color-info); }

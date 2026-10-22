@@ -167,7 +167,65 @@ py Universal_Job_Auto_Apply.py --report
 
 ---
 
+## 🌐 Phase 4: Modern Web Platform Architecture (React + FastAPI + Supabase)
+
+The Universal Job Apply Bot now includes a multi-user web application powered by **React 19 + TypeScript**, **FastAPI**, and **Supabase (PostgreSQL + Auth + Storage)** with strict Row Level Security (RLS).
+
+### Architecture Highlights
+- **Frontend** (`frontend/`): React + Vite + TypeScript + Tailwind CSS v4 + Supabase Auth JS SDK (`@supabase/supabase-js`).
+- **Backend API** (`backend/`): FastAPI with unified error envelope (`/api/v1`), CORS isolation, and `Authorization: Bearer <token>` Supabase JWT verification.
+- **Database & Storage**: PostgreSQL schema with automatic user provisioning triggers, user-scoped RLS policies, and private resume PDF storage.
+
+### 1. Supabase Setup Instructions
+1. Navigate to [Supabase](https://supabase.com) and create or open your project (e.g. `rwtimhnxghgzkgrdymmq`).
+2. Go to **SQL Editor** in your Supabase Dashboard.
+3. Open [`backend/migrations/001_initial_schema.sql`](backend/migrations/001_initial_schema.sql), paste its contents, and click **Run**.
+   - Creates `profiles`, `resumes`, `job_preferences`, `automation_tasks`, `applications`, and `application_answers`.
+   - Enables Row Level Security (RLS) on all user tables (`auth.uid() = user_id`).
+   - Creates the private `resumes` storage bucket with path-isolated access policies (`resumes/{user_id}/*`).
+4. In **Project Settings > API Keys**, retrieve:
+   - **Project URL** (`https://<project-ref>.supabase.co`)
+   - **anon / public key**
+   - **service_role key** (server-side only)
+
+### 2. Environment Configuration
+**Frontend** (`frontend/.env`):
+```env
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-anon-key>
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+**Backend** (`backend/.env`):
+```env
+APP_NAME=Universal Job Apply Bot API
+ENVIRONMENT=development
+API_V1_PREFIX=/api/v1
+FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+SUPABASE_JWT_SECRET=<your-jwt-secret>
+```
+
+### 3. Local Startup Commands
+Run in separate PowerShell terminals:
+
+```powershell
+# Terminal 1: FastAPI Backend
+cd D:\Projects\Naukri-autoapply-bot-main\backend
+.\.venv\Scripts\Activate.ps1
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+# Terminal 2: React + Vite Frontend
+cd D:\Projects\Naukri-autoapply-bot-main\frontend
+npm run dev
+```
+
+---
+
 ## 🔒 Security & Privacy
-- Credentials are stored strictly locally in your `.env` file.
-- The `.env` file is excluded in `.gitignore` to prevent committing secrets to GitHub.
-- Anti-detection browser flags and human-like typing delays prevent bot detection and account suspension.
+- **Zero Token Leakage**: Backend service-role keys are strictly excluded from client builds and Git.
+- **Row Level Security (RLS)**: PostgreSQL rejects cross-user data queries at the database engine level.
+- **Private Storage Isolation**: Resume PDFs are accessible only by the owning candidate through short-lived signed URLs.
+- **Independent Bot Isolation**: The core Selenium bot remains modular and untouched in root.

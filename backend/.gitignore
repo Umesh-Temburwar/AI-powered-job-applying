@@ -1,0 +1,21 @@
+# Local Environment Variables
+.env
+.env.*
+!.env.example
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Test & Coverage Outputs
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/

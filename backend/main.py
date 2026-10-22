@@ -1,100 +1,66 @@
-"""
-FastAPI Backend Server for Universal Job Auto Apply
-================================================================================
-Exposes RESTful endpoints for:
-  - Bot Analytics & Application CRM
-  - One-click Platform Execution (Naukri, Internshala, Indeed, LinkedIn)
-  - Supabase Database Integration
-  - Candidate Profile Management
-"""
-
-import os
-import sys
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict, Optional
-import subprocess
 
-from config import settings
-
-# Include parent directory to reuse platforms modules
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
-from platforms.tracker_db import get_statistics, get_recent_applications
-
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version="2.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
-)
-
-# CORS middleware for frontend communication
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from api.health import router as root_health_router
+from api.router import api_v1_router
+from core.config import Settings, get_settings
+from core.errors import register_error_handlers
+from core.logging import register_logging_middleware, setup_logging
 
 
-@app.get("/")
-def read_root():
-    return {
-        "status": "online",
-        "service": settings.PROJECT_NAME,
-        "version": "2.0.0",
-        "docs": "/docs"
-    }
+def create_app(settings: Settings | None = None) -> FastAPI:
+    """
+    FastAPI application factory allowing tests and deployment scripts
+    to instantiate isolated app instances with custom settings.
+    """
+    if settings is None:
+        settings = get_settings()
+
+    setup_logging(debug=settings.DEBUG)
+
+    # Disable interactive documentation endpoints in production
+    docs_url = None if settings.is_production else "/docs"
+    redoc_url = None if settings.is_production else "/redoc"
+    openapi_url = None if settings.is_production else "/openapi.json"
+
+    app = FastAPI(
+        title=settings.APP_NAME,
+        version="1.0.0",
+        docs_url=docs_url,
+        redoc_url=redoc_url,
+        openapi_url=openapi_url,
+        description="RESTful API backend for the Universal Job Apply Bot platform",
+    )
+    app.state.settings = settings
+
+    # 1. Attach Request-ID & latency logging middleware
+    register_logging_middleware(app)
+
+    # 2. Attach unified standard error envelope handlers
+    register_error_handlers(app)
+
+    # 3. Configure CORS: restricted strictly to explicitly allowed frontend origins
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.FRONTEND_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
+    )
+
+    # 4. Mount root health check endpoint: GET /health
+    app.include_router(root_health_router)
+
+    # 5. Mount versioned API routes under /api/v1 prefix
+    app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX)
+
+    return app
 
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
-
-
-@app.get("/api/v1/stats")
-def fetch_stats():
-    """Retrieve application metrics and analytics across platforms."""
-    try:
-        return get_statistics()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/v1/applications")
-def fetch_applications(limit: int = 100):
-    """Retrieve recently applied jobs."""
-    try:
-        return get_recent_applications(limit=limit)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-def execute_bot_task(platform: str):
-    """Run bot subprocess in the background."""
-    script_path = os.path.join(BASE_DIR, "Universal_Job_Auto_Apply.py")
-    cmd = [sys.executable, script_path, "--platform", platform]
-    try:
-        subprocess.run(cmd, cwd=BASE_DIR)
-    except Exception as e:
-        print(f"Error running bot task {platform}: {e}")
-
-
-@app.post("/api/v1/run-bot/{platform}")
-def run_bot(platform: str, background_tasks: BackgroundTasks):
-    """Trigger an auto-apply bot run in the background."""
-    allowed = ["all", "naukri", "internshala", "indeed", "linkedin", "portals"]
-    if platform not in allowed:
-        raise HTTPException(status_code=400, detail=f"Invalid platform. Allowed: {allowed}")
-
-    background_tasks.add_task(execute_bot_task, platform)
-    return {"success": True, "message": f"Bot started in background for platform: {platform}"}
-
+# Module-level ASGI app instance for uvicorn
+app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
