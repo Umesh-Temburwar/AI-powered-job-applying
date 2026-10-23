@@ -52,18 +52,17 @@ export function getBaseApiUrl(): string {
   return import.meta.env.DEV ? 'http://127.0.0.1:8001' : '';
 }
 
-const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 35000;
 
 export async function apiClient<T>(
   endpoint: string,
-  options: RequestInit & { timeoutMs?: number } = {}
+  options: RequestInit & { timeoutMs?: number; retries?: number } = {}
 ): Promise<T> {
   const baseUrl = getBaseApiUrl();
   const url = `${baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const maxRetries = options.retries ?? (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') ? 2 : 0);
 
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const reqHeaders: Record<string, string> = {};
@@ -77,78 +76,101 @@ export async function apiClient<T>(
     delete reqHeaders['Content-Type'];
   }
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      headers: reqHeaders,
-    });
+  let attempt = 0;
+  while (true) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    clearTimeout(timeoutId);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: reqHeaders,
+      });
 
-    let data: unknown;
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      data = await response.text();
-    }
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      if (typeof data === 'object' && data !== null && 'error' in data) {
-        const errObj = (data as { error: ApiErrorDetail }).error;
+      // If cloud instance is warming up (502 / 503 / 504), retry automatically
+      if ([502, 503, 504].includes(response.status) && attempt < maxRetries) {
+        attempt++;
+        await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+        continue;
+      }
+
+      let data: unknown;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = await response.text();
+      }
+
+      if (!response.ok) {
+        if (typeof data === 'object' && data !== null && 'error' in data) {
+          const errObj = (data as { error: ApiErrorDetail }).error;
+          throw new ApiError(
+            errObj.message || 'API request failed',
+            errObj.code || `HTTP_${response.status}`,
+            response.status,
+            errObj.details
+          );
+        }
+        if (typeof data === 'object' && data !== null && 'detail' in data) {
+          const detail = (data as { detail: unknown }).detail;
+          const msg =
+            typeof detail === 'string'
+              ? detail
+              : Array.isArray(detail)
+              ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(', ')
+              : JSON.stringify(detail);
+          throw new ApiError(msg, `HTTP_${response.status}`, response.status);
+        }
+        if (typeof data === 'object' && data !== null && 'message' in data) {
+          const msg = (data as { message: string }).message;
+          throw new ApiError(msg, `HTTP_${response.status}`, response.status);
+        }
         throw new ApiError(
-          errObj.message || 'API request failed',
-          errObj.code || `HTTP_${response.status}`,
-          response.status,
-          errObj.details
+          typeof data === 'string' && data ? data : `Request failed with status ${response.status}`,
+          `HTTP_${response.status}`,
+          response.status
         );
       }
-      if (typeof data === 'object' && data !== null && 'detail' in data) {
-        const detail = (data as { detail: unknown }).detail;
-        const msg =
-          typeof detail === 'string'
-            ? detail
-            : Array.isArray(detail)
-            ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(', ')
-            : JSON.stringify(detail);
-        throw new ApiError(msg, `HTTP_${response.status}`, response.status);
-      }
-      if (typeof data === 'object' && data !== null && 'message' in data) {
-        const msg = (data as { message: string }).message;
-        throw new ApiError(msg, `HTTP_${response.status}`, response.status);
-      }
-      throw new ApiError(
-        typeof data === 'string' && data ? data : `Request failed with status ${response.status}`,
-        `HTTP_${response.status}`,
-        response.status
-      );
-    }
 
-    return data as T;
-  } catch (err) {
-    clearTimeout(timeoutId);
-    if (err instanceof ApiError) {
-      throw err;
-    }
-    if (err instanceof DOMException && err.name === 'AbortError') {
+      return data as T;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof DOMException && err.name === 'AbortError' && attempt < maxRetries) {
+        attempt++;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        continue;
+      }
+      if (err instanceof ApiError) {
+        throw err;
+      }
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new ApiError(
+          'Request timed out. Please verify the backend FastAPI server is running.',
+          'TIMEOUT'
+        );
+      }
+      if (err instanceof TypeError && err.message.toLowerCase().includes('fetch')) {
+        if (attempt < maxRetries) {
+          attempt++;
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          continue;
+        }
+        const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const hint = isLocal ? ' Please ensure the FastAPI backend is running locally on http://127.0.0.1:8001 (e.g. py start_app.py).' : ' The cloud backend container is waking up. Please retry in a few seconds.';
+        throw new ApiError(
+          `Network connection failure. The FastAPI backend server is currently offline or unreachable.${hint}`,
+          'NETWORK_ERROR'
+        );
+      }
       throw new ApiError(
-        'Request timed out. Please verify the backend FastAPI server is running.',
-        'TIMEOUT'
+        err instanceof Error ? err.message : 'Unknown communication error',
+        'UNKNOWN_ERROR'
       );
     }
-    if (err instanceof TypeError && err.message.toLowerCase().includes('fetch')) {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const hint = isLocal ? ' Please ensure the FastAPI backend is running locally on http://127.0.0.1:8000 (e.g. uvicorn main:app --reload).' : ' Please verify the backend deployment and API routes.';
-      throw new ApiError(
-        `Network connection failure. The FastAPI backend server is currently offline or unreachable.${hint}`,
-        'NETWORK_ERROR'
-      );
-    }
-    throw new ApiError(
-      err instanceof Error ? err.message : 'Unknown communication error',
-      'UNKNOWN_ERROR'
-    );
   }
 }
 
