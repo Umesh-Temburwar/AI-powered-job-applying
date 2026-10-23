@@ -12,3 +12,5 @@ export * from './Skeleton';
 export * from './EmptyState';
 export * from './Toast';
 export * from './ProgressBar';
+export * from './hero-2-1';
+export * from './demo';
