@@ -49,7 +49,7 @@ export function getBaseApiUrl(): string {
     return envUrl;
   }
 
-  return import.meta.env.DEV ? 'http://127.0.0.1:8000' : '';
+  return import.meta.env.DEV ? 'http://127.0.0.1:8001' : '';
 }
 
 const DEFAULT_TIMEOUT_MS = 15000;
