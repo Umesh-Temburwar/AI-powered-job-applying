@@ -407,6 +407,29 @@ async def run_platform_automation_task(
                     else f"[DRY RUN] Job match discovered on {plat_name} for '{opp.job_title}'. Details verified."
                 )
 
+                if not dry_run and user_confirmed:
+                    try:
+                        app_driver = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=True)
+                        if app_driver:
+                            try:
+                                apply_res = adapter.apply_to_job(
+                                    driver=app_driver,
+                                    job=opp,
+                                    user_profile=profile_dict,
+                                    resume_path=None,
+                                    dry_run=False,
+                                    user_confirmed=user_confirmed,
+                                )
+                                if apply_res and apply_res.notes:
+                                    note_text = apply_res.notes
+                            finally:
+                                try:
+                                    app_driver.quit()
+                                except Exception:
+                                    pass
+                    except Exception as live_err:
+                        logger.warning("Live application submission attempt note: %s", live_err)
+
                 try:
                     application_service.create_application(
                         user_id=user_id,
