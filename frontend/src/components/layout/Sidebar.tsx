@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink as RouterNavLink, useNavigate as useRouterNavigate } from 'react-router-dom';
+import { Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -9,6 +11,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useRouterNavigate();
 
   const navItems = [
@@ -65,8 +68,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
 
       {/* User Footer */}
       <div className="p-6 border-t border-[#E5E5E5]">
-        <div className="text-[13px] font-medium text-[#111111] truncate">
-          {user?.fullName || 'User'}
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-[13px] font-medium text-[#111111] truncate">
+            {user?.fullName || 'User'}
+          </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-1 rounded-[4px] border border-[#E5E5E5] hover:bg-[#FAFAFA] text-[#6B6B6B] hover:text-[#111111] transition-colors cursor-pointer"
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+            aria-label="Toggle dark mode"
+          >
+            {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5" />}
+          </button>
         </div>
         <div className="text-[12px] text-[#6B6B6B] truncate mb-3">
           {user?.email || ''}
