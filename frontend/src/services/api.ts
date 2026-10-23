@@ -394,7 +394,6 @@ export async function updateProfileApi(
 export async function getOnboardingStatusApi(token: string): Promise<BackendOnboardingStatus> {
   return apiClient<BackendOnboardingStatus>('/api/v1/profile/status', {
     headers: { Authorization: `Bearer ${token}` },
-    timeoutMs: 3000,
   });
 }
 
