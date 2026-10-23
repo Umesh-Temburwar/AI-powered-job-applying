@@ -1,0 +1,14 @@
+# Ignore Python backend and automation files on Vercel (frontend-only deployment)
+backend
+requirements.txt
+*.py
+.venv
+__pycache__
+*.db
+*.db-shm
+*.db-wal
+*.csv
+*.ini
+*.pdf
+profile_data.json
+render.yaml
