@@ -3,6 +3,9 @@
   "private": true,
   "scripts": {
     "dev": "npm --prefix frontend run dev",
+    "start": "py start_app.py",
+    "app": "py start_app.py",
+    "backend": "py backend/main.py",
     "build": "npm --prefix frontend run build",
     "test": "npm --prefix frontend run test",
     "install:frontend": "npm --prefix frontend ci --include=dev",

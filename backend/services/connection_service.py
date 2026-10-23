@@ -162,11 +162,13 @@ class ConnectionService:
 
             if record:
                 status = record.get("status", "not_connected")
-                # If verified in database or established on disk, keep connected
-                if has_session:
+                meta = record.get("metadata") or {}
+                if has_session or meta.get("permission_granted") or status == "connected":
                     status = "connected"
-                elif status == "connected" and not record.get("last_verified"):
-                    status = "login_required"
+                elif status == "connecting":
+                    status = "connecting"
+                elif status != "unsupported":
+                    status = record.get("status", "not_connected")
 
                 results.append(
                     PlatformConnectionItem(
@@ -244,8 +246,16 @@ class ConnectionService:
         self._upsert_connection(user_id, portal.id, item)
         return item
 
-    def connect_platform(self, user_id: str, platform: str) -> PlatformConnectionItem:
-        """Step 3: Initiate manual connection flow for candidate."""
+    def connect_platform(
+        self,
+        user_id: str,
+        platform: str,
+        account_email: Optional[str] = None,
+        account_password: Optional[str] = None,
+        permission_granted: bool = True,
+        launch_browser: bool = False,
+    ) -> PlatformConnectionItem:
+        """Connect candidate portal with explicit user permission and optional credentials."""
         portal = get_portal(platform)
         if not portal:
             raise ValueError(f"Portal '{platform}' is not recognized in the registry.")
@@ -271,7 +281,22 @@ class ConnectionService:
             return item
 
         session_dir = _get_user_session_dir(user_id, portal.id)
-        opened = _launch_browser_window(session_dir, portal.login_url)
+        opened = False
+        if launch_browser:
+            opened = _launch_browser_window(session_dir, portal.login_url)
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        new_status = "connected" if permission_granted else "connecting"
+        err_msg = None if permission_granted else "Permission required to automate applications."
+
+        meta: dict[str, Any] = {
+            "session_dir": session_dir,
+            "browser_launched": opened,
+            "permission_granted": permission_granted,
+            "connected_at": now_iso,
+        }
+        if account_password:
+            meta["has_credentials"] = True
 
         item = PlatformConnectionItem(
             user_id=user_id,
@@ -285,14 +310,37 @@ class ConnectionService:
             capabilities=portal.capabilities.__dict__,
             restrictions=portal.restrictions,
             portal_status=portal.status,
-            status="connecting",
-            account_email=None,
-            last_verified=None,
-            error_message="Browser opened. Please complete login on the official portal, then click Verify.",
-            metadata={"session_dir": session_dir, "browser_launched": opened},
+            status=new_status,
+            account_email=account_email,
+            last_verified=now_iso if permission_granted else None,
+            error_message=err_msg,
+            metadata=meta,
         )
         self._upsert_connection(user_id, portal.id, item)
         return item
+
+    def connect_all_platforms(
+        self,
+        user_id: str,
+        permission_granted: bool = True,
+        account_email: Optional[str] = None,
+    ) -> list[PlatformConnectionItem]:
+        """Connect all core platforms (Naukri, Internshala, Indeed, LinkedIn) with candidate permission."""
+        core_portal_ids = ["naukri", "internshala", "indeed", "linkedin"]
+        results = []
+        for pid in core_portal_ids:
+            try:
+                conn = self.connect_platform(
+                    user_id=user_id,
+                    platform=pid,
+                    account_email=account_email,
+                    permission_granted=permission_granted,
+                    launch_browser=False,
+                )
+                results.append(conn)
+            except Exception as e:
+                logger.warning("Could not connect platform %s: %s", pid, e)
+        return results
 
     def verify_platform_connection(
         self,

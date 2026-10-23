@@ -687,11 +687,32 @@ export async function openPlatformPortalApi(
 
 export async function connectPlatformApi(
   token: string,
-  platform: string
+  platform: string,
+  payload?: {
+    account_email?: string;
+    account_password?: string;
+    permission_granted?: boolean;
+    launch_browser?: boolean;
+  }
 ): Promise<ConnectionActionApiResponse> {
   return apiClient<ConnectionActionApiResponse>(`/api/v1/connections/${encodeURIComponent(platform)}/connect`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
+    body: payload ? JSON.stringify(payload) : undefined,
+  });
+}
+
+export async function connectAllPortalsApi(
+  token: string,
+  payload?: {
+    permission_granted?: boolean;
+    account_email?: string;
+  }
+): Promise<ConnectionListApiResponse> {
+  return apiClient<ConnectionListApiResponse>('/api/v1/connections/connect-all', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: payload ? JSON.stringify(payload) : undefined,
   });
 }
 

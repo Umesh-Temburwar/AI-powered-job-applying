@@ -3,6 +3,7 @@ import {
   getConnectionsApi,
   openPlatformPortalApi,
   connectPlatformApi,
+  connectAllPortalsApi,
   verifyConnectionApi,
   retryConnectionApi,
   disconnectPlatformApi,
@@ -71,17 +72,52 @@ export function useConnections() {
     }
   };
 
-  const connectPlatform = async (platform: string) => {
+  const connectPlatform = async (
+    platform: string,
+    payload?: {
+      account_email?: string;
+      account_password?: string;
+      permission_granted?: boolean;
+      launch_browser?: boolean;
+    }
+  ) => {
     const token = await getActiveToken();
     if (!token) throw new Error('Candidate is not authenticated.');
 
     try {
       setActionLoading(platform);
       setError(null);
-      await connectPlatformApi(token, platform);
+      const res = payload
+        ? await connectPlatformApi(token, platform, payload)
+        : await connectPlatformApi(token, platform);
       await fetchConnections();
+      return res;
     } catch (err) {
       const msg = err instanceof Error ? err.message : `Failed to connect ${platform}`;
+      setError(msg);
+      throw new Error(msg);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const connectAllPlatforms = async (payload?: {
+    permission_granted?: boolean;
+    account_email?: string;
+  }) => {
+    const token = await getActiveToken();
+    if (!token) throw new Error('Candidate is not authenticated.');
+
+    try {
+      setActionLoading('all');
+      setError(null);
+      const res = await connectAllPortalsApi(token, payload);
+      if (res.connections) {
+        setConnections(res.connections);
+      }
+      return res;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to connect all platforms';
       setError(msg);
       throw new Error(msg);
     } finally {
@@ -157,6 +193,7 @@ export function useConnections() {
     refreshConnections: fetchConnections,
     openPortal,
     connectPlatform,
+    connectAllPlatforms,
     verifyConnection,
     retryConnection,
     disconnectPlatform,

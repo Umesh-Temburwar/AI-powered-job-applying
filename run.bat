@@ -6,7 +6,7 @@ echo ===========================================================================
 echo            UNIVERSAL JOB AUTO APPLY BOT (2026 PRO EDITION)
 echo ===============================================================================
 echo [1] Launch Interactive CLI Bot
-echo [2] Launch Modern Web UI Dashboard (http://localhost:5000)
+echo [2] Launch Modern Full-Stack Web App (http://localhost:5173)
 echo [3] Run ALL Platforms Immediately
 echo [4] Sync Profiles (Naukri + Internshala)
 echo [5] View Applied Jobs Report
@@ -18,7 +18,7 @@ if "%choice%"=="1" (
     py Universal_Job_Auto_Apply.py || python Universal_Job_Auto_Apply.py
 )
 if "%choice%"=="2" (
-    py Universal_Job_Auto_Apply.py --gui || python Universal_Job_Auto_Apply.py --gui
+    py start_app.py || python start_app.py
 )
 if "%choice%"=="3" (
     py Universal_Job_Auto_Apply.py --platform all || python Universal_Job_Auto_Apply.py --platform all

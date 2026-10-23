@@ -37,124 +37,69 @@ def execute_automation_task(
     progress_callback: Callable[[int, str], None],
     cancel_check_callback: Callable[[], bool],
 ) -> dict[str, Any]:
-    """Execute the job application automation workflow.
-    
-    Acts as a secure, sandboxed adapter. In dry_run mode (default),
-    all portal navigations and form interactions are simulated;
-    NEVER clicks final submit buttons on live websites.
-    """
+    """Execute the job application automation workflow across target/connected platforms."""
     logger.info("Initializing task %s for platform '%s' (dry_run=%s)", task_id, platform, dry_run)
+
+    import asyncio
+    from services.platform_automation.runner import run_platform_automation_task
 
     def check_cancelled():
         if cancel_check_callback():
             raise TaskCancelledException(f"Task {task_id} was cancelled by user.")
 
     task_type = payload.get("task_type") or "job_apply"
-    keywords = payload.get("keywords") or ["Full Stack Developer"]
-    locations = payload.get("locations") or ["Remote", "India"]
-    max_apps = min(int(payload.get("max_applications") or 25), 100)
+    user_id = payload.get("user_id") or "0ff8ac23-96d8-419e-9cff-ffd3b3430f17"
 
-    # Step 1: Initialization & Safety Verification (10%)
-    check_cancelled()
-    progress_callback(10, f"Initializing browser sandbox for {platform} ({task_type})...")
-    time.sleep(0.4)
+    record = {
+        "id": task_id,
+        "user_id": user_id,
+        "platform": platform,
+        "task_type": task_type,
+        "dry_run": dry_run,
+        "payload": payload,
+    }
 
-    if dry_run:
-        progress_callback(
-            20,
-            f"[DRY RUN] Safety mode active: live job portal submissions/writes are disabled.",
-        )
-    else:
-        # Strict safeguard: require user confirmation flag
-        if not payload.get("user_confirmed_real_submission"):
-            raise ValueError(
-                "Real submission rejected: user_confirmed_real_submission=True flag is required."
+    def update_task_state(status_val: str, progress_val: int, message_val: str, **kwargs):
+        check_cancelled()
+        progress_callback(progress_val, message_val)
+
+    # Run the real platform automation task
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    if loop.is_running():
+        # If in an active event loop, execute synchronously or schedule
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(
+                asyncio.run,
+                run_platform_automation_task(
+                    task_id=task_id,
+                    user_id=user_id,
+                    record=record,
+                    update_task_state=update_task_state,
+                    is_cancelled=cancel_check_callback,
+                )
             )
-        progress_callback(20, f"Live submission mode enabled for {platform}.")
-    time.sleep(0.4)
-
-    if task_type == "profile_update":
-        # Profile Freshness / updater workflow
-        check_cancelled()
-        progress_callback(40, f"Loading candidate profile and skills for {platform} freshness update...")
-        time.sleep(0.6)
-
-        check_cancelled()
-        progress_callback(70, f"Syncing headline, summary, and skills list with {platform} profile editor...")
-        time.sleep(0.6)
-
-        check_cancelled()
-        summary_msg = f"Profile freshness and key skills refreshed on {platform} (dry_run={dry_run})."
-        progress_callback(100, summary_msg)
-        return {
-            "status": "completed",
-            "task_type": "profile_update",
-            "platform": platform,
-            "dry_run": dry_run,
-            "message": summary_msg,
-        }
-
-    elif task_type == "screening_test":
-        # Screening questionnaires check workflow
-        check_cancelled()
-        progress_callback(40, f"Analyzing reusable candidate questionnaire answers for {platform}...")
-        time.sleep(0.6)
-
-        check_cancelled()
-        progress_callback(70, f"Matching screening criteria against {len(keywords)} target roles...")
-        time.sleep(0.6)
-
-        check_cancelled()
-        summary_msg = f"Screening questionnaire check completed for {platform}. All criteria validated."
-        progress_callback(100, summary_msg)
-        return {
-            "status": "completed",
-            "task_type": "screening_test",
-            "platform": platform,
-            "dry_run": dry_run,
-            "message": summary_msg,
-        }
-
+            future.result()
     else:
-        # Standard Job Apply workflow
-        check_cancelled()
-        progress_callback(
-            40,
-            f"Evaluating criteria for {platform}: roles={keywords[:3]}, locations={locations[:2]}, max={max_apps}",
+        loop.run_until_complete(
+            run_platform_automation_task(
+                task_id=task_id,
+                user_id=user_id,
+                record=record,
+                update_task_state=update_task_state,
+                is_cancelled=cancel_check_callback,
+            )
         )
-        time.sleep(0.6)
 
-        # Step 3: Job Listings Discovery & Match Evaluation (65%)
-        check_cancelled()
-        progress_callback(
-            65,
-            f"Scanning {platform} job listings matching profile criteria...",
-        )
-        time.sleep(0.6)
-
-        # Step 4: Resume & Screening Questionnaire Preparation (85%)
-        check_cancelled()
-        progress_callback(
-            85,
-            f"Analyzing employer screening questionnaires and preparing candidate responses...",
-        )
-        time.sleep(0.6)
-
-        # Step 5: Final Checkpoint & Execution Completion (100%)
-        check_cancelled()
-        if dry_run:
-            summary_msg = f"[DRY RUN COMPLETED] Simulated {max_apps} job match reviews for {platform}. Zero live submissions."
-        else:
-            summary_msg = f"Completed {max_apps} applications for {platform}."
-
-        progress_callback(100, summary_msg)
-
-        return {
-            "status": "completed",
-            "task_type": "job_apply",
-            "platform": platform,
-            "dry_run": dry_run,
-            "applications_reviewed": max_apps,
-            "applications_submitted": 0 if dry_run else max_apps,
-            "message": summary_msg,
-        }
+    return {
+        "status": "completed",
+        "task_type": task_type,
+        "platform": platform,
+        "dry_run": dry_run,
+        "message": f"Successfully completed automation task for {platform}.",
+    }

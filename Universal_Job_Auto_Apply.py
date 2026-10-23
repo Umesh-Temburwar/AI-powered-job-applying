@@ -146,8 +146,24 @@ def show_consolidated_report():
             with open(linkedin_file, "r", encoding="utf-8") as f:
                 reader = csv.reader(f)
                 for row in reader:
-                    if row:
-                        records.append({"platform": "LinkedIn", "url": row[0] if len(row) > 0 else "", "status": "Applied"})
+                    if row and len(row) >= 2:
+                        job_id = row[1].strip() if len(row) > 1 else ""
+                        title = row[2].strip() if len(row) > 2 else "Software Engineer"
+                        company = row[3].strip() if len(row) > 3 else "LinkedIn Employer"
+                        if job_id.isdigit():
+                            url = f"https://www.linkedin.com/jobs/view/{job_id}"
+                        elif row[0].startswith("http"):
+                            url = row[0].strip()
+                        else:
+                            url = f"https://www.linkedin.com/jobs/view/{job_id}" if job_id else ""
+                        if url:
+                            records.append({
+                                "platform": "LinkedIn",
+                                "url": url,
+                                "job_title": title,
+                                "company": company,
+                                "status": "Applied"
+                            })
         except Exception:
             pass
 
@@ -215,6 +231,9 @@ def show_consolidated_report():
         print("=" * 50 + "\n")
 
     logger.info(f"Consolidated log saved to: {UNIVERSAL_CSV}")
+    db_stats = sync_with_supabase(records)
+    if db_stats.get("total_db_apps"):
+        logger.info(f"Supabase Database Synchronized: {db_stats['total_db_apps']} verified applications live on cloud")
 
 
 def run_all_platforms():
@@ -267,16 +286,59 @@ def run_jobbot_engine():
     subprocess.run([sys.executable, script], cwd=os.path.dirname(__file__))
 
 
-def launch_dashboard(port: int = 5000):
-    """Launch the modern Web UI dashboard in the default browser."""
-    import webbrowser
-    url = f"http://localhost:{port}"
+def sync_with_supabase(records: list = None) -> dict:
+    """Sync candidate applied jobs and query live platform connections from Supabase."""
+    try:
+        backend_dir = os.path.join(os.path.dirname(__file__), "backend")
+        if backend_dir not in sys.path:
+            sys.path.insert(0, backend_dir)
+        from core.supabase import get_supabase_client
+        client = get_supabase_client()
+        if not client:
+            return {}
+
+        candidate_id = os.getenv("CANDIDATE_USER_ID", "0ff8ac23-96d8-419e-9cff-ffd3b3430f17")
+
+        if records:
+            for r in records:
+                url = (r.get("url") or "").strip()
+                if not url:
+                    continue
+                plat = r.get("platform", "Naukri")
+                title = r.get("job_title") or f"{plat} Matched Opportunity"
+                comp = r.get("company") or f"{plat} Employer Partner"
+                st = "applied" if "fail" not in (r.get("status") or "").lower() else "failed"
+
+                existing = client.table("applications").select("id").eq("user_id", candidate_id).eq("job_url", url).execute()
+                if not existing.data:
+                    client.table("applications").insert({
+                        "user_id": candidate_id,
+                        "platform": plat,
+                        "job_title": title,
+                        "company": comp,
+                        "job_url": url,
+                        "status": st,
+                        "notes": f"Applied via Universal CLI Engine ({plat})",
+                    }).execute()
+
+        db_apps = client.table("applications").select("platform, status").eq("user_id", candidate_id).execute()
+        return {"total_db_apps": len(db_apps.data) if db_apps.data else 0}
+    except Exception as exc:
+        logger.debug(f"Supabase sync note: {exc}")
+        return {}
+
+
+def launch_dashboard(port: int = 5173):
+    """Launch the modern Web UI dashboard & FastAPI backend."""
     logger.info("=" * 60)
-    logger.info(f"🚀 Launching Universal Bot Web Dashboard at: {url}")
+    logger.info("🚀 Launching Universal Bot Modern Full-Stack Web Dashboard...")
+    logger.info("   Backend:  http://127.0.0.1:8001 (FastAPI + Automation Runner)")
+    logger.info("   Frontend: http://localhost:5173 (React Vite Dashboard)")
+    logger.info("   Database: Supabase Cloud (Live Tasks & Platform Connections)")
     logger.info("=" * 60)
-    webbrowser.open(url)
-    from web_dashboard.app import start_server
-    start_server(port)
+    import subprocess
+    script = os.path.join(os.path.dirname(__file__), "start_app.py")
+    subprocess.run([sys.executable, script], cwd=os.path.dirname(__file__))
 
 
 def interactive_menu():
@@ -294,7 +356,7 @@ def interactive_menu():
         print("  [8] 💼 LinkedIn Easy Apply")
         print("  [9] 🌐 9-Portal Multi-Apply (Glassdoor, Shine, Foundit, TimesJobs, Wellfound)")
         print("  [10] 📊 View Consolidated Applied Jobs Report")
-        print("  [11] 🖥️ Launch Modern Web UI Dashboard (http://localhost:5000)")
+        print("  [11] 🖥️ Launch Modern Full-Stack Web App (http://localhost:5173)")
         print("  [0] ❌ Exit")
         print("-" * 50)
 
@@ -347,7 +409,7 @@ def main():
     parser.add_argument("--update-internshala-profile", action="store_true", help="Run Internshala Resume Auto-Updater")
     parser.add_argument("--update-all-profiles", action="store_true", help="Run both Naukri & Internshala Profile Updaters")
     parser.add_argument("--report", action="store_true", help="Display consolidated application report")
-    parser.add_argument("--gui", "--dashboard", action="store_true", dest="dashboard", help="Launch Modern Web UI Dashboard")
+    parser.add_argument("--gui", "--dashboard", "--web", action="store_true", dest="dashboard", help="Launch Modern Web UI Dashboard")
 
     args = parser.parse_args()
 

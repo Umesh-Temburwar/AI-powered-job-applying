@@ -69,3 +69,15 @@ class ConnectionVerifyRequest(BaseModel):
     cookies: Optional[dict[str, str]] = None
     confirmed: bool = True
 
+
+class ConnectionConnectRequest(BaseModel):
+    account_email: Optional[str] = None
+    account_password: Optional[str] = None
+    permission_granted: bool = True
+    launch_browser: bool = False
+
+
+class ConnectionConnectAllRequest(BaseModel):
+    permission_granted: bool = True
+    account_email: Optional[str] = None
+

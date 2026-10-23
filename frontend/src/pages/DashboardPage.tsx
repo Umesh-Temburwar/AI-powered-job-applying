@@ -26,6 +26,7 @@ export const DashboardPage: React.FC = () => {
     refreshConnections,
     openPortal,
     connectPlatform,
+    connectAllPlatforms,
     verifyConnection,
     retryConnection,
     disconnectPlatform,
@@ -45,6 +46,13 @@ export const DashboardPage: React.FC = () => {
     updateFilters,
     loading: appsLoading,
   } = useApplications({ pageSize: 10 });
+
+  // Platform Connection & Permission Modal State
+  const [connectModalPortal, setConnectModalPortal] = useState<any | null>(null);
+  const [connectEmail, setConnectEmail] = useState<string>('');
+  const [connectPassword, setConnectPassword] = useState<string>('');
+  const [connectPermissionGranted, setConnectPermissionGranted] = useState<boolean>(true);
+  const [connectModalSubmitting, setConnectModalSubmitting] = useState<boolean>(false);
 
   // Task Launch Modal & Form State
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
@@ -214,6 +222,44 @@ export const DashboardPage: React.FC = () => {
       showToast(`Opening official portal for ${platform}...`, 'info');
     } catch (err) {
       showToast(err instanceof Error ? err.message : `Failed to open ${platform}`, 'error');
+    }
+  };
+
+  const openConnectModal = (portal: any) => {
+    setConnectModalPortal(portal);
+    setConnectEmail(portal.account_email || (preferences as any)?.email || '');
+    setConnectPassword('');
+    setConnectPermissionGranted(true);
+  };
+
+  const handleAuthorizeAndConnect = async (launchBrowser: boolean = false) => {
+    if (!connectModalPortal) return;
+    const targetId = connectModalPortal.portal_id || connectModalPortal.platform;
+    setConnectModalSubmitting(true);
+    try {
+      await connectPlatform(targetId, {
+        account_email: connectEmail.trim() || undefined,
+        account_password: connectPassword.trim() || undefined,
+        permission_granted: connectPermissionGranted,
+        launch_browser: launchBrowser,
+      });
+      showToast(`Connected ${connectModalPortal.display_name || connectModalPortal.platform} with bot automation permissions`, 'success');
+      setConnectModalPortal(null);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : `Failed to connect ${connectModalPortal.platform}`, 'error');
+    } finally {
+      setConnectModalSubmitting(false);
+    }
+  };
+
+  const handleConnectAll = async () => {
+    try {
+      await connectAllPlatforms({
+        permission_granted: true,
+      });
+      showToast('All platforms connected with bot automation permissions', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to connect all platforms', 'error');
     }
   };
 
@@ -423,14 +469,24 @@ export const DashboardPage: React.FC = () => {
               Candidate-isolated browser sessions for official job portals. Passwords are never stored.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => refreshConnections()}
-            disabled={connectionsLoading}
-          >
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleConnectAll}
+              disabled={actionPlatform === 'all' || connectionsLoading}
+            >
+              {actionPlatform === 'all' ? 'Authorizing All...' : 'Authorize All Portals'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => refreshConnections()}
+              disabled={connectionsLoading}
+            >
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {connError && (
@@ -513,6 +569,11 @@ export const DashboardPage: React.FC = () => {
                         ? 'Profile isolation active. Direct apply in development.'
                         : 'Open portal to sign in on official website.')}
                   </p>
+                  {conn.account_email && (
+                    <span className="text-[10px] font-mono text-[#15803D] bg-[#F0FDF4] px-1.5 py-0.5 rounded-[3px] block mt-1.5 truncate border border-[#DCFCE7]">
+                      {conn.account_email}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-[#E5E5E5]">
@@ -535,6 +596,16 @@ export const DashboardPage: React.FC = () => {
                       {isConnecting ? 'Connecting...' : 'Connect'}
                     </Button>
                   )}
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => openConnectModal(conn)}
+                    disabled={isConnecting}
+                    title="Configure portal account email, password, and automation permissions"
+                  >
+                    Permissions
+                  </Button>
 
                   <Button
                     variant="secondary"
@@ -917,10 +988,122 @@ export const DashboardPage: React.FC = () => {
               variant="primary"
               disabled={actionLoading}
             >
-              {actionLoading ? 'Enqueueing Task...' : 'Enqueue Task (POST /api/v1/tasks)'}
+              {actionLoading ? 'Starting Bot...' : 'Enqueue Task (POST /api/v1/tasks)'}
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Platform Connection & Permission Modal */}
+      <Modal
+        isOpen={!!connectModalPortal}
+        onClose={() => setConnectModalPortal(null)}
+        title={`Connect ${connectModalPortal?.display_name || connectModalPortal?.platform || 'Platform'}`}
+      >
+        <div className="space-y-4 pt-1">
+          <div className="flex items-center justify-between p-3 rounded-[6px] bg-[#F0FDF4] border border-[#BBF7D0]">
+            <div>
+              <span className="text-[13px] font-semibold text-[#166534] block">
+                {connectModalPortal?.display_name || connectModalPortal?.platform} Official Connection
+              </span>
+              <span className="text-[11px] text-[#15803D]">
+                Isolated user profile with direct bot automation permissions.
+              </span>
+            </div>
+            {connectModalPortal?.website_url && (
+              <a
+                href={connectModalPortal.website_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[12px] text-[#15803D] underline hover:text-[#166534]"
+              >
+                Visit Site ↗
+              </a>
+            )}
+          </div>
+
+          {/* Explicit User Permission Checkbox */}
+          <div className="p-3.5 rounded-[6px] border border-[#E5E5E5] bg-[#FAFAFA]">
+            <label className="flex items-start gap-2.5 text-[13px] text-[#111111] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={connectPermissionGranted}
+                onChange={(e) => setConnectPermissionGranted(e.target.checked)}
+                className="mt-0.5 rounded-[4px] border-[#E5E5E5] text-[#166534] focus:ring-[#166534]"
+              />
+              <div>
+                <span className="font-semibold block text-[#111111]">
+                  Grant Automation Permission
+                </span>
+                <span className="text-[12px] text-[#6B6B6B] leading-relaxed block mt-0.5">
+                  I authorize Universal Job Apply Bot to connect to {connectModalPortal?.display_name || connectModalPortal?.platform}, discover vacancies, and submit applications on my behalf matching my target roles.
+                </span>
+              </div>
+            </label>
+          </div>
+
+          {/* Account Email */}
+          <div>
+            <label className="block text-[12px] font-medium text-[#111111] mb-1">
+              Portal Account Email / Username
+            </label>
+            <Input
+              type="email"
+              placeholder="e.g. your-email@example.com"
+              value={connectEmail}
+              onChange={(e) => setConnectEmail(e.target.value)}
+              disabled={connectModalSubmitting}
+            />
+            <span className="text-[11px] text-[#6B6B6B] mt-1 block">
+              Associated with your {connectModalPortal?.display_name || connectModalPortal?.platform} account.
+            </span>
+          </div>
+
+          {/* Optional Password */}
+          <div>
+            <label className="block text-[12px] font-medium text-[#111111] mb-1">
+              Portal Password (Optional)
+            </label>
+            <Input
+              type="password"
+              placeholder="Enter password for automated login..."
+              value={connectPassword}
+              onChange={(e) => setConnectPassword(e.target.value)}
+              disabled={connectModalSubmitting}
+            />
+            <span className="text-[11px] text-[#6B6B6B] mt-1 block">
+              Optional if already signed into your browser profile. Passwords are never shared.
+            </span>
+          </div>
+
+          {/* Modal Action Buttons */}
+          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3 border-t border-[#E5E5E5]">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setConnectModalPortal(null)}
+              disabled={connectModalSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => handleAuthorizeAndConnect(true)}
+              disabled={connectModalSubmitting || !connectPermissionGranted}
+            >
+              Open Browser Login Window
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => handleAuthorizeAndConnect(false)}
+              disabled={connectModalSubmitting || !connectPermissionGranted}
+            >
+              {connectModalSubmitting ? 'Connecting...' : 'Authorize & Connect'}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

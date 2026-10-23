@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from core.auth import AuthenticatedUser, get_current_user
 from schemas.connection import (
     ConnectionActionResponse,
+    ConnectionConnectAllRequest,
+    ConnectionConnectRequest,
     ConnectionListResponse,
     ConnectionVerifyRequest,
     PlatformConnectionItem,
@@ -16,6 +18,31 @@ from services.connection_service import connection_service
 logger = logging.getLogger("connections_api")
 
 router = APIRouter(prefix="/connections", tags=["Website Connections"])
+
+
+@router.post("/connect-all", response_model=ConnectionListResponse)
+async def connect_all_portals(
+    user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    payload: Optional[ConnectionConnectAllRequest] = None,
+):
+    """Connect all core job platforms (Naukri, Internshala, Indeed, LinkedIn) with candidate permission."""
+    try:
+        permission = payload.permission_granted if payload else True
+        email = payload.account_email if payload else None
+        connected_items = connection_service.connect_all_platforms(
+            user_id=user.id,
+            permission_granted=permission,
+            account_email=email,
+        )
+        # Return full updated connection list
+        all_connections = connection_service.get_user_connections(user_id=user.id)
+        return ConnectionListResponse(connections=all_connections)
+    except Exception as exc:
+        logger.error("Failed to connect all platforms for candidate %s: %s", user.id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not connect platforms.",
+        ) from exc
 
 
 @router.get("/registry", response_model=PortalRegistryResponse)
@@ -83,15 +110,33 @@ async def open_portal_window(
 async def connect_portal(
     platform: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    payload: Optional[ConnectionConnectRequest] = None,
 ):
-    """Step 3: Open user-visible browser session for candidate to complete manual login."""
+    """Step 3: Connect candidate platform with permission and optional credentials."""
     try:
-        updated = connection_service.connect_platform(user_id=user.id, platform=platform)
+        account_email = payload.account_email if payload else None
+        account_password = payload.account_password if payload else None
+        permission_granted = payload.permission_granted if payload else True
+        launch_browser = payload.launch_browser if payload else False
+
+        updated = connection_service.connect_platform(
+            user_id=user.id,
+            platform=platform,
+            account_email=account_email,
+            account_password=account_password,
+            permission_granted=permission_granted,
+            launch_browser=launch_browser,
+        )
+        msg = (
+            f"Successfully connected {updated.platform} with candidate automation permission."
+            if updated.status == "connected"
+            else f"Browser login window opened for {updated.platform}."
+        )
         return ConnectionActionResponse(
             success=True,
             platform=updated.platform,
             status=updated.status,
-            message=f"Browser login window opened for {updated.platform}. Please complete credentials and MFA on the official site.",
+            message=msg,
             connection=updated,
         )
     except ValueError as val_err:
