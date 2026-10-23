@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"  # development | production | test
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
+    PORT: int = 8001
+    CANDIDATE_USER_ID: str = "0ff8ac23-96d8-419e-9cff-ffd3b3430f17"
     FRONTEND_ORIGINS: str | list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

@@ -100,7 +100,7 @@ export const ApplicationsPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-sky-400 shrink-0" />
           <span>
-            Application records synchronize across your local SQLite tracker and CSV exports.
+            Application records live-sync across Supabase Cloud CRM, your multi-platform automation bots, and CSV exports.
           </span>
         </div>
         <Badge variant="cyan" size="sm">

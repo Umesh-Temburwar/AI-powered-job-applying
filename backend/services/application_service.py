@@ -205,7 +205,17 @@ class ApplicationService:
 
         counts: Dict[str, int] = {}
         for a in apps:
-            plat = a.platform.strip() if a.platform else "Other"
+            raw_p = a.platform.strip() if a.platform else "Other"
+            if raw_p.lower() == "linkedin":
+                plat = "LinkedIn"
+            elif raw_p.lower() == "naukri":
+                plat = "Naukri"
+            elif raw_p.lower() == "internshala":
+                plat = "Internshala"
+            elif raw_p.lower() == "indeed":
+                plat = "Indeed"
+            else:
+                plat = raw_p.title()
             counts[plat] = counts.get(plat, 0) + 1
 
         total = len(apps)
