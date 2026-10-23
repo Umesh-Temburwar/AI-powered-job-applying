@@ -7,11 +7,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://universal-job-apply-backend.onrender.com/api/:path*"
+      "destination": "https://universal-job-apply-bot.onrender.com/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://universal-job-apply-backend.onrender.com/health"
+      "destination": "https://universal-job-apply-bot.onrender.com/health"
     },
     {
       "source": "/(.*)",
