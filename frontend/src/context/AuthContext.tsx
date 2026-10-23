@@ -65,11 +65,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fullName: candidateName,
     };
 
-    setUser(authUser);
-    setSession({
-      user: authUser,
-      token: current.access_token,
-      expiresAt: (current.expires_at || 0) * 1000,
+    setUser((prev) => {
+      if (prev && prev.id === authUser.id && prev.email === authUser.email && prev.fullName === authUser.fullName) {
+        return prev;
+      }
+      return authUser;
+    });
+
+    setSession((prev) => {
+      if (prev && prev.token === current.access_token && prev.user.id === authUser.id) {
+        return prev;
+      }
+      return {
+        user: authUser,
+        token: current.access_token,
+        expiresAt: (current.expires_at || 0) * 1000,
+      };
     });
   }, []);
 

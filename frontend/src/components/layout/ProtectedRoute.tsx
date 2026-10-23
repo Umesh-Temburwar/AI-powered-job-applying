@@ -17,10 +17,24 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isOnboarded, loading: statusLoading } = useOnboardingStatus();
   const location = useLocation();
 
+  // Once the page has resolved the initial check, prevent full-page skeleton on window minimize/maximize
+  const [hasResolvedInitialCheck, setHasResolvedInitialCheck] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!authLoading && !statusLoading) {
+      setHasResolvedInitialCheck(true);
+    }
+  }, [authLoading, statusLoading]);
+
   // Only wait for statusLoading if we actually need to decide whether to redirect
   const shouldCheckOnboarding = !allowIncompleteOnboarding && location.pathname !== '/onboarding';
 
-  if (authLoading || (user && shouldCheckOnboarding && statusLoading)) {
+  // Only show full-page blocking skeleton on the very first initial load
+  const isInitialLoading =
+    !hasResolvedInitialCheck &&
+    (authLoading || (user && shouldCheckOnboarding && statusLoading));
+
+  if (isInitialLoading) {
     return (
       <div className="min-h-screen bg-theme-base flex items-center justify-center p-6">
         <div className="w-full max-w-md space-y-4">
@@ -32,12 +46,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  if (!user) {
+  if (!user && !authLoading) {
     return <Navigate to="/login" replace />;
   }
 
   // Redirect users who haven't finished onboarding to the onboarding wizard
-  if (!isOnboarded && shouldCheckOnboarding) {
+  if (!isOnboarded && shouldCheckOnboarding && hasResolvedInitialCheck) {
     return <Navigate to="/onboarding" replace />;
   }
 
