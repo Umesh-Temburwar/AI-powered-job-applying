@@ -331,26 +331,34 @@ async def run_platform_automation_task(
             if is_cancelled():
                 return
 
-            driver = None
             opportunities: list[JobOpportunity] = []
             try:
-                driver = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=True)
-                if driver:
-                    search_urls = adapter.build_search_urls(keywords=keywords, locations=locations)
-                    opportunities = adapter.search_jobs(
-                        driver=driver,
-                        search_urls=search_urls,
-                        max_results=per_platform_max,
-                        cancel_check=is_cancelled,
-                    )
+                def _do_search() -> list[JobOpportunity]:
+                    d = None
+                    try:
+                        d = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=True)
+                        if d:
+                            s_urls = adapter.build_search_urls(keywords=keywords, locations=locations)
+                            return adapter.search_jobs(
+                                driver=d,
+                                search_urls=s_urls,
+                                max_results=per_platform_max,
+                                cancel_check=is_cancelled,
+                            )
+                    finally:
+                        if d:
+                            try:
+                                d.quit()
+                            except Exception:
+                                pass
+                    return []
+
+                # Enforce a non-blocking timeout on live browser initialization
+                opportunities = await asyncio.wait_for(asyncio.to_thread(_do_search), timeout=15.0)
+            except asyncio.TimeoutError:
+                logger.info("Live browser search for %s timed out after 15s. Falling back to curated vacancies.", plat_name)
             except Exception as d_err:
                 logger.info("Driver search attempt note for %s: %s", plat_name, d_err)
-            finally:
-                if driver:
-                    try:
-                        driver.quit()
-                    except Exception:
-                        pass
 
             # Curated verified vacancy matches if portal scraper returned 0 items
             if not opportunities:
@@ -409,24 +417,32 @@ async def run_platform_automation_task(
 
                 if not dry_run and user_confirmed:
                     try:
-                        app_driver = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=True)
-                        if app_driver:
+                        def _do_live_apply() -> Optional[str]:
+                            app_driver = None
                             try:
-                                apply_res = adapter.apply_to_job(
-                                    driver=app_driver,
-                                    job=opp,
-                                    user_profile=profile_dict,
-                                    resume_path=None,
-                                    dry_run=False,
-                                    user_confirmed=user_confirmed,
-                                )
-                                if apply_res and apply_res.notes:
-                                    note_text = apply_res.notes
+                                app_driver = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=True)
+                                if app_driver:
+                                    apply_res = adapter.apply_to_job(
+                                        driver=app_driver,
+                                        job=opp,
+                                        user_profile=profile_dict,
+                                        resume_path=None,
+                                        dry_run=False,
+                                        user_confirmed=user_confirmed,
+                                    )
+                                    if apply_res and apply_res.notes:
+                                        return apply_res.notes
                             finally:
-                                try:
-                                    app_driver.quit()
-                                except Exception:
-                                    pass
+                                if app_driver:
+                                    try:
+                                        app_driver.quit()
+                                    except Exception:
+                                        pass
+                            return None
+
+                        live_note = await asyncio.wait_for(asyncio.to_thread(_do_live_apply), timeout=15.0)
+                        if live_note:
+                            note_text = live_note
                     except Exception as live_err:
                         logger.warning("Live application submission attempt note: %s", live_err)
 

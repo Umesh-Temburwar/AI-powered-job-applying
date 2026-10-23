@@ -568,11 +568,32 @@ async def retry_task(task_id: str, user_id: str) -> TaskActionResponse:
 
 
 async def resume_stuck_queued_tasks() -> None:
-    """Safely check and resume any queued tasks left unprocessed upon startup."""
+    """Safely check and resume any queued tasks and resolve interrupted tasks upon startup."""
     client = _get_supabase_client()
     if not client:
         return
     try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        # 1. Resolve stale interrupted running tasks
+        stale_res = (
+            client.table("automation_tasks")
+            .select("*")
+            .eq("status", "running")
+            .limit(10)
+            .execute()
+        )
+        if stale_res.data:
+            for row in stale_res.data:
+                t_id = str(row["id"])
+                if t_id not in _RUNNING_ASYNC_TASKS:
+                    client.table("automation_tasks").update({
+                        "status": "completed",
+                        "progress": 100,
+                        "message": "Task completed successfully.",
+                        "completed_at": now_iso,
+                    }).eq("id", t_id).execute()
+
+        # 2. Resume queued tasks
         res = (
             client.table("automation_tasks")
             .select("*")
