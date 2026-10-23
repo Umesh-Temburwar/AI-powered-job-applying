@@ -402,13 +402,19 @@ export const DashboardPage: React.FC = () => {
 
       {/* Error Notices */}
       {dashError && (
-        <div className="mb-6 p-3 rounded-[6px] border border-[#B91C1C] text-[#B91C1C] text-[13px] bg-[#FFFFFF]">
-          {dashError}
+        <div className="mb-6 p-3 rounded-[6px] border border-[#B91C1C] text-[#B91C1C] text-[13px] bg-[#FFFFFF] flex items-center justify-between">
+          <span>{dashError.trim().startsWith('<') ? 'Backend server is waking up from idle state (502 Bad Gateway). Please wait a few seconds and refresh.' : dashError}</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="ml-4 px-2.5 py-1 text-[12px] font-medium text-[#111111] bg-[#F5F5F5] hover:bg-[#E5E5E5] rounded-[4px] border border-[#E5E5E5] transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
       {taskError && (
         <div className="mb-6 p-3 rounded-[6px] border border-[#B45309] text-[#B45309] text-[13px] bg-[#FFFFFF]">
-          {taskError}
+          {taskError.trim().startsWith('<') ? 'Automation worker is reconnecting. Please wait a moment.' : taskError}
         </div>
       )}
 

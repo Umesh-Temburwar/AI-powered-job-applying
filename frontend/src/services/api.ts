@@ -62,7 +62,7 @@ export async function apiClient<T>(
   const url = `${baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const maxRetries = options.retries ?? (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') ? 2 : 0);
+  const maxRetries = options.retries ?? (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') ? 3 : 0);
 
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const reqHeaders: Record<string, string> = {};
@@ -93,7 +93,7 @@ export async function apiClient<T>(
       // If cloud instance is warming up (502 / 503 / 504), retry automatically
       if ([502, 503, 504].includes(response.status) && attempt < maxRetries) {
         attempt++;
-        await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+        await new Promise((resolve) => setTimeout(resolve, 2500 * attempt));
         continue;
       }
 
@@ -129,11 +129,18 @@ export async function apiClient<T>(
           const msg = (data as { message: string }).message;
           throw new ApiError(msg, `HTTP_${response.status}`, response.status);
         }
-        throw new ApiError(
-          typeof data === 'string' && data ? data : `Request failed with status ${response.status}`,
-          `HTTP_${response.status}`,
-          response.status
-        );
+
+        let sanitizedMsg = `Request failed with status ${response.status}`;
+        if (typeof data === 'string' && data) {
+          if (data.trim().startsWith('<') || data.includes('<html')) {
+            sanitizedMsg = response.status === 502
+              ? 'Backend server is waking up from idle state (502 Bad Gateway). Please wait a few seconds and refresh.'
+              : `Service temporarily unavailable (${response.status}). Please retry shortly.`;
+          } else {
+            sanitizedMsg = data.slice(0, 300);
+          }
+        }
+        throw new ApiError(sanitizedMsg, `HTTP_${response.status}`, response.status);
       }
 
       return data as T;
