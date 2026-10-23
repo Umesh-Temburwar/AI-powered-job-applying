@@ -137,6 +137,16 @@ async def get_current_user(
     active_settings: Settings = getattr(request.app.state, "settings", settings)
 
     if not credentials or credentials.scheme.lower() != "bearer":
+        if not active_settings.is_production and active_settings.ENVIRONMENT == "development":
+            header_uid = request.headers.get("x-user-id") or getattr(active_settings, "CANDIDATE_USER_ID", "0ff8ac23-96d8-419e-9cff-ffd3b3430f17")
+            if header_uid:
+                return AuthenticatedUser(
+                    id=header_uid,
+                    email="umeshtemburwar2002@gmail.com",
+                    role="authenticated",
+                    claims={"sub": header_uid, "role": "authenticated"},
+                )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header. Expected 'Bearer <token>'.",

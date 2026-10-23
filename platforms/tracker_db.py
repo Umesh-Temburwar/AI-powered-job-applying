@@ -61,6 +61,11 @@ def get_default_user_id() -> Optional[str]:
     if _default_user_id:
         return _default_user_id
 
+    candidate_env = os.getenv("CANDIDATE_USER_ID")
+    if candidate_env:
+        _default_user_id = candidate_env.strip()
+        return _default_user_id
+
     client = get_supabase_client()
     if not client:
         return None
