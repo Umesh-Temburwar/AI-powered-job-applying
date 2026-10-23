@@ -590,8 +590,9 @@ export async function deleteApplicationApi(token: string, id: string): Promise<{
 }
 
 export async function exportApplicationsCsvApi(token: string): Promise<string> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE_URL;
-  const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/applications/export`, {
+  const baseUrl = getBaseApiUrl();
+  const url = `${baseUrl.replace(/\/$/, '')}/api/v1/applications/export`;
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to export CSV');
