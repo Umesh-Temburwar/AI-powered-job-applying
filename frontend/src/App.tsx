@@ -21,6 +21,7 @@ import { PreferencesPage } from './pages/PreferencesPage';
 import { AutomationPage } from './pages/AutomationPage';
 import { ApplicationsPage } from './pages/ApplicationsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AdminPage } from './pages/AdminPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export function App() {
@@ -64,6 +65,7 @@ export function App() {
                 <Route path="/automation" element={<AutomationPage />} />
                 <Route path="/applications" element={<ApplicationsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/admin" element={<AdminPage />} />
               </Route>
 
               {/* Catch-all 404 */}
