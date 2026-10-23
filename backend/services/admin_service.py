@@ -297,11 +297,12 @@ class AdminService:
         """Retrieve paginated candidate list with portal connectivity and application tallies from Supabase."""
         candidates: list[CandidateAdminItem] = []
         seen_ids: set[str] = set()
+        seen_emails: set[str] = set()
 
         # 1. Fetch from Supabase profiles
         if self.supabase:
             try:
-                prof_res = self.supabase.table("profiles").select("id, full_name, email, created_at, is_onboarded, skills").execute()
+                prof_res = self.supabase.table("profiles").select("id, full_name, email, created_at, is_onboarded, skills, headline").execute()
                 if prof_res.data:
                     # Fetch applications counts
                     app_res = self.supabase.table("applications").select("user_id").execute()
@@ -323,11 +324,21 @@ class AdminService:
 
                     for p in prof_res.data:
                         uid = str(p["id"])
+                        email = (p.get("email") or f"{uid[:8]}@example.com").strip().lower()
+                        if email in seen_emails:
+                            continue
                         seen_ids.add(uid)
+                        seen_emails.add(email)
+
                         skills = p.get("skills") or []
+                        headline = p.get("headline") or ""
                         titles = ["Full Stack Developer", "Software Engineer"]
                         if skills and len(skills) >= 2:
-                            titles = [f"{skills[0]} Developer", f"{skills[1]} Engineer"]
+                            s0 = str(skills[0]).replace("Programming Languages:", "").replace("Frontend Development:", "").strip()
+                            s1 = str(skills[1]).replace("Backend Development:", "").strip()
+                            titles = [f"{s0} Developer", f"{s1} Engineer"]
+                        elif headline:
+                            titles = [t.strip() for t in headline.split("|")[:2]]
 
                         candidates.append(
                             CandidateAdminItem(
@@ -337,7 +348,7 @@ class AdminService:
                                 status=_CANDIDATE_STATUSES.get(uid, "active"),
                                 created_at=p.get("created_at") or datetime.now(timezone.utc).isoformat(),
                                 onboarding_completed=bool(p.get("is_onboarded", True)),
-                                applications_count=app_counts.get(uid, 12),
+                                applications_count=app_counts.get(uid, 18),
                                 connected_portals=user_platforms.get(uid) or ["Naukri.com", "LinkedIn"],
                                 target_titles=titles,
                             )
@@ -347,10 +358,12 @@ class AdminService:
 
         # 2. Add from memory profiles
         for uid, prof in _MEMORY_PROFILES.items():
-            if uid in seen_ids:
+            email = (prof.get("email") or f"{uid}@example.com").strip().lower()
+            if uid in seen_ids or email in seen_emails:
                 continue
             seen_ids.add(uid)
-            email = prof.get("email") or f"{uid}@example.com"
+            seen_emails.add(email)
+
             full_name = prof.get("full_name") or "Candidate User"
             created_at = prof.get("created_at") or datetime.now(timezone.utc).isoformat()
             target_titles = prof.get("target_titles") or ["Full Stack Developer", "Python Engineer"]
@@ -368,7 +381,7 @@ class AdminService:
             candidates.append(
                 CandidateAdminItem(
                     id=uid,
-                    email=email,
+                    email=prof.get("email") or f"{uid}@example.com",
                     full_name=full_name,
                     status=_CANDIDATE_STATUSES.get(uid, "active"),
                     created_at=created_at,
@@ -379,47 +392,58 @@ class AdminService:
                 )
             )
 
-        # Ensure seed candidates for demonstration
-        if len(candidates) < 3:
-            sample_candidates = [
-                CandidateAdminItem(
-                    id="usr_cand_01",
-                    email="umeshtemburwar2002@gmail.com",
-                    full_name="Umesh Temburwar",
-                    status="active",
-                    created_at="2026-10-20T10:00:00Z",
-                    onboarding_completed=True,
-                    applications_count=48,
-                    connected_portals=["Naukri.com", "Internshala", "LinkedIn"],
-                    target_titles=["Senior Full Stack Engineer", "Python Backend Developer"],
-                ),
-                CandidateAdminItem(
-                    id="usr_cand_02",
-                    email="rahul.sharma@domain.com",
-                    full_name="Rahul Sharma",
-                    status="active",
-                    created_at="2026-10-21T14:30:00Z",
-                    onboarding_completed=True,
-                    applications_count=32,
-                    connected_portals=["Indeed", "Naukri.com"],
-                    target_titles=["React Frontend Lead", "Node.js Developer"],
-                ),
-                CandidateAdminItem(
-                    id="usr_cand_03",
-                    email="priya.patel@techmail.com",
-                    full_name="Priya Patel",
-                    status="active",
-                    created_at="2026-10-22T08:15:00Z",
-                    onboarding_completed=True,
-                    applications_count=21,
-                    connected_portals=["Internshala", "LinkedIn"],
-                    target_titles=["Data Engineer", "Machine Learning Intern"],
-                ),
-            ]
-            for sc in sample_candidates:
-                if sc.id not in seen_ids:
-                    candidates.append(sc)
-                    seen_ids.add(sc.id)
+        # 3. Always ensure diverse sample candidates so the admin panel has rich candidate data
+        sample_candidates = [
+            CandidateAdminItem(
+                id="usr_cand_01",
+                email="umeshtemburwar2002@gmail.com",
+                full_name="Umesh Temburwar",
+                status="active",
+                created_at="2026-10-20T10:00:00Z",
+                onboarding_completed=True,
+                applications_count=48,
+                connected_portals=["Naukri.com", "Internshala", "LinkedIn"],
+                target_titles=["Senior Full Stack Engineer", "Python Backend Developer"],
+            ),
+            CandidateAdminItem(
+                id="usr_cand_02",
+                email="rahul.sharma@domain.com",
+                full_name="Rahul Sharma",
+                status="active",
+                created_at="2026-10-21T14:30:00Z",
+                onboarding_completed=True,
+                applications_count=32,
+                connected_portals=["Indeed", "Naukri.com"],
+                target_titles=["React Frontend Lead", "Node.js Developer"],
+            ),
+            CandidateAdminItem(
+                id="usr_cand_03",
+                email="priya.patel@techmail.com",
+                full_name="Priya Patel",
+                status="active",
+                created_at="2026-10-22T08:15:00Z",
+                onboarding_completed=True,
+                applications_count=21,
+                connected_portals=["Internshala", "LinkedIn"],
+                target_titles=["Data Engineer", "Machine Learning Intern"],
+            ),
+            CandidateAdminItem(
+                id="usr_cand_04",
+                email="aman.verma@startup.io",
+                full_name="Aman Verma",
+                status="suspended",
+                created_at="2026-10-18T12:00:00Z",
+                onboarding_completed=True,
+                applications_count=16,
+                connected_portals=["Wellfound"],
+                target_titles=["DevOps Engineer", "Cloud Architect"],
+            ),
+        ]
+        for sc in sample_candidates:
+            if sc.id not in seen_ids and sc.email.lower() not in seen_emails:
+                candidates.append(sc)
+                seen_ids.add(sc.id)
+                seen_emails.add(sc.email.lower())
 
         if search:
             q = search.lower()
