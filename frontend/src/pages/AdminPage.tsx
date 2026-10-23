@@ -24,6 +24,8 @@ import {
   fetchCandidatesApi,
   updateCandidateStatusApi,
   fetchAuditLogsApi,
+} from '../services/adminService';
+import type {
   AdminSystemStats,
   PortalAdminConfig,
   CandidateAdminItem,
