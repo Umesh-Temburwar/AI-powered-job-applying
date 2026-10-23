@@ -37,14 +37,28 @@ export interface DashboardSummaryApiResponse {
   platform_breakdown: PlatformBreakdownItem[];
 }
 
-const DEFAULT_BASE_URL = import.meta.env.DEV ? 'http://127.0.0.1:8000' : '';
+export function getBaseApiUrl(): string {
+  const envUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
+  const isBrowser = typeof window !== 'undefined';
+  const isLocalHost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  if (envUrl) {
+    if (isBrowser && !isLocalHost && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
+      return '';
+    }
+    return envUrl;
+  }
+
+  return import.meta.env.DEV ? 'http://127.0.0.1:8000' : '';
+}
+
 const DEFAULT_TIMEOUT_MS = 15000;
 
 export async function apiClient<T>(
   endpoint: string,
   options: RequestInit & { timeoutMs?: number } = {}
 ): Promise<T> {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_BASE_URL;
+  const baseUrl = getBaseApiUrl();
   const url = `${baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -124,8 +138,10 @@ export async function apiClient<T>(
       );
     }
     if (err instanceof TypeError && err.message.toLowerCase().includes('fetch')) {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const hint = isLocal ? ' Please ensure the FastAPI backend is running locally on http://127.0.0.1:8000 (e.g. uvicorn main:app --reload).' : ' Please verify the backend deployment and API routes.';
       throw new ApiError(
-        'Network connection failure. The FastAPI backend server is currently offline or unreachable.',
+        `Network connection failure. The FastAPI backend server is currently offline or unreachable.${hint}`,
         'NETWORK_ERROR'
       );
     }
@@ -599,11 +615,40 @@ export interface BackendConnectionItem {
   id?: string | null;
   user_id: string;
   platform: string;
+  portal_id?: string | null;
+  display_name?: string | null;
+  website_url?: string | null;
+  login_url?: string | null;
+  job_discovery_url?: string | null;
+  integration_type?: string | null;
+  capabilities?: {
+    public_job_discovery?: boolean;
+    job_detail_navigation?: boolean;
+    application_form_assistance?: boolean;
+    application_submission?: boolean;
+  } | null;
+  restrictions?: string[] | null;
+  portal_status?: string | null;
   status: ConnectionStatus;
   account_email?: string | null;
   last_verified?: string | null;
   error_message?: string | null;
   metadata?: Record<string, unknown> | null;
+}
+
+export interface PortalRegistryApiResponse {
+  portals: {
+    id: string;
+    name: string;
+    website_url: string;
+    login_url: string;
+    job_discovery_url: string;
+    integration_type: string;
+    capabilities: Record<string, boolean>;
+    restrictions: string[];
+    status: string;
+    notes: string;
+  }[];
 }
 
 export interface ConnectionListApiResponse {
@@ -620,6 +665,20 @@ export interface ConnectionActionApiResponse {
 
 export async function getConnectionsApi(token: string): Promise<ConnectionListApiResponse> {
   return apiClient<ConnectionListApiResponse>('/api/v1/connections', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function getPortalRegistryApi(): Promise<PortalRegistryApiResponse> {
+  return apiClient<PortalRegistryApiResponse>('/api/v1/connections/registry');
+}
+
+export async function openPlatformPortalApi(
+  token: string,
+  platform: string
+): Promise<ConnectionActionApiResponse> {
+  return apiClient<ConnectionActionApiResponse>(`/api/v1/connections/${encodeURIComponent(platform)}/open`, {
+    method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });
 }
@@ -644,6 +703,16 @@ export async function verifyConnectionApi(
   });
 }
 
+export async function retryConnectionApi(
+  token: string,
+  platform: string
+): Promise<ConnectionActionApiResponse> {
+  return apiClient<ConnectionActionApiResponse>(`/api/v1/connections/${encodeURIComponent(platform)}/retry`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export async function disconnectPlatformApi(
   token: string,
   platform: string
@@ -653,6 +722,7 @@ export async function disconnectPlatformApi(
     headers: { Authorization: `Bearer ${token}` },
   });
 }
+
 
 
 

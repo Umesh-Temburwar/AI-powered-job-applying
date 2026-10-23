@@ -24,8 +24,10 @@ export const DashboardPage: React.FC = () => {
     actionLoading: actionPlatform,
     error: connError,
     refreshConnections,
+    openPortal,
     connectPlatform,
     verifyConnection,
+    retryConnection,
     disconnectPlatform,
   } = useConnections();
 
@@ -206,10 +208,19 @@ export const DashboardPage: React.FC = () => {
   };
 
   // Connection action handlers
+  const handleOpenPortal = async (platform: string) => {
+    try {
+      await openPortal(platform);
+      showToast(`Opening official portal for ${platform}...`, 'info');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : `Failed to open ${platform}`, 'error');
+    }
+  };
+
   const handleConnect = async (platform: string) => {
     try {
       await connectPlatform(platform);
-      showToast(`Opened browser login for ${platform}`, 'info');
+      showToast(`Opened browser login for ${platform}. Please sign in on the official portal.`, 'info');
     } catch (err) {
       showToast(err instanceof Error ? err.message : `Failed to connect ${platform}`, 'error');
     }
@@ -225,6 +236,19 @@ export const DashboardPage: React.FC = () => {
       }
     } catch (err) {
       showToast(err instanceof Error ? err.message : `Failed to verify ${platform}`, 'error');
+    }
+  };
+
+  const handleRetry = async (platform: string) => {
+    try {
+      const res = await retryConnection(platform);
+      if (res?.status === 'connected') {
+        showToast(`Verified session on ${platform}`, 'success');
+      } else {
+        showToast(`Retry check: ${res?.message || 'Login still required.'}`, 'info');
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : `Failed to retry verification for ${platform}`, 'error');
     }
   };
 
@@ -257,21 +281,14 @@ export const DashboardPage: React.FC = () => {
         return (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-[#B45309] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-[#B45309]" />
-            Login required
+            Login Required
           </span>
         );
       case 'verification_required':
         return (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-[#B45309] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-[#B45309]" />
-            Verification required
-          </span>
-        );
-      case 'error':
-        return (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#B91C1C] font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" />
-            Error
+            Verification Required
           </span>
         );
       case 'unsupported':
@@ -281,11 +298,18 @@ export const DashboardPage: React.FC = () => {
             Unsupported
           </span>
         );
+      case 'error':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#B91C1C] font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" />
+            Error
+          </span>
+        );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-[#6B6B6B] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-[#6B6B6B]" />
-            Not connected
+            Not Connected
           </span>
         );
     }
@@ -415,55 +439,128 @@ export const DashboardPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {connections.map((conn) => {
-            const isConnecting = actionPlatform === conn.platform;
+            const isConnecting = actionPlatform === (conn.portal_id || conn.platform);
+            const isConnected = conn.status === 'connected';
+            const canRetry = conn.status === 'error' || conn.status === 'login_required' || conn.status === 'verification_required';
+            const targetId = conn.portal_id || conn.platform;
+
             return (
               <div
-                key={conn.platform}
-                className="p-3.5 rounded-[6px] border border-[#E5E5E5] bg-[#FAFAFA] flex flex-col justify-between"
+                key={targetId}
+                className="p-3.5 rounded-[6px] border border-[#E5E5E5] bg-[#FAFAFA] flex flex-col justify-between hover:border-[#D4D4D4] transition-colors"
               >
                 <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-semibold text-[#111111]">
-                      {conn.platform}
-                    </span>
+                  <div className="flex items-start justify-between gap-1.5">
+                    <div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[13px] font-semibold text-[#111111]">
+                          {conn.display_name || conn.platform}
+                        </span>
+                        {conn.website_url && (
+                          <a
+                            href={conn.website_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#9CA3AF] hover:text-[#4B5563] text-[11px] leading-none"
+                            title={`Visit ${conn.display_name || conn.platform}`}
+                          >
+                            ↗
+                          </a>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-[#6B6B6B] block mt-0.5">
+                        {conn.integration_type === 'official_api'
+                          ? 'Official API'
+                          : 'Isolated Browser Profile'}
+                      </span>
+                    </div>
                     {renderConnectionBadge(conn.status)}
                   </div>
-                  <p className="text-[11px] text-[#6B6B6B] mt-1.5 line-clamp-2">
+
+                  {/* Capabilities indicators */}
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {conn.capabilities?.public_job_discovery && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-[3px] bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]">
+                        Discovery
+                      </span>
+                    )}
+                    {conn.capabilities?.job_detail_navigation && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-[3px] bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
+                        Navigation
+                      </span>
+                    )}
+                    {conn.capabilities?.application_form_assistance && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-[3px] bg-[#FAF5FF] text-[#6B21A8] border border-[#E9D5FF]">
+                        Assist
+                      </span>
+                    )}
+                    {conn.capabilities?.application_submission && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-[3px] bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
+                        Apply
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-[#6B6B6B] mt-2 line-clamp-3">
                     {conn.error_message ||
                       (conn.last_verified
-                        ? `Verified at ${new Date(conn.last_verified).toLocaleTimeString()}`
-                        : conn.status === 'connected'
+                        ? `Verified at ${new Date(conn.last_verified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                        : isConnected
                         ? 'Active verified session'
-                        : 'Official browser login flow')}
+                        : conn.portal_status === 'in_development'
+                        ? 'Profile isolation active. Direct apply in development.'
+                        : 'Open portal to sign in on official website.')}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 mt-3.5 pt-3 border-t border-[#E5E5E5]">
-                  {conn.status !== 'connected' && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleConnect(conn.platform)}
-                      disabled={isConnecting}
-                    >
-                      {isConnecting ? 'Opening...' : 'Connect'}
-                    </Button>
-                  )}
+                <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-[#E5E5E5]">
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => handleVerify(conn.platform)}
+                    onClick={() => handleOpenPortal(targetId)}
+                    disabled={isConnecting}
+                  >
+                    Open
+                  </Button>
+
+                  {!isConnected && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleConnect(targetId)}
+                      disabled={isConnecting}
+                    >
+                      {isConnecting ? 'Connecting...' : 'Connect'}
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleVerify(targetId)}
                     disabled={isConnecting}
                   >
                     Verify
                   </Button>
-                  {conn.status === 'connected' && (
+
+                  {canRetry && (
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleDisconnect(conn.platform)}
+                      onClick={() => handleRetry(targetId)}
+                      disabled={isConnecting}
+                    >
+                      Retry
+                    </Button>
+                  )}
+
+                  {isConnected && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleDisconnect(targetId)}
                       disabled={isConnecting}
                     >
                       Disconnect

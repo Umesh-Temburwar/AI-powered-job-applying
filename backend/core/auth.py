@@ -54,11 +54,12 @@ class AuthenticatedUser(BaseModel):
 async def _verify_via_supabase_api(token: str, settings: Settings) -> AuthenticatedUser:
     """Fallback: Validate token directly with Supabase Auth endpoint (/auth/v1/user)."""
     auth_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/user"
+    # Must supply valid anon or service_role JWT key for apikey header on /auth/v1/user
     api_key = (
-        settings.SUPABASE_PUBLISHABLE_KEY
-        or settings.SUPABASE_ANON_KEY
-        or settings.SUPABASE_SECRET_KEY
+        settings.SUPABASE_ANON_KEY
         or settings.SUPABASE_SERVICE_ROLE_KEY
+        or settings.SUPABASE_PUBLISHABLE_KEY
+        or settings.SUPABASE_SECRET_KEY
     )
     headers = {"Authorization": f"Bearer {token}"}
     if api_key:
@@ -184,14 +185,19 @@ async def get_current_user(
             detail="Malformed authentication token payload.",
         ) from exc
 
-    valid_issuers = (
-        [
-            f"{active_settings.SUPABASE_URL.rstrip('/')}/auth/v1",
-            active_settings.SUPABASE_URL.rstrip("/"),
-        ]
-        if active_settings.SUPABASE_URL
-        else None
-    )
+    valid_issuers = ["supabase"]
+    if active_settings.SUPABASE_URL:
+        norm_url = active_settings.SUPABASE_URL.rstrip("/")
+        valid_issuers.extend([
+            f"{norm_url}/auth/v1",
+            norm_url,
+        ])
+        ref_id = norm_url.replace("https://", "").replace("http://", "").split(".")[0]
+        if ref_id:
+            valid_issuers.extend([
+                f"https://{ref_id}.supabase.co/auth/v1",
+                f"https://{ref_id}.supabase.co",
+            ])
 
     has_iss = "iss" in unverified_claims and bool(valid_issuers)
     has_aud = "aud" in unverified_claims
@@ -280,12 +286,12 @@ async def get_current_user(
     if alg in ALLOWED_SYMMETRIC_ALGORITHMS:
         if active_settings.SUPABASE_JWT_SECRET:
             # Prepare potential keys: raw string/bytes and base64-decoded bytes (common in Supabase)
-            raw_secret = active_settings.SUPABASE_JWT_SECRET
-            candidate_keys: list[bytes | str] = [raw_secret]
+            raw_secret = active_settings.SUPABASE_JWT_SECRET.strip()
+            candidate_keys: list[bytes | str] = [raw_secret, raw_secret.encode("utf-8")]
             try:
                 import base64
                 decoded_key = base64.b64decode(raw_secret)
-                if decoded_key and decoded_key != raw_secret.encode("utf-8"):
+                if decoded_key and decoded_key not in candidate_keys:
                     candidate_keys.append(decoded_key)
             except Exception:
                 pass

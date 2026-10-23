@@ -3,13 +3,36 @@ import pytest
 from services.platform_automation.base import ApplyResult, JobOpportunity
 from services.platform_automation.indeed import IndeedPlatformAdapter
 from services.platform_automation.internshala import InternshalaPlatformAdapter
+from services.platform_automation.linkedin import LinkedInPlatformAdapter
 from services.platform_automation.naukri import NaukriPlatformAdapter
 from services.platform_automation.runner import get_adapter_for_platform, run_platform_automation_task
+from services.portal_registry import PORTAL_REGISTRY, get_all_portals, get_portal
+from services.connection_service import connection_service
 
 
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
+
+
+def test_portal_registry_completeness():
+    portals = get_all_portals()
+    expected_ids = {"naukri", "internshala", "indeed", "linkedin", "foundit", "wellfound", "glassdoor", "cutshort"}
+    registered_ids = {p.id for p in portals}
+    assert expected_ids.issubset(registered_ids)
+
+    # Check Naukri definition
+    naukri = get_portal("naukri")
+    assert naukri is not None
+    assert naukri.name == "Naukri.com"
+    assert naukri.capabilities.public_job_discovery is True
+    assert naukri.capabilities.application_submission is True
+
+    # Check LinkedIn definition
+    linkedin = get_portal("linkedin")
+    assert linkedin is not None
+    assert linkedin.name == "LinkedIn Jobs"
+    assert "manual_browser_login" in linkedin.supported_auth_methods
 
 
 def test_platform_adapter_resolution():
@@ -24,6 +47,10 @@ def test_platform_adapter_resolution():
     indeed_adapter = get_adapter_for_platform("Indeed")
     assert isinstance(indeed_adapter, IndeedPlatformAdapter)
     assert indeed_adapter.platform_name == "Indeed"
+
+    linkedin_adapter = get_adapter_for_platform("LinkedIn")
+    assert isinstance(linkedin_adapter, LinkedInPlatformAdapter)
+    assert linkedin_adapter.platform_name == "LinkedIn"
 
 
 def test_naukri_url_generation_and_dry_run():
@@ -93,6 +120,48 @@ def test_indeed_url_generation():
     assert "5QWDV" in urls[0]  # Easily Apply filter tag
 
 
+def test_linkedin_url_generation_and_dry_run():
+    adapter = LinkedInPlatformAdapter()
+    urls = adapter.build_search_urls(keywords=["Full Stack Developer"], locations=["Bengaluru"])
+    assert len(urls) == 1
+    assert "f_AL=true" in urls[0]
+    assert "Full+Stack+Developer" in urls[0]
+
+    job = JobOpportunity(
+        job_title="Senior Python Engineer",
+        company="Global Tech",
+        job_url="https://www.linkedin.com/jobs/view/999888",
+        platform="LinkedIn",
+        location="Bengaluru",
+        is_easy_apply=True,
+    )
+    dry_res = adapter.apply_to_job(
+        driver=None,
+        job=job,
+        user_profile={"full_name": "Bob Developer"},
+        resume_path=None,
+        dry_run=True,
+    )
+    assert dry_res.success is True
+    assert dry_res.status == "review_needed"
+    assert "[Dry-run]" in dry_res.notes
+
+
+def test_connection_service_lifecycle():
+    user_id = "test_user_conn_lifecycle"
+    # 1. Initially not connected
+    connections = connection_service.get_user_connections(user_id=user_id)
+    assert len(connections) >= 8
+
+    # 2. Open portal
+    open_res = connection_service.open_platform_portal(user_id=user_id, platform="naukri")
+    assert open_res.status == "connecting"
+
+    # 3. Disconnect
+    disc_res = connection_service.disconnect_platform(user_id=user_id, platform="naukri")
+    assert disc_res.status == "not_connected"
+
+
 @pytest.mark.anyio
 async def test_automation_runner_rejects_incomplete_profile():
     state_updates = []
@@ -103,7 +172,6 @@ async def test_automation_runner_rejects_incomplete_profile():
     def is_cancelled():
         return False
 
-    # Mock user with blank name
     task_id = "test-task-incomplete"
     user_id = "usr_blank_candidate"
     record = {
@@ -113,7 +181,6 @@ async def test_automation_runner_rejects_incomplete_profile():
         "payload": {},
     }
 
-    # Clear any memory profile so it starts empty
     from services.profile_service import _MEMORY_PROFILES
     _MEMORY_PROFILES[user_id] = {
         "id": user_id,
@@ -131,7 +198,6 @@ async def test_automation_runner_rejects_incomplete_profile():
         is_cancelled=is_cancelled,
     )
 
-    # Must fail during stage 1 validation
     final_status = state_updates[-1][0]
     final_msg = state_updates[-1][2]
     assert final_status == "failed"

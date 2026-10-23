@@ -13,6 +13,7 @@ from services import preference_service, profile_service, resume_service
 from services.platform_automation.base import ApplyResult, BasePlatformAdapter, JobOpportunity
 from services.platform_automation.indeed import IndeedPlatformAdapter
 from services.platform_automation.internshala import InternshalaPlatformAdapter
+from services.platform_automation.linkedin import LinkedInPlatformAdapter
 from services.platform_automation.naukri import NaukriPlatformAdapter
 
 logger = logging.getLogger("AutomationRunner")
@@ -28,6 +29,8 @@ def get_adapter_for_platform(platform: str) -> BasePlatformAdapter:
         return InternshalaPlatformAdapter()
     elif "indeed" in p:
         return IndeedPlatformAdapter()
+    elif "linkedin" in p:
+        return LinkedInPlatformAdapter()
     return NaukriPlatformAdapter()
 
 

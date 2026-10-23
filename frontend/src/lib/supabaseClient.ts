@@ -1,10 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const DEFAULT_SUPABASE_URL = 'https://rwtimhnxghgzkgrdymmq.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3dGltaG54Z2hnemtncmR5bW1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NzE0NjksImV4cCI6MjEwODI0NzQ2OX0.cEeA6EsSxd2egW0V1ipH5tjUn3n-CchWpeze18_Z46w';
+
+const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL ||
+  DEFAULT_SUPABASE_URL;
+
 const supabaseKey =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  '';
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  DEFAULT_SUPABASE_ANON_KEY;
 
 // Validate whether real credentials are provided or still placeholders
 export const isSupabaseConfigured = Boolean(
@@ -15,13 +22,9 @@ export const isSupabaseConfigured = Boolean(
     !supabaseKey.includes('YOUR_')
 );
 
-// Fallback dummy URL and anon key to prevent createClient constructor crash when unconfigured
-const fallbackUrl = 'https://rwtimhnxghgzkgrdymmq.supabase.co';
-const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
-
 export const supabase = createClient(
-  isSupabaseConfigured ? supabaseUrl : fallbackUrl,
-  isSupabaseConfigured ? supabaseKey : fallbackKey,
+  supabaseUrl,
+  supabaseKey,
   {
     auth: {
       persistSession: true,
@@ -31,3 +34,4 @@ export const supabase = createClient(
     },
   }
 );
+

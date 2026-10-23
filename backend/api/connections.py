@@ -8,12 +8,27 @@ from schemas.connection import (
     ConnectionActionResponse,
     ConnectionListResponse,
     PlatformConnectionItem,
+    PortalRegistryResponse,
 )
 from services.connection_service import connection_service
 
 logger = logging.getLogger("connections_api")
 
 router = APIRouter(prefix="/connections", tags=["Website Connections"])
+
+
+@router.get("/registry", response_model=PortalRegistryResponse)
+async def get_portal_registry():
+    """Retrieve all supported and audited job portals with metadata, capabilities, and restrictions."""
+    try:
+        portals = connection_service.get_portal_registry()
+        return PortalRegistryResponse(portals=portals)
+    except Exception as exc:
+        logger.error("Failed to retrieve portal registry: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not retrieve portal registry.",
+        ) from exc
 
 
 @router.get("", response_model=ConnectionListResponse)
@@ -32,12 +47,40 @@ async def list_user_connections(
         ) from exc
 
 
+@router.post("/{platform}/open", response_model=ConnectionActionResponse)
+async def open_portal_window(
+    platform: str,
+    user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+):
+    """Step 1: Open official job portal in user's isolated browser profile for manual login."""
+    try:
+        updated = connection_service.open_platform_portal(user_id=user.id, platform=platform)
+        return ConnectionActionResponse(
+            success=True,
+            platform=updated.platform,
+            status=updated.status,
+            message=f"Official {updated.platform} page opened. Please log in with your credentials on the official site.",
+            connection=updated,
+        )
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(val_err),
+        )
+    except Exception as exc:
+        logger.error("Failed to open portal %s for candidate %s: %s", platform, user.id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not open {platform} portal.",
+        ) from exc
+
+
 @router.post("/{platform}/connect", response_model=ConnectionActionResponse)
 async def connect_portal(
     platform: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
 ):
-    """Open user-visible browser session for candidate to log in directly on the official portal."""
+    """Step 3: Open user-visible browser session for candidate to complete manual login."""
     try:
         updated = connection_service.connect_platform(user_id=user.id, platform=platform)
         return ConnectionActionResponse(
@@ -65,14 +108,14 @@ async def verify_portal_connection(
     platform: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
 ):
-    """Verify if a valid, authenticated session exists in candidate's isolated profile."""
+    """Step 4 & 5: Verify if a valid, authenticated session exists in candidate's isolated profile."""
     try:
         verified = connection_service.verify_platform_connection(user_id=user.id, platform=platform)
         is_conn = verified.status == "connected"
         msg = (
             f"Successfully verified active session on {verified.platform}."
             if is_conn
-            else f"No active login detected on {verified.platform}. Please log in first."
+            else f"No active login detected on {verified.platform}. Click 'Open Portal' to sign in on the official site."
         )
         return ConnectionActionResponse(
             success=is_conn,
@@ -94,12 +137,21 @@ async def verify_portal_connection(
         ) from exc
 
 
+@router.post("/{platform}/retry", response_model=ConnectionActionResponse)
+async def retry_portal_verification(
+    platform: str,
+    user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+):
+    """Retry session verification check for the specified portal."""
+    return await verify_portal_connection(platform=platform, user=user)
+
+
 @router.post("/{platform}/disconnect", response_model=ConnectionActionResponse)
 async def disconnect_portal(
     platform: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
 ):
-    """Clear candidate cookies and disconnect the portal."""
+    """Step 6: Clear candidate session cookies and disconnect the portal."""
     try:
         disconnected = connection_service.disconnect_platform(user_id=user.id, platform=platform)
         return ConnectionActionResponse(
