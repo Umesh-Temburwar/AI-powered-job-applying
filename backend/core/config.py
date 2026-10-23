@@ -17,15 +17,15 @@ class Settings(BaseSettings):
     ]
 
     # Supabase Configuration
-    SUPABASE_URL: str = ""
-    SUPABASE_ANON_KEY: str = ""
-    SUPABASE_PUBLISHABLE_KEY: str = ""
-    SUPABASE_SERVICE_ROLE_KEY: str = ""
+    SUPABASE_URL: str = "https://rwtimhnxghgzkgrdymmq.supabase.co"
+    SUPABASE_ANON_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3dGltaG54Z2hnemtncmR5bW1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NzE0NjksImV4cCI6MjEwODI0NzQ2OX0.cEeA6EsSxd2egW0V1ipH5tjUn3n-CchWpeze18_Z46w"
+    SUPABASE_PUBLISHABLE_KEY: str = "sb_publishable_EUzd4legD4ozbD-KEedciw_-OQVyCJc"
+    SUPABASE_SERVICE_ROLE_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3dGltaG54Z2hnemtncmR5bW1xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjY3MTQ2OSwiZXhwIjoyMTA4MjQ3NDY5fQ.bkeKhR5u5aCSukEDpUKEDZKkjMqCAtrYZbspumWR6ec"
     SUPABASE_SECRET_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
 
     # Administrator Access Control
-    ADMIN_EMAILS: str = "umeshtemburwar2002@gmail.com"
+    ADMIN_EMAILS: str = "umeshtemburwar2002@gmail.com,utemburwar2002@gmail.com"
 
     @field_validator("FRONTEND_ORIGINS", mode="before")
     @classmethod

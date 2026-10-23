@@ -43,9 +43,11 @@ async def http_exception_handler(
     if isinstance(exc.detail, dict):
         code = exc.detail.get("code") or status_code_map.get(exc.status_code, (f"HTTP_{exc.status_code}", ""))[0]
         message = exc.detail.get("message") or "An error occurred"
+        content = make_error_envelope(code=code, message=message, details=exc.detail.get("details"))
+        content["detail"] = message
         return JSONResponse(
             status_code=exc.status_code,
-            content=make_error_envelope(code=code, message=message, details=exc.detail.get("details")),
+            content=content,
         )
 
     code, default_msg = status_code_map.get(
@@ -54,10 +56,12 @@ async def http_exception_handler(
     )
 
     message = exc.detail if isinstance(exc.detail, str) and exc.detail else default_msg
+    content = make_error_envelope(code=code, message=message)
+    content["detail"] = message
 
     return JSONResponse(
         status_code=exc.status_code,
-        content=make_error_envelope(code=code, message=message),
+        content=content,
     )
 
 

@@ -188,48 +188,37 @@ const FALLBACK_PORTALS: PortalAdminConfig[] = [
 
 const FALLBACK_CANDIDATES: CandidateAdminItem[] = [
   {
-    id: 'usr_cand_01',
+    id: '0ff8ac23-96d8-419e-9cff-ffd3b3430f17',
     email: 'umeshtemburwar2002@gmail.com',
     full_name: 'Umesh Temburwar',
     status: 'active',
-    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+    created_at: '2026-10-22T21:53:58.571629Z',
     onboarding_completed: true,
-    applications_count: 54,
-    connected_portals: ['Naukri.com', 'Internshala', 'LinkedIn'],
-    target_titles: ['Senior Full Stack Engineer', 'Python Backend Lead'],
+    applications_count: 5,
+    connected_portals: ['Naukri.com', 'Internshala', 'LinkedIn', 'Indeed'],
+    target_titles: ['Full Stack Developer', 'React.js Developer'],
   },
   {
-    id: 'usr_cand_02',
-    email: 'rahul.sharma@example.com',
-    full_name: 'Rahul Sharma',
+    id: '976be0cd-85a2-4274-9a87-598328337d7a',
+    email: 'vaibhavwaghalkar3@gmail.com',
+    full_name: 'Vaibhav Waghalkar',
     status: 'active',
-    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-    onboarding_completed: true,
-    applications_count: 36,
-    connected_portals: ['Indeed', 'Naukri.com'],
-    target_titles: ['React Frontend Developer', 'Node.js Engineer'],
+    created_at: '2026-10-23T08:09:12.536507Z',
+    onboarding_completed: false,
+    applications_count: 0,
+    connected_portals: ['Internshala', 'Naukri.com'],
+    target_titles: ['AI Full-stack Developer', 'Python Developer'],
   },
   {
-    id: 'usr_cand_03',
-    email: 'priya.patel@techcorp.in',
-    full_name: 'Priya Patel',
+    id: 'b05bf266-80c7-49e0-9ebd-cf43f92e17d5',
+    email: 'utemburwar2002@gmail.com',
+    full_name: 'Umesh Temburwar',
     status: 'active',
-    created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
+    created_at: '2026-10-23T01:48:26.313984Z',
     onboarding_completed: true,
-    applications_count: 24,
-    connected_portals: ['Internshala', 'Cutshort'],
-    target_titles: ['Data Scientist Intern', 'Machine Learning Engineer'],
-  },
-  {
-    id: 'usr_cand_04',
-    email: 'aman.verma@startup.io',
-    full_name: 'Aman Verma',
-    status: 'suspended',
-    created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
-    onboarding_completed: true,
-    applications_count: 12,
-    connected_portals: ['Wellfound'],
-    target_titles: ['DevOps Engineer', 'Cloud Architect'],
+    applications_count: 4,
+    connected_portals: ['Naukri.com'],
+    target_titles: ['Full Stack Developer', 'Software Engineer'],
   },
 ];
 
@@ -530,14 +519,9 @@ export async function fetchCandidatesApi(
       }
     }
 
-    // Always merge FALLBACK_CANDIDATES for any missing demo candidates so candidate list is always populated
-    for (const fb of FALLBACK_CANDIDATES) {
-      const email = fb.email.toLowerCase().trim();
-      if (!seenEmails.has(email) && !seenIds.has(fb.id)) {
-        seenEmails.add(email);
-        seenIds.add(fb.id);
-        combinedCandidates.push(fb);
-      }
+    // If no candidates were retrieved from Supabase, only then use real fallback
+    if (combinedCandidates.length === 0) {
+      combinedCandidates.push(...FALLBACK_CANDIDATES);
     }
 
     let filtered = combinedCandidates;

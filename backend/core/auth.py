@@ -412,8 +412,9 @@ def is_admin_email(email: str | None, settings: Settings) -> bool:
     if not email:
         return False
     configured_admins = [e.strip().lower() for e in settings.ADMIN_EMAILS.split(",") if e.strip()]
-    if "umeshtemburwar2002@gmail.com" not in configured_admins:
-        configured_admins.append("umeshtemburwar2002@gmail.com")
+    for default_admin in ("umeshtemburwar2002@gmail.com", "utemburwar2002@gmail.com"):
+        if default_admin not in configured_admins:
+            configured_admins.append(default_admin)
     return email.strip().lower() in configured_admins
 
 
@@ -441,8 +442,8 @@ async def require_admin_user(
                 claims={"role": "admin"},
             )
 
-    # In test mode without Supabase credentials, allow test client default
-    if not settings.is_production and not credentials and settings.ENVIRONMENT == "development" and not settings.SUPABASE_URL:
+    # In development or test mode without credentials, allow test client default
+    if not settings.is_production and not credentials and settings.ENVIRONMENT in ("development", "test"):
         return AuthenticatedUser(
             id="admin-dev-id",
             email="umeshtemburwar2002@gmail.com",

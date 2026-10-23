@@ -44,6 +44,12 @@ def test_admin_portals_endpoints(client: TestClient):
     )
     assert invalid_res.status_code == 404
 
+    # 4. Restore naukri portal to enabled
+    client.post(
+        "/api/v1/admin/portals/naukri/config",
+        json={"daily_limit": 50, "delay_seconds": 25, "is_enabled": True},
+    )
+
 
 def test_admin_candidates_endpoints(client: TestClient):
     """Verify candidate list and status modification endpoints."""
