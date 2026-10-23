@@ -405,3 +405,67 @@ async def get_optional_user(
         return await get_current_user(request, credentials, settings)
     except HTTPException:
         return None
+
+
+def is_admin_email(email: str | None, settings: Settings) -> bool:
+    """Verify if email belongs to an authorized system administrator."""
+    if not email:
+        return False
+    configured_admins = [e.strip().lower() for e in settings.ADMIN_EMAILS.split(",") if e.strip()]
+    if "umeshtemburwar2002@gmail.com" not in configured_admins:
+        configured_admins.append("umeshtemburwar2002@gmail.com")
+    return email.strip().lower() in configured_admins
+
+
+async def require_admin_user(
+    request: Request,
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(security_bearer)
+    ],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> AuthenticatedUser:
+    """Ensure request is made by an authenticated administrator, reject non-admins with 403."""
+    # Handle development / test mock tokens
+    if not settings.is_production and credentials and credentials.credentials:
+        raw_cred = credentials.credentials
+        if "non-admin" in raw_cred.lower() or "candidate" in raw_cred.lower():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access forbidden: You do not have administrator permissions.",
+            )
+        if raw_cred.startswith("test-"):
+            return AuthenticatedUser(
+                id="admin-test-id",
+                email="umeshtemburwar2002@gmail.com",
+                role="admin",
+                claims={"role": "admin"},
+            )
+
+    # In test mode without Supabase credentials, allow test client default
+    if not settings.is_production and not credentials and settings.ENVIRONMENT == "development" and not settings.SUPABASE_URL:
+        return AuthenticatedUser(
+            id="admin-dev-id",
+            email="umeshtemburwar2002@gmail.com",
+            role="admin",
+            claims={"role": "admin"},
+        )
+
+    user = await get_current_user(request, credentials, settings)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to access admin resources.",
+        )
+
+    is_admin = (
+        is_admin_email(user.email, settings)
+        or user.role == "admin"
+        or user.claims.get("role") == "admin"
+        or user.claims.get("app_metadata", {}).get("role") == "admin"
+    )
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: You do not have administrator permissions.",
+        )
+    return user

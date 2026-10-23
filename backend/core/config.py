@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     SUPABASE_SECRET_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
 
+    # Administrator Access Control
+    ADMIN_EMAILS: str = "umeshtemburwar2002@gmail.com"
+
     @field_validator("FRONTEND_ORIGINS", mode="before")
     @classmethod
     def parse_frontend_origins(cls, value: str | list[str]) -> list[str]:

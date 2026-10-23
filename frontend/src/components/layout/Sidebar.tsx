@@ -19,7 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
     { label: 'Applications', path: '/applications' },
     { label: 'Profile & Resume', path: '/profile' },
     { label: 'Settings', path: '/settings' },
-    { label: 'Admin Panel', path: '/admin' },
+    ...(user?.isAdmin ? [{ label: 'Admin Panel', path: '/admin' }] : []),
   ];
 
   const handleLogout = async () => {

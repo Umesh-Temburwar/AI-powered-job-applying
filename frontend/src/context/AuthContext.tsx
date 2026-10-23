@@ -59,14 +59,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userMeta.user_name ||
       (current.user.email ? current.user.email.split('@')[0] : 'Candidate');
 
+    const adminEmails = ['umeshtemburwar2002@gmail.com'];
+    const userEmail = (current.user.email || '').trim().toLowerCase();
+    const isAdmin = Boolean(
+      (userEmail && adminEmails.includes(userEmail)) ||
+      (userMeta && (userMeta as Record<string, unknown>).role === 'admin')
+    );
+
     const authUser: AuthUser = {
       id: current.user.id,
       email: current.user.email || '',
       fullName: candidateName,
+      isAdmin,
     };
 
     setUser((prev) => {
-      if (prev && prev.id === authUser.id && prev.email === authUser.email && prev.fullName === authUser.fullName) {
+      if (
+        prev &&
+        prev.id === authUser.id &&
+        prev.email === authUser.email &&
+        prev.fullName === authUser.fullName &&
+        prev.isAdmin === authUser.isAdmin
+      ) {
         return prev;
       }
       return authUser;

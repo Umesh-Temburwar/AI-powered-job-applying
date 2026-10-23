@@ -85,3 +85,11 @@ def test_admin_audit_logs_endpoint(client: TestClient):
     assert "portal" in first_log
     assert "action" in first_log
     assert "details" in first_log
+
+
+def test_admin_forbidden_for_non_admin_users(client: TestClient):
+    """Verify that unauthorized non-admin tokens are blocked with 403 Forbidden."""
+    headers_non_admin = {"Authorization": "Bearer test-non-admin-token"}
+    response = client.get("/api/v1/admin/stats", headers=headers_non_admin)
+    assert response.status_code == 403
+    assert "administrator permissions" in response.json()["detail"].lower()

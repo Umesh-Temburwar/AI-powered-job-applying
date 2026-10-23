@@ -7,11 +7,13 @@ import { Skeleton } from '../ui/Skeleton';
 export interface ProtectedRouteProps {
   children?: React.ReactNode;
   allowIncompleteOnboarding?: boolean;
+  requireAdmin?: boolean;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowIncompleteOnboarding = false,
+  requireAdmin = false,
 }) => {
   const { user, isLoading: authLoading } = useAuth();
   const { isOnboarded, loading: statusLoading } = useOnboardingStatus();
@@ -48,6 +50,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (!user && !authLoading) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Restrict admin routes to authorized administrators only
+  if (requireAdmin && user && !user.isAdmin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Redirect users who haven't finished onboarding to the onboarding wizard

@@ -65,7 +65,14 @@ export function App() {
                 <Route path="/automation" element={<AutomationPage />} />
                 <Route path="/applications" element={<ApplicationsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/admin" element={<AdminPage />} />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute requireAdmin={true}>
+                      <AdminPage />
+                    </ProtectedRoute>
+                  }
+                />
               </Route>
 
               {/* Catch-all 404 */}
