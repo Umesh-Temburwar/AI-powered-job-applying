@@ -12,9 +12,7 @@ import {
   Sliders,
   Globe,
   Clock,
-  ExternalLink,
   Zap,
-  Filter,
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import {
@@ -40,9 +38,6 @@ export const AdminPage: React.FC = () => {
 
   // Loading States
   const [loadingStats, setLoadingStats] = useState(true);
-  const [loadingPortals, setLoadingPortals] = useState(true);
-  const [loadingCandidates, setLoadingCandidates] = useState(true);
-  const [loadingLogs, setLoadingLogs] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Data States
@@ -67,9 +62,6 @@ export const AdminPage: React.FC = () => {
   const loadAllData = async () => {
     try {
       setLoadingStats(true);
-      setLoadingPortals(true);
-      setLoadingCandidates(true);
-      setLoadingLogs(true);
 
       const [statsData, portalsData, candidatesData, logsData] = await Promise.all([
         fetchAdminStats(),
@@ -84,12 +76,9 @@ export const AdminPage: React.FC = () => {
       setLogs(logsData.logs);
     } catch (err) {
       console.error('Error loading admin telemetry:', err);
-      showToast('error', 'Failed loading live administrative data.');
+      showToast('Failed loading live administrative data.', 'error');
     } finally {
       setLoadingStats(false);
-      setLoadingPortals(false);
-      setLoadingCandidates(false);
-      setLoadingLogs(false);
     }
   };
 
@@ -106,11 +95,11 @@ export const AdminPage: React.FC = () => {
       });
       setPortals((prev) => prev.map((p) => (p.id === portal.id ? updated : p)));
       showToast(
-        'success',
-        `${portal.name} is now ${updated.is_enabled ? 'enabled' : 'disabled'}`
+        `${portal.name} is now ${updated.is_enabled ? 'enabled' : 'disabled'}`,
+        'success'
       );
     } catch {
-      showToast('error', `Failed to toggle ${portal.name}`);
+      showToast(`Failed to toggle ${portal.name}`, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -137,10 +126,10 @@ export const AdminPage: React.FC = () => {
         status: editStatus,
       });
       setPortals((prev) => prev.map((p) => (p.id === editingPortal.id ? updated : p)));
-      showToast('success', `${editingPortal.name} configuration updated.`);
+      showToast(`${editingPortal.name} configuration updated.`, 'success');
       setEditingPortal(null);
     } catch {
-      showToast('error', 'Failed saving portal configuration.');
+      showToast('Failed saving portal configuration.', 'error');
     } finally {
       setActionLoading(null);
     }
@@ -155,9 +144,9 @@ export const AdminPage: React.FC = () => {
       setCandidates((prev) =>
         prev.map((c) => (c.id === cand.id ? { ...c, status: nextStatus } : c))
       );
-      showToast('success', `Candidate ${cand.full_name} status set to ${nextStatus}.`);
+      showToast(`Candidate ${cand.full_name} status set to ${nextStatus}.`, 'success');
     } catch {
-      showToast('error', 'Failed updating candidate status.');
+      showToast('Failed updating candidate status.', 'error');
     } finally {
       setActionLoading(null);
     }
