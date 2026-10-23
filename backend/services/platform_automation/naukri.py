@@ -171,12 +171,31 @@ class NaukriPlatformAdapter(BasePlatformAdapter):
             driver.get(job.job_url)
             time.sleep(3.5)
 
+            # 1. Check if candidate has already applied to this opening
+            already_applied_elems = driver.find_elements(
+                By.XPATH,
+                "//button[contains(translate(., 'ALREADY', 'already'), 'already applied')] | //span[contains(translate(., 'ALREADY', 'already'), 'already applied')] | //div[contains(@class,'already-applied')]"
+            )
+            if already_applied_elems and any(e.is_displayed() for e in already_applied_elems):
+                return ApplyResult(
+                    job_url=job.job_url,
+                    job_title=job.job_title,
+                    company=job.company,
+                    platform="Naukri",
+                    success=True,
+                    status="applied",
+                    notes=f"Already applied previously to '{job.job_title}' at {job.company}.",
+                )
+
             apply_selectors = [
                 (By.XPATH, "//button[contains(text(),'Apply on company site')]"),
                 (By.XPATH, "//button[contains(text(),'Apply')]"),
+                (By.ID, "apply-button"),
                 (By.ID, "company-site-button"),
+                (By.CSS_SELECTOR, "button[class*='apply-button']"),
                 (By.CSS_SELECTOR, "button[class*='company-site-button']"),
                 (By.CSS_SELECTOR, "[class*='apply-button-container'] button"),
+                (By.CSS_SELECTOR, ".apply-button"),
             ]
 
             apply_btn = None
@@ -203,6 +222,14 @@ class NaukriPlatformAdapter(BasePlatformAdapter):
 
             apply_btn.click()
             time.sleep(2.5)
+
+            # Check for chatbot/drawer dismiss if modal opens
+            try:
+                chat_close = driver.find_elements(By.CSS_SELECTOR, ".crossIcon, [class*='chatbot'] .close, [aria-label='Close']")
+                if chat_close and chat_close[0].is_displayed():
+                    chat_close[0].click()
+            except Exception:
+                pass
 
             # Fill custom inline form fields if present
             full_name = user_profile.get("full_name", "")

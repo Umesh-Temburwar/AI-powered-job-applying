@@ -63,3 +63,9 @@ class ConnectionActionResponse(BaseModel):
     message: str
     connection: Optional[PlatformConnectionItem] = None
 
+
+class ConnectionVerifyRequest(BaseModel):
+    account_email: Optional[str] = None
+    cookies: Optional[dict[str, str]] = None
+    confirmed: bool = True
+

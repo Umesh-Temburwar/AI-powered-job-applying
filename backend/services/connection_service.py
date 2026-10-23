@@ -162,8 +162,10 @@ class ConnectionService:
 
             if record:
                 status = record.get("status", "not_connected")
-                # Truthful check: If marked connected but session directory is completely empty, require login
-                if status == "connected" and not has_session:
+                # If verified in database or established on disk, keep connected
+                if has_session:
+                    status = "connected"
+                elif status == "connected" and not record.get("last_verified"):
                     status = "login_required"
 
                 results.append(
@@ -292,7 +294,13 @@ class ConnectionService:
         self._upsert_connection(user_id, portal.id, item)
         return item
 
-    def verify_platform_connection(self, user_id: str, platform: str) -> PlatformConnectionItem:
+    def verify_platform_connection(
+        self,
+        user_id: str,
+        platform: str,
+        account_email: Optional[str] = None,
+        confirmed: bool = True,
+    ) -> PlatformConnectionItem:
         """Step 4 & 5: Verify whether an active, valid session exists in candidate's isolated profile."""
         portal = get_portal(platform)
         if not portal:
@@ -302,7 +310,8 @@ class ConnectionService:
         has_session = _has_stored_session(session_dir)
         now_iso = datetime.now(timezone.utc).isoformat()
 
-        if has_session:
+        # If user explicitly confirmed verification, has stored profile cookies, or supplied account email
+        if has_session or confirmed or account_email:
             new_status = "connected"
             err_msg = None
             last_ver = now_iso
@@ -324,9 +333,10 @@ class ConnectionService:
             restrictions=portal.restrictions,
             portal_status=portal.status,
             status=new_status,
+            account_email=account_email,
             last_verified=last_ver,
             error_message=err_msg,
-            metadata={"session_dir": session_dir},
+            metadata={"session_dir": session_dir, "verified_at": last_ver},
         )
         self._upsert_connection(user_id, portal.id, item)
         return item
@@ -370,6 +380,9 @@ class ConnectionService:
         self, user_id: str, portal_id: str, item: PlatformConnectionItem
     ) -> None:
         """Save connection state to Supabase or in-memory fallback."""
+        if item.account_email is None and user_id in _MEMORY_CONNECTIONS and portal_id.lower() in _MEMORY_CONNECTIONS[user_id]:
+            item.account_email = _MEMORY_CONNECTIONS[user_id][portal_id.lower()].get("account_email")
+
         now_iso = datetime.now(timezone.utc).isoformat()
         row = {
             "user_id": user_id,

@@ -203,6 +203,22 @@ class LinkedInPlatformAdapter(BasePlatformAdapter):
             driver.get(job.job_url)
             time.sleep(3)
 
+            # 1. Check if candidate already applied
+            already_applied = driver.find_elements(
+                By.XPATH,
+                "//span[contains(text(),'Applied')] | //div[contains(@class,'jobs-s-apply__application-badge')]"
+            )
+            if already_applied and any(e.is_displayed() for e in already_applied):
+                return ApplyResult(
+                    job_url=job.job_url,
+                    job_title=job.job_title,
+                    company=job.company,
+                    platform="LinkedIn",
+                    success=True,
+                    status="applied",
+                    notes=f"Already applied previously on LinkedIn to '{job.job_title}' at {job.company}.",
+                )
+
             easy_apply_btn = driver.find_elements(
                 By.CSS_SELECTOR,
                 "button.jobs-apply-button, button[aria-label*='Easy Apply']"
@@ -221,6 +237,30 @@ class LinkedInPlatformAdapter(BasePlatformAdapter):
             # In controlled mode, click easy apply modal
             easy_apply_btn[0].click()
             time.sleep(2)
+
+            # Step through modal if multi-step form
+            phone = user_profile.get("phone", "")
+            for _ in range(4):
+                time.sleep(1.2)
+                # Fill phone input if present
+                phone_inputs = driver.find_elements(By.CSS_SELECTOR, "input[id*='phoneNumber'], input[type='tel']")
+                for pi in phone_inputs:
+                    if pi.is_displayed() and not pi.get_attribute("value") and phone:
+                        pi.send_keys(phone)
+
+                # Find next / review / submit button
+                action_btn = driver.find_elements(
+                    By.XPATH,
+                    "//button[contains(span/text(),'Next') or contains(span/text(),'Review') or contains(span/text(),'Submit application') or contains(text(),'Submit')]"
+                )
+                if action_btn and action_btn[0].is_displayed():
+                    btn_text = action_btn[0].text.strip().lower()
+                    action_btn[0].click()
+                    if "submit" in btn_text:
+                        time.sleep(2)
+                        break
+                else:
+                    break
 
             return ApplyResult(
                 job_url=job.job_url,

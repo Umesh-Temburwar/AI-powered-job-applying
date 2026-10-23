@@ -210,6 +210,22 @@ class InternshalaPlatformAdapter(BasePlatformAdapter):
                     apply_btn = btns[0]
                     break
 
+            # Check if candidate has already applied
+            already_applied = driver.find_elements(
+                By.XPATH,
+                "//span[contains(text(),'Applied')] | //div[contains(text(),'Already applied')] | //div[contains(@class,'already_applied')]"
+            )
+            if already_applied and any(e.is_displayed() for e in already_applied):
+                return ApplyResult(
+                    job_url=job.job_url,
+                    job_title=job.job_title,
+                    company=job.company,
+                    platform="Internshala",
+                    success=True,
+                    status="applied",
+                    notes=f"Already applied previously to '{job.job_title}' at {job.company}.",
+                )
+
             if not apply_btn:
                 return ApplyResult(
                     job_url=job.job_url,

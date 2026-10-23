@@ -1,5 +1,5 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -7,6 +7,7 @@ from core.auth import AuthenticatedUser, get_current_user
 from schemas.connection import (
     ConnectionActionResponse,
     ConnectionListResponse,
+    ConnectionVerifyRequest,
     PlatformConnectionItem,
     PortalRegistryResponse,
 )
@@ -32,6 +33,7 @@ async def get_portal_registry():
 
 
 @router.get("", response_model=ConnectionListResponse)
+@router.get("/", response_model=ConnectionListResponse, include_in_schema=False)
 async def list_user_connections(
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
 ):
@@ -48,6 +50,7 @@ async def list_user_connections(
 
 
 @router.post("/{platform}/open", response_model=ConnectionActionResponse)
+@router.get("/{platform}/open", response_model=ConnectionActionResponse)
 async def open_portal_window(
     platform: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
@@ -59,7 +62,7 @@ async def open_portal_window(
             success=True,
             platform=updated.platform,
             status=updated.status,
-            message=f"Official {updated.platform} page opened. Please log in with your credentials on the official site.",
+            message=f"Official {updated.platform} portal opened. Please log in with your credentials on the official site.",
             connection=updated,
         )
     except ValueError as val_err:
@@ -76,6 +79,7 @@ async def open_portal_window(
 
 
 @router.post("/{platform}/connect", response_model=ConnectionActionResponse)
+@router.get("/{platform}/connect", response_model=ConnectionActionResponse)
 async def connect_portal(
     platform: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
@@ -104,13 +108,23 @@ async def connect_portal(
 
 
 @router.post("/{platform}/verify", response_model=ConnectionActionResponse)
+@router.get("/{platform}/verify", response_model=ConnectionActionResponse)
 async def verify_portal_connection(
     platform: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    payload: Optional[ConnectionVerifyRequest] = None,
 ):
     """Step 4 & 5: Verify if a valid, authenticated session exists in candidate's isolated profile."""
     try:
-        verified = connection_service.verify_platform_connection(user_id=user.id, platform=platform)
+        account_email = payload.account_email if payload else None
+        confirmed = payload.confirmed if payload else True
+
+        verified = connection_service.verify_platform_connection(
+            user_id=user.id,
+            platform=platform,
+            account_email=account_email,
+            confirmed=confirmed,
+        )
         is_conn = verified.status == "connected"
         msg = (
             f"Successfully verified active session on {verified.platform}."
@@ -138,15 +152,18 @@ async def verify_portal_connection(
 
 
 @router.post("/{platform}/retry", response_model=ConnectionActionResponse)
+@router.get("/{platform}/retry", response_model=ConnectionActionResponse)
 async def retry_portal_verification(
     platform: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    payload: Optional[ConnectionVerifyRequest] = None,
 ):
     """Retry session verification check for the specified portal."""
-    return await verify_portal_connection(platform=platform, user=user)
+    return await verify_portal_connection(platform=platform, user=user, payload=payload)
 
 
 @router.post("/{platform}/disconnect", response_model=ConnectionActionResponse)
+@router.get("/{platform}/disconnect", response_model=ConnectionActionResponse)
 async def disconnect_portal(
     platform: str,
     user: Annotated[AuthenticatedUser, Depends(get_current_user)],

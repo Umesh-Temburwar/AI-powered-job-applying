@@ -250,3 +250,72 @@ async def test_automation_runner_completes_dry_run_for_valid_profile():
     assert state_updates[-1][0] == "completed"
     assert state_updates[-1][1] == 100
     assert "[DRY RUN]" in state_updates[-1][2]
+
+
+def test_connections_api_endpoints_and_lifecycle(client):
+    auth_headers = {"Authorization": "Bearer test-token-candidate-connections"}
+
+    # 1. Registry endpoint
+    reg_res = client.get("/api/v1/connections/registry")
+    assert reg_res.status_code == 200
+    data = reg_res.json()
+    assert "portals" in data
+    portal_names = [p["name"] for p in data["portals"]]
+    assert "Naukri.com" in portal_names
+    assert "Internshala" in portal_names
+    assert "Indeed" in portal_names
+    assert "LinkedIn Jobs" in portal_names
+
+    # 2. List connections (both without and with trailing slash)
+    list_res1 = client.get("/api/v1/connections", headers=auth_headers)
+    assert list_res1.status_code == 200
+    list_res2 = client.get("/api/v1/connections/", headers=auth_headers)
+    assert list_res2.status_code == 200
+    assert len(list_res1.json()["connections"]) >= 4
+
+    # 3. Test open & connect on Naukri (both POST and GET supported)
+    open_post = client.post("/api/v1/connections/naukri/open", headers=auth_headers)
+    assert open_post.status_code == 200
+    assert open_post.json()["success"] is True
+
+    open_get = client.get("/api/v1/connections/naukri/open", headers=auth_headers)
+    assert open_get.status_code == 200
+
+    conn_post = client.post("/api/v1/connections/naukri/connect", headers=auth_headers)
+    assert conn_post.status_code == 200
+
+    conn_get = client.get("/api/v1/connections/naukri/connect", headers=auth_headers)
+    assert conn_get.status_code == 200
+
+    # 4. Verify with account email payload
+    ver_res = client.post(
+        "/api/v1/connections/naukri/verify",
+        headers=auth_headers,
+        json={"account_email": "candidate@gmail.com", "confirmed": True},
+    )
+    assert ver_res.status_code == 200
+    assert ver_res.json()["status"] == "connected"
+    assert ver_res.json()["connection"]["account_email"] == "candidate@gmail.com"
+
+    # 5. Disconnect
+    disc_res = client.post("/api/v1/connections/naukri/disconnect", headers=auth_headers)
+    assert disc_res.status_code == 200
+    assert disc_res.json()["status"] == "not_connected"
+
+
+def test_connections_multi_platform_verification(client):
+    auth_headers = {"Authorization": "Bearer test-token-candidate-connections"}
+    for plat in ["internshala", "indeed", "linkedin"]:
+        # Connect
+        c_res = client.post(f"/api/v1/connections/{plat}/connect", headers=auth_headers)
+        assert c_res.status_code == 200
+        assert c_res.json()["success"] is True
+
+        # Verify
+        v_res = client.post(
+            f"/api/v1/connections/{plat}/verify",
+            headers=auth_headers,
+            json={"account_email": f"test_{plat}@domain.com", "confirmed": True},
+        )
+        assert v_res.status_code == 200
+        assert v_res.json()["status"] == "connected"
