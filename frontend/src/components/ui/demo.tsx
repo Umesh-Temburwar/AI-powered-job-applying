@@ -9,3 +9,4 @@ const DemoOne = () => {
 };
 
 export { DemoOne };
+export default DemoOne;
