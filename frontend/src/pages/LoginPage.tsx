@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Button, Input } from '../components/ui';
-import { Zap, ShieldCheck, Sparkles, CheckCircle2, ArrowRight, Sun, Moon } from 'lucide-react';
+import { Zap, Sparkles, CheckCircle2, ArrowRight, Sun, Moon } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { user, login, signInWithGithub, isLoading } = useAuth();

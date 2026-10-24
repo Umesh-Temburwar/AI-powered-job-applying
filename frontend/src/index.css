@@ -116,24 +116,28 @@
 .gradient-text-emerald {
   background: linear-gradient(135deg, #059669 0%, #10B981 50%, #06B6D4 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .dark .gradient-text-emerald {
   background: linear-gradient(135deg, #34D399 0%, #00E5FF 60%, #38BDF8 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .gradient-text-indigo {
   background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #EC4899 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .dark .gradient-text-indigo {
   background: linear-gradient(135deg, #818CF8 0%, #A78BFA 50%, #F472B6 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 

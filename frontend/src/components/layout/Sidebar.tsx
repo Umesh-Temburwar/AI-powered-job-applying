@@ -13,7 +13,6 @@ import {
   Moon,
   LogOut,
   Zap,
-  Sparkles,
   X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';

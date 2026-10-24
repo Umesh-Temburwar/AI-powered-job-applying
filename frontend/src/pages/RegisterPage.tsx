@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Button, Input } from '../components/ui';
 import { savePendingEmail, setCooldownExpiry } from '../utils/cooldown';
-import { Zap, ShieldCheck, Sparkles, CheckCircle2, ArrowRight, Sun, Moon, Lock } from 'lucide-react';
+import { Zap, Sparkles, CheckCircle2, ArrowRight, Sun, Moon, Lock } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
   const { user, register, signInWithGithub, isLoading } = useAuth();
