@@ -41,6 +41,15 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.ENVIRONMENT.lower() == "production"
 
+    @property
+    def is_development(self) -> bool:
+        return self.ENVIRONMENT.lower() == "development"
+
+    @property
+    def admin_email_list(self) -> list[str]:
+        return [email.strip().lower() for email in self.ADMIN_EMAILS.split(",") if email.strip()]
+
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
