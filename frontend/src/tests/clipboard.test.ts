@@ -9,10 +9,12 @@ describe('copyToClipboard utility', () => {
 
   it('uses navigator.clipboard if available', async () => {
     const mockWriteText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, {
-      clipboard: {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
         writeText: mockWriteText,
       },
+      writable: true,
+      configurable: true,
     });
 
     const success = await copyToClipboard('Test copied text');
