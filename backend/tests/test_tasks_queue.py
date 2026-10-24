@@ -1,5 +1,7 @@
 import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
+
 
 from core.config import Settings
 from main import create_app
@@ -14,13 +16,14 @@ from services.automation_runner import (
 def test_client() -> TestClient:
     settings = Settings(
         APP_NAME="Universal Job Apply Bot API",
-        ENVIRONMENT="development",
+        ENVIRONMENT="test",
         DEBUG=True,
         API_V1_PREFIX="/api/v1",
         FRONTEND_ORIGINS=["http://localhost:5173"],
     )
     app = create_app(settings=settings)
     return TestClient(app)
+
 
 
 def test_enqueue_unauthenticated_returns_401(test_client: TestClient):
@@ -241,19 +244,23 @@ def test_execute_automation_task_dry_run():
     """Automation runner in dry-run mode completes without real submissions."""
     progress_calls = []
 
-    result = execute_automation_task(
-        task_id="test-123",
-        platform="Naukri",
-        payload={"max_applications": 5, "keywords": ["Python"]},
-        dry_run=True,
-        progress_callback=lambda p, m: progress_calls.append((p, m)),
-        cancel_check_callback=lambda: False,
-    )
+    async def mock_run(**kwargs):
+        kwargs["update_task_state"]("completed", 100, "Done")
 
-    assert result["status"] == "completed"
-    assert result["dry_run"] is True
-    assert result["applications_submitted"] == 0
-    assert any(p == 100 for p, _ in progress_calls)
+    with patch("services.platform_automation.runner.run_platform_automation_task", side_effect=mock_run):
+        result = execute_automation_task(
+            task_id="test-123",
+            platform="Naukri",
+            payload={"max_applications": 5, "keywords": ["Python"]},
+            dry_run=True,
+            progress_callback=lambda p, m: progress_calls.append((p, m)),
+            cancel_check_callback=lambda: False,
+        )
+
+        assert result["status"] == "completed"
+        assert result["dry_run"] is True
+        assert result["applications_submitted"] == 0
+        assert any(p == 100 for p, _ in progress_calls)
 
 
 def test_execute_automation_task_cancellation():
@@ -265,15 +272,21 @@ def test_execute_automation_task_cancellation():
         if p >= 40:
             is_cancelled = True
 
-    with pytest.raises(TaskCancelledException):
-        execute_automation_task(
-            task_id="test-cancel",
-            platform="Internshala",
-            payload={"max_applications": 5},
-            dry_run=True,
-            progress_callback=progress_cb,
-            cancel_check_callback=lambda: is_cancelled,
-        )
+    async def mock_run(**kwargs):
+        kwargs["update_task_state"]("running", 20, "Starting")
+        kwargs["update_task_state"]("running", 50, "Searching")
+
+    with patch("services.platform_automation.runner.run_platform_automation_task", side_effect=mock_run):
+        with pytest.raises(TaskCancelledException):
+            execute_automation_task(
+                task_id="test-cancel",
+                platform="Internshala",
+                payload={"max_applications": 5},
+                dry_run=True,
+                progress_callback=progress_cb,
+                cancel_check_callback=lambda: is_cancelled,
+            )
+
 
 
 def test_sanitize_text_redacts_credentials():

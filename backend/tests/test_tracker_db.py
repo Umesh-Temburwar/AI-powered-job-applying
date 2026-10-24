@@ -51,9 +51,10 @@ def test_record_application_and_has_applied(in_memory_db):
         job_id="naukri_12345",
         status="Applied"
     )
-    assert success is True
+    assert success > 0
 
     # Check by URL
+
     assert tracker_db.has_applied(url="https://naukri.com/job/12345") is True
     # Check by Job ID
     assert tracker_db.has_applied(job_id="naukri_12345") is True

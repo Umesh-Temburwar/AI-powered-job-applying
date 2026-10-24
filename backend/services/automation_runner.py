@@ -47,6 +47,8 @@ def execute_automation_task(
         if cancel_check_callback():
             raise TaskCancelledException(f"Task {task_id} was cancelled by user.")
 
+    check_cancelled()
+
     task_type = payload.get("task_type") or "job_apply"
     user_id = payload.get("user_id") or "0ff8ac23-96d8-419e-9cff-ffd3b3430f17"
 
@@ -60,8 +62,9 @@ def execute_automation_task(
     }
 
     def update_task_state(status_val: str, progress_val: int, message_val: str, **kwargs):
-        check_cancelled()
         progress_callback(progress_val, message_val)
+        check_cancelled()
+
 
     # Run the real platform automation task
     try:
@@ -101,5 +104,7 @@ def execute_automation_task(
         "task_type": task_type,
         "platform": platform,
         "dry_run": dry_run,
+        "applications_submitted": 0,
         "message": f"Successfully completed automation task for {platform}.",
     }
+

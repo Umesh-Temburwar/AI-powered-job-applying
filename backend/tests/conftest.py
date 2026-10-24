@@ -10,11 +10,12 @@ def test_settings() -> Settings:
     """Fixture providing standard development settings for unit tests."""
     return Settings(
         APP_NAME="Universal Job Apply Bot API",
-        ENVIRONMENT="development",
+        ENVIRONMENT="test",
         DEBUG=True,
         API_V1_PREFIX="/api/v1",
         FRONTEND_ORIGINS=["http://localhost:5173", "http://127.0.0.1:5173"],
     )
+
 
 
 @pytest.fixture

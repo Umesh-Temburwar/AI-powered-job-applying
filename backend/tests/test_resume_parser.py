@@ -31,8 +31,9 @@ def test_extract_structured_data_skills():
     # Verify contact parsing
     assert data.get("email") == "john.doe@example.com"
     # Verify skills detection
-    skills = data.get("key_skills", [])
+    skills = data.get("skills", [])
     assert any("Python" in s for s in skills)
+
     assert any("React" in s for s in skills)
 
 

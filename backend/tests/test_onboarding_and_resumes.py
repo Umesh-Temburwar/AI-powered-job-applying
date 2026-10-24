@@ -12,13 +12,14 @@ from services.resume_service import validate_resume_file
 def test_client() -> TestClient:
     settings = Settings(
         APP_NAME="Universal Job Apply Bot API",
-        ENVIRONMENT="development",
+        ENVIRONMENT="test",
         DEBUG=True,
         API_V1_PREFIX="/api/v1",
         FRONTEND_ORIGINS=["http://localhost:5173"],
     )
     app = create_app(settings=settings)
     return TestClient(app)
+
 
 
 def test_resume_file_validation_magic_bytes():

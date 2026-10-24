@@ -23,6 +23,8 @@ jobs:
           pip install -r backend/requirements.txt
           pip install -r backend/requirements-dev.txt
       - name: Run Pytest
+        env:
+          PYTHONPATH: .
         run: |
           pytest backend/tests/ -v
 
@@ -42,4 +44,4 @@ jobs:
         run: npm ci
       - name: Run Frontend Tests
         working-directory: frontend
-        run: npm test -- --run
+        run: npm test
