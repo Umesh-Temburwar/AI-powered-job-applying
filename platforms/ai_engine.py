@@ -231,7 +231,20 @@ class ATSMatcher:
             "is_recommended": score >= 50
         }
 
+    @staticmethod
+    def calculate_compatibility_percentage(candidate_skills: List[str], required_skills: List[str]) -> float:
+        """Calculate normalized compatibility percentage between two skill sets."""
+        if not required_skills:
+            return 100.0
+        c_set = {s.strip().lower() for s in candidate_skills if s.strip()}
+        r_set = {s.strip().lower() for s in required_skills if s.strip()}
+        if not r_set:
+            return 100.0
+        intersection = c_set.intersection(r_set)
+        return round((len(intersection) / len(r_set)) * 100.0, 1)
+
 
 # Global Singletons
 qa_engine = QuestionAnswerer()
 ats_matcher = ATSMatcher()
+
