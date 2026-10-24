@@ -21,25 +21,25 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium rounded-[6px] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#166534] focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm';
+    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm select-none active:scale-[0.98]';
 
   const sizeStyles = {
     sm: 'h-8 px-3 text-xs gap-1.5',
     md: 'h-9 px-4 text-sm gap-2',
-    lg: 'h-10 px-5 text-sm gap-2',
+    lg: 'h-11 px-5 text-sm gap-2.5 font-semibold shadow-xs',
   };
 
   const variantStyles = {
     primary:
-      'bg-[#166534] hover:bg-[#14532D] text-white font-medium border border-[#166534]',
+      'bg-emerald-600 hover:bg-emerald-700 text-white font-medium border border-emerald-500/40 shadow-xs hover:shadow-emerald-500/20 hover:shadow-sm',
     secondary:
-      'bg-white text-[#111111] border border-[#E5E5E5] hover:bg-[#FAFAFA]',
+      'bg-white dark:bg-slate-800 text-[#111111] dark:text-slate-100 border border-[#E5E5E5] dark:border-slate-700 hover:bg-[#F9FAFB] dark:hover:bg-slate-750 shadow-xs',
     outline:
-      'bg-transparent border border-[#E5E5E5] text-[#111111] hover:bg-[#FAFAFA]',
+      'bg-transparent border border-[#E5E5E5] dark:border-slate-700 text-[#111111] dark:text-slate-200 hover:bg-[#F9FAFB] dark:hover:bg-slate-800',
     danger:
-      'bg-[#B91C1C] hover:bg-[#991B1B] text-white border border-[#B91C1C]',
+      'bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 shadow-xs',
     ghost:
-      'bg-transparent text-[#6B6B6B] hover:text-[#111111] hover:bg-[#FAFAFA]',
+      'bg-transparent text-[#6B6B6B] dark:text-slate-400 hover:text-[#111111] dark:hover:text-slate-100 hover:bg-black/5 dark:hover:bg-white/5',
   };
 
   return (

@@ -1,6 +1,21 @@
 import React from 'react';
 import { NavLink as RouterNavLink, useNavigate as useRouterNavigate } from 'react-router-dom';
-import { Sun, Moon } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Bot,
+  Briefcase,
+  FileText,
+  SlidersHorizontal,
+  User as UserIcon,
+  Settings as SettingsIcon,
+  ShieldAlert,
+  Sun,
+  Moon,
+  LogOut,
+  Zap,
+  Sparkles,
+  X
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -15,11 +30,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
   const navigate = useRouterNavigate();
 
   const navItems = [
-    { label: 'Overview', path: '/dashboard' },
-    { label: 'Applications', path: '/applications' },
-    { label: 'Profile & Resume', path: '/profile' },
-    { label: 'Settings', path: '/settings' },
-    ...(user?.isAdmin ? [{ label: 'Admin Panel', path: '/admin' }] : []),
+    { label: 'Overview', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Automation Bot', path: '/automation', icon: Bot, highlight: true },
+    { label: 'Applications', path: '/applications', icon: Briefcase },
+    { label: 'Resumes', path: '/resumes', icon: FileText },
+    { label: 'Preferences', path: '/preferences', icon: SlidersHorizontal },
+    { label: 'Profile', path: '/profile', icon: UserIcon },
+    { label: 'Settings', path: '/settings', icon: SettingsIcon },
+    ...(user?.isAdmin ? [{ label: 'Admin Panel', path: '/admin', icon: ShieldAlert }] : []),
   ];
 
   const handleLogout = async () => {
@@ -28,78 +46,127 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
   };
 
   const navContent = (
-    <div className="flex flex-col h-full bg-[#FFFFFF]">
-      {/* Product Name */}
-      <div className="h-14 px-6 flex items-center justify-between border-b border-[#E5E5E5]">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+      
+      {/* Brand Header */}
+      <div className="h-16 px-5 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 shrink-0">
         <RouterNavLink
           to="/dashboard"
           onClick={onCloseMobile}
-          className="font-bold text-[14px] text-[#111111] tracking-tight hover:text-[#166534] transition-colors duration-150"
+          className="flex items-center gap-2.5 group"
         >
-          Universal Job Apply Bot
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-cyan-500 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+            <Zap className="w-4 h-4 fill-white" />
+          </div>
+          <div>
+            <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white block leading-tight">
+              AutoApply<span className="text-emerald-500">.ai</span>
+            </span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              Multi-Portal Agent
+            </span>
+          </div>
         </RouterNavLink>
+
         <button
           onClick={onCloseMobile}
-          className="md:hidden text-[#6B6B6B] hover:text-[#111111] text-[13px] p-1"
+          className="md:hidden text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 p-1 rounded-md"
           aria-label="Close menu"
         >
-          Close
+          <X className="w-5 h-5" />
         </button>
       </div>
 
+      {/* Engine Status Banner */}
+      <div className="px-4 pt-4 pb-1">
+        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-semibold text-emerald-700 dark:text-emerald-300">Bot Engine</span>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded-md">
+            Ready
+          </span>
+        </div>
+      </div>
+
       {/* Nav Links */}
-      <nav className="flex-1 py-4">
-        {navItems.map((item) => (
-          <RouterNavLink
-            key={item.path}
-            to={item.path}
-            onClick={onCloseMobile}
-            className={({ isActive }) =>
-              `block px-6 py-2.5 text-[14px] transition-colors duration-150 ${
-                isActive
-                  ? 'text-[#166534] font-medium border-l-2 border-[#166534] bg-[#FAFAFA]'
-                  : 'text-[#6B6B6B] hover:text-[#111111] border-l-2 border-transparent'
-              }`
-            }
-          >
-            {item.label}
-          </RouterNavLink>
-        ))}
+      <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+        <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          Navigation
+        </div>
+
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <RouterNavLink
+              key={item.path}
+              to={item.path}
+              onClick={onCloseMobile}
+              className={({ isActive }) =>
+                `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 ${
+                  isActive
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold shadow-2xs border border-emerald-500/20'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
+                }`
+              }
+            >
+              <div className="flex items-center gap-2.5">
+                <Icon className="w-4 h-4 shrink-0" />
+                <span>{item.label}</span>
+              </div>
+              {item.highlight && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              )}
+            </RouterNavLink>
+          );
+        })}
       </nav>
 
-      {/* User Footer */}
-      <div className="p-6 border-t border-[#E5E5E5]">
-        <div className="flex items-center justify-between mb-1">
-          <div className="text-[13px] font-medium text-[#111111] truncate">
-            {user?.fullName || 'User'}
+      {/* User Card & Footer */}
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 shrink-0 bg-slate-50/50 dark:bg-slate-950/30">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+              {(user?.fullName || 'User').charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-slate-900 dark:text-white truncate leading-tight">
+                {user?.fullName || 'Candidate'}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate">
+                {user?.email || 'user@example.com'}
+              </div>
+            </div>
           </div>
+
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-1 rounded-[4px] border border-[#E5E5E5] hover:bg-[#FAFAFA] text-[#6B6B6B] hover:text-[#111111] transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer shrink-0"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
             aria-label="Toggle dark mode"
           >
             {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5" />}
           </button>
         </div>
-        <div className="text-[12px] text-[#6B6B6B] truncate mb-3">
-          {user?.email || ''}
-        </div>
+
         <button
           onClick={handleLogout}
-          className="text-[13px] text-[#6B6B6B] hover:text-[#111111] transition-colors duration-150 cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/30 transition-colors cursor-pointer font-medium"
         >
-          Sign out
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Sign Out</span>
         </button>
       </div>
+
     </div>
   );
 
   return (
     <>
       {/* Desktop Fixed Sidebar */}
-      <aside className="hidden md:flex flex-col w-[240px] shrink-0 h-screen sticky top-0 border-r border-[#E5E5E5] bg-[#FFFFFF] z-30">
+      <aside className="hidden md:flex flex-col w-[250px] shrink-0 h-screen sticky top-0 z-30">
         {navContent}
       </aside>
 
@@ -107,11 +174,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex">
           <div
-            className="fixed inset-0 bg-black/40"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-fade-in"
             onClick={onCloseMobile}
             aria-hidden="true"
           />
-          <div className="relative w-[240px] h-full z-10 border-r border-[#E5E5E5] bg-[#FFFFFF]">
+          <div className="relative w-[260px] h-full z-10 shadow-2xl">
             {navContent}
           </div>
         </div>

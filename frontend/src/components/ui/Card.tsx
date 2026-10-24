@@ -13,8 +13,8 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-white border border-[#E5E5E5] rounded-[6px] p-4 sm:p-6 transition-colors duration-150 ${
-        hoverable ? 'hover:border-[#CCCCCC]' : ''
+      className={`bg-white dark:bg-slate-900/60 border border-[#E5E5E5] dark:border-slate-800/80 rounded-xl p-4 sm:p-6 transition-all duration-200 shadow-xs ${
+        hoverable ? 'hover:border-emerald-500/40 dark:hover:border-emerald-500/50 hover:shadow-md hover:-translate-y-0.5' : ''
       } ${className}`}
       {...props}
     >
@@ -29,13 +29,13 @@ export const CardHeader: React.FC<{
   action?: React.ReactNode;
   className?: string;
 }> = ({ title, subtitle, action, className = '' }) => (
-  <div className={`flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#E5E5E5] ${className}`}>
+  <div className={`flex items-start justify-between gap-4 mb-4 pb-3 border-b border-[#E5E5E5] dark:border-slate-800/80 ${className}`}>
     <div>
-      <h3 className="text-base font-semibold text-[#111111] leading-tight">
+      <h3 className="text-base font-semibold text-[#111111] dark:text-slate-100 leading-tight">
         {title}
       </h3>
       {subtitle && (
-        <p className="text-xs text-[#6B6B6B] mt-1">{subtitle}</p>
+        <p className="text-xs text-[#6B6B6B] dark:text-slate-400 mt-1">{subtitle}</p>
       )}
     </div>
     {action && <div className="shrink-0">{action}</div>}
