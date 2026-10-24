@@ -1,7 +1,7 @@
-import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
+
 
 const ProblemChild = () => {
   throw new Error('Test exploded');
