@@ -330,8 +330,19 @@ def get_recent_applications(limit: int = 50) -> List[Dict]:
         return [dict(r) for r in rows]
 
 
+def get_total_applications_count() -> int:
+    """Return the total number of recorded job applications."""
+    try:
+        with get_connection() as conn:
+            row = conn.execute("SELECT COUNT(*) FROM applications;").fetchone()
+            return int(row[0]) if row else 0
+    except Exception:
+        return 0
+
+
 # Auto-init on module load
 try:
     init_db()
 except Exception:
     pass
+
