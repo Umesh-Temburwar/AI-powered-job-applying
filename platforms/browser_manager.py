@@ -14,6 +14,7 @@ and configures anti-detection flags so job portals do not block the bot.
 import os
 import sys
 import logging
+from typing import Optional, List, Dict, Any
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service as EdgeService
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -35,7 +36,7 @@ except ImportError:
 logger = logging.getLogger("BrowserManager")
 
 
-def get_default_browser():
+def get_default_browser() -> Optional[str]:
     """Detect default browser from Windows Registry."""
     if winreg is not None:
         try:
@@ -56,6 +57,7 @@ def get_default_browser():
         except Exception:
             pass
     return None
+
 
 
 def find_brave_binary():
