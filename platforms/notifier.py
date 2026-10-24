@@ -11,7 +11,7 @@ import os
 import logging
 import threading
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 logger = logging.getLogger("Notifier")
@@ -20,6 +20,14 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+
+
+def is_notifier_configured() -> dict:
+    """Return dictionary of configured notification channels."""
+    return {
+        "telegram": bool(TELEGRAM_TOKEN and TELEGRAM_CHAT_ID),
+        "discord": bool(DISCORD_WEBHOOK)
+    }
 
 
 def _send_telegram(message: str):
@@ -47,7 +55,7 @@ def _send_discord(title: str, description: str, fields: list = None):
             "title": title,
             "description": description,
             "color": 3447003, # Blue
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "footer": {"text": "Universal Job Auto Apply Bot • 2026 Edition"}
         }
         if fields:
@@ -57,6 +65,7 @@ def _send_discord(title: str, description: str, fields: list = None):
         requests.post(DISCORD_WEBHOOK, json=payload, timeout=5)
     except Exception as e:
         logger.debug(f"Discord alert notice: {e}")
+
 
 
 def notify_application_success(platform: str, job_title: str, company: str, url: str = ""):
