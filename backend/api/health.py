@@ -20,3 +20,14 @@ def get_health(settings: Annotated[Settings, Depends(get_settings)]) -> HealthRe
         status="ok",
         service=settings.APP_NAME,
     )
+
+
+@router.get(
+    "/health/ping",
+    summary="Service Ping Probe",
+    description="Fast lightweight ping endpoint for load balancer probes and uptime checks.",
+)
+def ping() -> dict[str, str]:
+    """Return pong response for latency monitoring."""
+    return {"ping": "pong", "status": "healthy"}
+
