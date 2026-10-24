@@ -24,7 +24,7 @@ jobs:
           pip install -r backend/requirements-dev.txt
       - name: Run Pytest
         env:
-          PYTHONPATH: .
+          PYTHONPATH: .:backend
         run: |
           pytest backend/tests/ -v
 
