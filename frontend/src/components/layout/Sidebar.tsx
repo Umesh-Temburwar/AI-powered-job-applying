@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
       </div>
 
       {/* Nav Links */}
-      <nav className="flex-1 py-4">
+      <nav aria-label="Main Navigation" className="flex-1 py-4">
         {navItems.map((item) => (
           <RouterNavLink
             key={item.path}
@@ -87,7 +87,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
           {user?.email || ''}
         </div>
         <button
+          type="button"
           onClick={handleLogout}
+          aria-label="Sign out of account"
           className="text-[13px] text-[#6B6B6B] hover:text-[#111111] transition-colors duration-150 cursor-pointer"
         >
           Sign out
