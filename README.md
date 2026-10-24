@@ -5,8 +5,12 @@
 ![Selenium](https://img.shields.io/badge/Selenium-4.x-green?style=flat-square&logo=selenium)
 ![Platforms](https://img.shields.io/badge/Platforms-Naukri%20%7C%20Internshala%20%7C%20Indeed%20%7C%20LinkedIn-orange?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active%20%26%20Tested-brightgreen?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen?style=flat-square)
+
+[Architecture](docs/ARCHITECTURE.md) • [REST API](docs/API.md) • [Development](docs/DEVELOPMENT.md) • [Troubleshooting](docs/TROUBLESHOOTING.md) • [Platforms](docs/PLATFORMS.md) • [Deployment](docs/DEPLOYMENT.md) • [Contributing](CONTRIBUTING.md) • [Changelog](CHANGELOG.md)
 
 ---
+
 
 ## 📋 Highlights & Key Capabilities
 
