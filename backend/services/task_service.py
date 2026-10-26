@@ -44,6 +44,12 @@ def _get_supabase_client():
         return None
 
 
+def _is_test_mock_user(user_id: str) -> bool:
+    """Return True only when executing under automated test suites."""
+    return user_id.startswith("usr_") and get_settings().ENVIRONMENT == "test"
+
+
+
 def _format_task_dict(row: dict[str, Any]) -> TaskResponse:
     """Format database row dictionary into standard TaskResponse schema."""
     payload = row.get("payload") or {}
@@ -132,7 +138,7 @@ async def enqueue_task(user_id: str, request: TaskCreateRequest) -> TaskResponse
     Never trusts client-supplied user IDs.
     """
     settings = get_settings()
-    is_mock_user = user_id.startswith("usr_")
+    is_mock_user = _is_test_mock_user(user_id)
 
     client = _get_supabase_client() if not is_mock_user else None
 
@@ -262,7 +268,7 @@ async def list_user_tasks(
     user_id: str, limit: int = 50, offset: int = 0
 ) -> TaskListResponse:
     """Retrieve all automation tasks belonging strictly to the authenticated user."""
-    is_mock_user = user_id.startswith("usr_")
+    is_mock_user = _is_test_mock_user(user_id)
     client = _get_supabase_client() if not is_mock_user else None
 
     if client:
@@ -301,7 +307,7 @@ async def list_user_tasks(
 
 async def get_task_by_id(task_id: str, user_id: str) -> TaskResponse:
     """Get single task status and progress, enforcing strict user ownership."""
-    is_mock_user = user_id.startswith("usr_")
+    is_mock_user = _is_test_mock_user(user_id)
     client = _get_supabase_client() if not is_mock_user else None
 
     if client:
@@ -351,7 +357,7 @@ async def get_task_by_id(task_id: str, user_id: str) -> TaskResponse:
 
 async def cancel_task(task_id: str, user_id: str) -> TaskActionResponse:
     """Request graceful cancellation of a queued or running task."""
-    is_mock_user = user_id.startswith("usr_")
+    is_mock_user = _is_test_mock_user(user_id)
     client = _get_supabase_client() if not is_mock_user else None
 
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -448,7 +454,7 @@ async def cancel_task(task_id: str, user_id: str) -> TaskActionResponse:
 
 async def retry_task(task_id: str, user_id: str) -> TaskActionResponse:
     """Re-enqueue an eligible failed task for retry."""
-    is_mock_user = user_id.startswith("usr_")
+    is_mock_user = _is_test_mock_user(user_id)
     client = _get_supabase_client() if not is_mock_user else None
 
     if client:
