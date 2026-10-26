@@ -71,6 +71,12 @@ def get_default_user_id() -> Optional[str]:
         return None
 
     try:
+        # Prioritize finding Umesh's profile if CANDIDATE_USER_ID is not explicitly set
+        res = client.table("profiles").select("id, email").ilike("email", "%umesh%").limit(1).execute()
+        if res.data and len(res.data) > 0:
+            _default_user_id = str(res.data[0]["id"])
+            return _default_user_id
+
         res = client.table("profiles").select("id").limit(1).execute()
         if res.data and len(res.data) > 0:
             _default_user_id = str(res.data[0]["id"])
