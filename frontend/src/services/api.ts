@@ -744,13 +744,22 @@ export async function connectAllPortalsApi(
   });
 }
 
+export async function syncEnvConnectionsApi(token: string): Promise<ConnectionListApiResponse> {
+  return apiClient<ConnectionListApiResponse>('/api/v1/connections/sync-env', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export async function verifyConnectionApi(
   token: string,
-  platform: string
+  platform: string,
+  liveCheck: boolean = false
 ): Promise<ConnectionActionApiResponse> {
   return apiClient<ConnectionActionApiResponse>(`/api/v1/connections/${encodeURIComponent(platform)}/verify`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ confirmed: true, live_check: liveCheck }),
   });
 }
 

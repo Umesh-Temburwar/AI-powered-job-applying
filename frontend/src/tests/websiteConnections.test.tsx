@@ -109,4 +109,28 @@ describe('Website Connections Dashboard Component', () => {
       expect(openSpy).toHaveBeenCalledWith('mock-jwt-token-123', 'naukri');
     });
   });
+
+  it('triggers syncEnvConnectionsApi when clicking Sync from .env', async () => {
+    const syncSpy = vi.spyOn(apiModule, 'syncEnvConnectionsApi').mockResolvedValue({
+      connections: [
+        { user_id: 'usr_test_123', platform: 'Naukri.com', portal_id: 'naukri', status: 'connected', account_email: 'umesh@example.com' },
+      ],
+    });
+
+    render(
+      <ToastProvider>
+        <BrowserRouter>
+          <DashboardPage />
+        </BrowserRouter>
+      </ToastProvider>
+    );
+
+    const syncButton = await screen.findByRole('button', { name: /Sync from \.env/i });
+    expect(syncButton).toBeInTheDocument();
+    fireEvent.click(syncButton);
+
+    await waitFor(() => {
+      expect(syncSpy).toHaveBeenCalledWith('mock-jwt-token-123');
+    });
+  });
 });

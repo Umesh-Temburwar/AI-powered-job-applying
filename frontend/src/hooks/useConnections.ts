@@ -7,6 +7,7 @@ import {
   verifyConnectionApi,
   retryConnectionApi,
   disconnectPlatformApi,
+  syncEnvConnectionsApi,
   type BackendConnectionItem,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -181,6 +182,27 @@ export function useConnections() {
     }
   };
 
+  const syncFromEnv = async () => {
+    const token = await getActiveToken();
+    if (!token) throw new Error('Candidate is not authenticated.');
+
+    try {
+      setActionLoading('all');
+      setError(null);
+      const res = await syncEnvConnectionsApi(token);
+      if (res.connections) {
+        setConnections(res.connections);
+      }
+      return res;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to sync credentials from .env';
+      setError(msg);
+      throw new Error(msg);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   useEffect(() => {
     fetchConnections();
   }, [fetchConnections]);
@@ -194,6 +216,7 @@ export function useConnections() {
     openPortal,
     connectPlatform,
     connectAllPlatforms,
+    syncFromEnv,
     verifyConnection,
     retryConnection,
     disconnectPlatform,

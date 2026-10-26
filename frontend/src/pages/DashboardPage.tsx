@@ -27,6 +27,7 @@ export const DashboardPage: React.FC = () => {
     openPortal,
     connectPlatform,
     connectAllPlatforms,
+    syncFromEnv,
     verifyConnection,
     retryConnection,
     disconnectPlatform,
@@ -263,6 +264,15 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
+  const handleSyncEnv = async () => {
+    try {
+      await syncFromEnv();
+      showToast('Successfully synced platform credentials from .env', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to sync credentials from .env', 'error');
+    }
+  };
+
   const handleConnect = async (platform: string) => {
     try {
       await connectPlatform(platform);
@@ -476,6 +486,15 @@ export const DashboardPage: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleSyncEnv}
+              disabled={actionPlatform === 'all' || connectionsLoading}
+              title="Sync credentials and emails from root .env"
+            >
+              Sync from .env
+            </Button>
             <Button
               variant="primary"
               size="sm"
