@@ -26,24 +26,23 @@ export const PreferencesPage: React.FC = () => {
   const { preferences, loading, error, updatePreferences } = usePreferences();
   const { showToast } = useToast();
 
-  const [targetTitles, setTargetTitles] = useState<string[]>([]);
+  const [targetTitles, setTargetTitles] = useState<string[]>(() => preferences?.targetTitles || []);
   const [titleInput, setTitleInput] = useState('');
 
-  const [targetLocations, setTargetLocations] = useState<string[]>([]);
+  const [targetLocations, setTargetLocations] = useState<string[]>(() => preferences?.targetLocations || []);
   const [locationInput, setLocationInput] = useState('');
 
-  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('Fresher / Entry Level');
-  const [employmentTypes, setEmploymentTypes] = useState<EmploymentType[]>(['Full-time']);
-  const [minSalary, setMinSalary] = useState<number>(4.5);
-  const [maxSalary, setMaxSalary] = useState<number>(12.0);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformName[]>([
-    'Naukri',
-    'Internshala',
-    'Indeed',
-    'LinkedIn',
-  ]);
-  const [dailyLimit, setDailyLimit] = useState<number>(25);
-  const [requireReview, setRequireReview] = useState<boolean>(true);
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>(() => preferences?.experienceLevel || 'Fresher / Entry Level');
+  const [employmentTypes, setEmploymentTypes] = useState<EmploymentType[]>(() => preferences?.employmentTypes || ['Full-time']);
+  const [minSalary, setMinSalary] = useState<number>(() => preferences?.minSalaryLakhs || 4.5);
+  const [maxSalary, setMaxSalary] = useState<number>(() => preferences?.maxSalaryLakhs || 12.0);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformName[]>(() =>
+    preferences?.selectedPlatforms || ['Naukri', 'Internshala', 'Indeed', 'LinkedIn']
+  );
+  const [dailyLimit, setDailyLimit] = useState<number>(() => preferences?.dailyApplicationLimit || 25);
+  const [requireReview, setRequireReview] = useState<boolean>(() =>
+    preferences?.requireReviewBeforeSubmit !== undefined ? preferences.requireReviewBeforeSubmit : true
+  );
 
   const [isDirty, setIsDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,7 +52,7 @@ export const PreferencesPage: React.FC = () => {
   const allEmploymentTypes: EmploymentType[] = ['Full-time', 'Part-time', 'Internship', 'Contract'];
 
   useEffect(() => {
-    if (preferences) {
+    if (preferences && !isDirty) {
       setTargetTitles(preferences.targetTitles || []);
       setTargetLocations(preferences.targetLocations || []);
       setExperienceLevel(preferences.experienceLevel || 'Fresher / Entry Level');
@@ -180,7 +179,7 @@ export const PreferencesPage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading && !preferences) {
     return (
       <div className="space-y-6">
         <Skeleton height="3rem" />

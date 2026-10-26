@@ -42,29 +42,29 @@ export const ProfilePage: React.FC = () => {
   const [autofilling, setAutofilling] = useState(false);
   const resumeFileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    currentLocation: '',
-    headline: '',
-    summary: '',
-    noticePeriodDays: 15,
-  });
+  const [formData, setFormData] = useState(() => ({
+    fullName: profile?.fullName || '',
+    email: profile?.email || '',
+    phone: profile?.phone || '',
+    currentLocation: profile?.currentLocation || '',
+    headline: profile?.headline || '',
+    summary: profile?.summary || '',
+    noticePeriodDays: profile?.noticePeriodDays || 15,
+  }));
 
-  const [skills, setSkills] = useState<string[]>([]);
+  const [skills, setSkills] = useState<string[]>(() => profile?.skills || []);
   const [skillInput, setSkillInput] = useState('');
 
-  const [preferredTitles, setPreferredTitles] = useState<string[]>([]);
+  const [preferredTitles, setPreferredTitles] = useState<string[]>(() => profile?.preferredTitles || []);
   const [titleInput, setTitleInput] = useState('');
 
-  const [preferredLocations, setPreferredLocations] = useState<string[]>([]);
+  const [preferredLocations, setPreferredLocations] = useState<string[]>(() => profile?.preferredLocations || []);
   const [locationInput, setLocationInput] = useState('');
 
-  const [education, setEducation] = useState<EducationItem[]>([]);
-  const [experience, setExperience] = useState<ExperienceItem[]>([]);
-  const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const [certifications, setCertifications] = useState<CertificationItem[]>([]);
+  const [education, setEducation] = useState<EducationItem[]>(() => profile?.education || []);
+  const [experience, setExperience] = useState<ExperienceItem[]>(() => profile?.experience || []);
+  const [projects, setProjects] = useState<ProjectItem[]>(() => profile?.projects || []);
+  const [certifications, setCertifications] = useState<CertificationItem[]>(() => profile?.certifications || []);
 
   const [isDirty, setIsDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,7 +83,7 @@ export const ProfilePage: React.FC = () => {
   const [newCert, setNewCert] = useState({ name: '', issuer: '', date: '', url: '' });
 
   useEffect(() => {
-    if (profile) {
+    if (profile && !isDirty) {
       setFormData({
         fullName: profile.fullName || '',
         email: profile.email || '',
@@ -346,7 +346,7 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading && !profile) {
     return (
       <div className="space-y-6">
         <Skeleton height="3rem" />

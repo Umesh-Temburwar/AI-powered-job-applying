@@ -243,7 +243,7 @@ export const ResumeManagerPage: React.FC = () => {
           subtitle={`${resumes.length} document${resumes.length === 1 ? '' : 's'} managed`}
         />
 
-        {loading ? (
+        {loading && resumes.length === 0 ? (
           <div className="space-y-3">
             <Skeleton height="4rem" />
             <Skeleton height="4rem" />

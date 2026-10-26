@@ -51,13 +51,15 @@ export const AutomationPage: React.FC = () => {
   const { showToast } = useToast();
 
   // Dynamic Form State pre-populated from Saved Preferences
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformName | 'All Platforms'>('All Platforms');
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformName | 'All Platforms'>(() =>
+    preferences?.selectedPlatforms && preferences.selectedPlatforms.length > 0 ? preferences.selectedPlatforms[0] : 'All Platforms'
+  );
   const [taskType, setTaskType] = useState<'job_apply' | 'profile_update' | 'screening_test'>('job_apply');
-  const [keywords, setKeywords] = useState<string[]>([]);
+  const [keywords, setKeywords] = useState<string[]>(() => preferences?.targetTitles || []);
   const [keywordInput, setKeywordInput] = useState('');
-  const [locations, setLocations] = useState<string[]>([]);
+  const [locations, setLocations] = useState<string[]>(() => preferences?.targetLocations || []);
   const [locationInput, setLocationInput] = useState('');
-  const [maxApplications, setMaxApplications] = useState<number>(25);
+  const [maxApplications, setMaxApplications] = useState<number>(() => preferences?.dailyApplicationLimit || 25);
   const [dryRun, setDryRun] = useState<boolean>(true);
   const [confirmLiveSubmission, setConfirmLiveSubmission] = useState<boolean>(false);
   const [force, setForce] = useState<boolean>(false);
@@ -68,7 +70,7 @@ export const AutomationPage: React.FC = () => {
 
   // Initialize or synchronize form state from user's saved preferences
   useEffect(() => {
-    if (preferences) {
+    if (preferences && keywords.length === 0) {
       if (preferences.targetTitles && preferences.targetTitles.length > 0) {
         setKeywords(preferences.targetTitles);
       }
@@ -256,7 +258,7 @@ export const AutomationPage: React.FC = () => {
           }
         />
 
-        {tasksLoading || prefsLoading ? (
+        {(tasksLoading && !currentTask) || (prefsLoading && !preferences) ? (
           <div className="space-y-4">
             <Skeleton height="3rem" />
             <Skeleton height="8rem" />

@@ -732,7 +732,7 @@ export const DashboardPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E5E5E5]">
-              {appsLoading ? (
+              {appsLoading && applications.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-[#6B6B6B]">
                     Loading applications...

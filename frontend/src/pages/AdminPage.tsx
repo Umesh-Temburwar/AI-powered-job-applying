@@ -30,6 +30,13 @@ import type {
   SystemAuditLogItem,
 } from '../services/adminService';
 
+let cachedAdminData: {
+  stats: AdminSystemStats;
+  portals: PortalAdminConfig[];
+  candidates: CandidateAdminItem[];
+  logs: SystemAuditLogItem[];
+} | null = null;
+
 export const AdminPage: React.FC = () => {
   const { showToast } = useToast();
 
@@ -37,14 +44,14 @@ export const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'portals' | 'candidates' | 'logs'>('overview');
 
   // Loading States
-  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(() => !cachedAdminData);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Data States
-  const [stats, setStats] = useState<AdminSystemStats | null>(null);
-  const [portals, setPortals] = useState<PortalAdminConfig[]>([]);
-  const [candidates, setCandidates] = useState<CandidateAdminItem[]>([]);
-  const [logs, setLogs] = useState<SystemAuditLogItem[]>([]);
+  const [stats, setStats] = useState<AdminSystemStats | null>(() => cachedAdminData?.stats || null);
+  const [portals, setPortals] = useState<PortalAdminConfig[]>(() => cachedAdminData?.portals || []);
+  const [candidates, setCandidates] = useState<CandidateAdminItem[]>(() => cachedAdminData?.candidates || []);
+  const [logs, setLogs] = useState<SystemAuditLogItem[]>(() => cachedAdminData?.logs || []);
 
   // Search & Filter States
   const [candidateSearch, setCandidateSearch] = useState('');
@@ -61,7 +68,9 @@ export const AdminPage: React.FC = () => {
   // Initial Load
   const loadAllData = async () => {
     try {
-      setLoadingStats(true);
+      if (!cachedAdminData) {
+        setLoadingStats(true);
+      }
 
       const [statsData, portalsData, candidatesData, logsData] = await Promise.all([
         fetchAdminStats(),
@@ -69,6 +78,13 @@ export const AdminPage: React.FC = () => {
         fetchCandidatesApi(1, 50),
         fetchAuditLogsApi(100),
       ]);
+
+      cachedAdminData = {
+        stats: statsData,
+        portals: portalsData,
+        candidates: candidatesData.candidates,
+        logs: logsData.logs,
+      };
 
       setStats(statsData);
       setPortals(portalsData);

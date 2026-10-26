@@ -190,7 +190,7 @@ export const ApplicationsPage: React.FC = () => {
           </span>
         </div>
 
-        {loading ? (
+        {loading && applications.length === 0 ? (
           <div className="p-6 space-y-4">
             <Skeleton height="3rem" />
             <Skeleton height="3rem" />
