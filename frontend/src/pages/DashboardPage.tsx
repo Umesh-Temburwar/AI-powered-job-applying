@@ -154,6 +154,7 @@ export const DashboardPage: React.FC = () => {
         keywords,
         locations: locations.length > 0 ? locations : ['Remote'],
         force,
+        headless: false,
       });
 
       showToast(`Task queued on ${selectedPlatform}`, 'success');
@@ -233,7 +234,7 @@ export const DashboardPage: React.FC = () => {
     setConnectPermissionGranted(true);
   };
 
-  const handleAuthorizeAndConnect = async (launchBrowser: boolean = false) => {
+  const handleAuthorizeAndConnect = async (launchBrowser: boolean = true) => {
     if (!connectModalPortal) return;
     const targetId = connectModalPortal.portal_id || connectModalPortal.platform;
     setConnectModalSubmitting(true);
@@ -275,7 +276,10 @@ export const DashboardPage: React.FC = () => {
 
   const handleConnect = async (platform: string) => {
     try {
-      await connectPlatform(platform);
+      await connectPlatform(platform, {
+        permission_granted: true,
+        launch_browser: true,
+      });
       showToast(`Opened browser login for ${platform}. Please sign in on the official portal.`, 'info');
     } catch (err) {
       showToast(err instanceof Error ? err.message : `Failed to connect ${platform}`, 'error');

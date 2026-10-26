@@ -161,6 +161,7 @@ export const AutomationPage: React.FC = () => {
         keywords,
         locations,
         force,
+        headless: false,
       };
 
       await startTask(taskOptions);

@@ -18,6 +18,7 @@ export interface StartTaskOptions {
   keywords?: string[];
   locations?: string[];
   force?: boolean;
+  headless?: boolean;
 }
 
 function mapBackendTaskToAutomationTask(item: BackendTaskItem): AutomationTask {
@@ -178,6 +179,7 @@ export function useTasks() {
         keywords: options.keywords,
         locations: options.locations,
         force: options.force ?? false,
+        headless: options.headless ?? false,
       });
 
       const mapped = mapBackendTaskToAutomationTask(enqueued);

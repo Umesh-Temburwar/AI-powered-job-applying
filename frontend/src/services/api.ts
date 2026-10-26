@@ -257,6 +257,7 @@ export interface TaskCreatePayload {
   keywords?: string[];
   locations?: string[];
   force?: boolean;
+  headless?: boolean;
 }
 
 export async function enqueueTaskApi(
