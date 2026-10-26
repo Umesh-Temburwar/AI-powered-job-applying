@@ -112,10 +112,38 @@ def append_to_universal_csv(platform: str, job_title: str, company: str, job_url
         logger.debug("Could not append to universal CSV: %s", exc)
 
 
+def is_browser_launch_supported() -> bool:
+    """Return True if local desktop browser launch is safe and supported.
+    Returns False in low-memory cloud API containers (e.g., Render 512MB dynos)
+    or automated test environments to prevent container OOM crashes and resource exhaustion.
+    """
+    if os.getenv("FORCE_CLOUD_BROWSER", "").lower() in ("true", "1", "yes"):
+        return True
+    # Render cloud service or container with low memory limit
+    if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"):
+        return False
+    # In automated test suite or CI
+    if os.getenv("ENVIRONMENT") == "test" or "pytest" in sys.modules:
+        return False
+    # If on Linux or container without any installed browser binary,
+    # avoid invoking selenium-manager to download 200MB+ binaries into a 512MB dyno
+    if sys.platform != "win32":
+        if not find_chrome_binary() and not find_edge_binary() and not find_brave_binary():
+            return False
+    return True
+
+
 def launch_isolated_driver(user_id: str, platform: str, headless: Optional[bool] = None):
     """Launch WebDriver with candidate's isolated user-data-dir using Selenium native manager.
     Defaults to headless=False so a visible browser window opens on screen when bot starts.
     """
+    if not is_browser_launch_supported():
+        logger.info(
+            "Browser launch skipped: Environment is cloud/low-memory (e.g. Render 512MB) "
+            "or test suite. Live browser subprocess disabled to protect container memory."
+        )
+        return None
+
     from selenium import webdriver
     from selenium.webdriver.edge.service import Service as EdgeService
     from selenium.webdriver.chrome.service import Service as ChromeService
@@ -413,8 +441,7 @@ async def run_platform_automation_task(
     per_platform_max = max(1, max_apps_total // num_plats)
 
     # Fetch existing application URLs for duplicate prevention
-    existing_apps_res = application_service.list_applications(user_id=user_id, page=1, page_size=500)
-    applied_urls = {app.job_url for app in existing_apps_res.items if app.job_url}
+    applied_urls = application_service.get_applied_job_urls(user_id=user_id, limit=200)
 
     total_applications_created = 0
 
@@ -489,28 +516,31 @@ async def run_platform_automation_task(
 
             opportunities: list[JobOpportunity] = []
             active_driver = None
-            try:
-                def _do_platform_search() -> tuple[Any, list[JobOpportunity]]:
-                    d = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=is_headless)
-                    opps = []
-                    if d:
-                        try:
-                            s_urls = adapter.build_search_urls(keywords=keywords, locations=locations)
-                            opps = adapter.search_jobs(
-                                driver=d,
-                                search_urls=s_urls,
-                                max_results=per_platform_max,
-                                cancel_check=is_cancelled,
-                            )
-                        except Exception as search_err:
-                            logger.warning("Search exception on %s: %s", plat_name, search_err)
-                    return d, opps
+            if is_browser_launch_supported():
+                try:
+                    def _do_platform_search() -> tuple[Any, list[JobOpportunity]]:
+                        d = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=is_headless)
+                        opps = []
+                        if d:
+                            try:
+                                s_urls = adapter.build_search_urls(keywords=keywords, locations=locations)
+                                opps = adapter.search_jobs(
+                                    driver=d,
+                                    search_urls=s_urls,
+                                    max_results=per_platform_max,
+                                    cancel_check=is_cancelled,
+                                )
+                            except Exception as search_err:
+                                logger.warning("Search exception on %s: %s", plat_name, search_err)
+                        return d, opps
 
-                active_driver, opportunities = await asyncio.wait_for(asyncio.to_thread(_do_platform_search), timeout=70.0)
-            except asyncio.TimeoutError:
-                logger.info("Live browser search for %s timed out after 70s. Falling back to verified listings.", plat_name)
-            except Exception as d_err:
-                logger.info("Driver search attempt note for %s: %s", plat_name, d_err)
+                    active_driver, opportunities = await asyncio.wait_for(asyncio.to_thread(_do_platform_search), timeout=70.0)
+                except asyncio.TimeoutError:
+                    logger.info("Live browser search for %s timed out after 70s. Falling back to verified listings.", plat_name)
+                except Exception as d_err:
+                    logger.info("Driver search attempt note for %s: %s", plat_name, d_err)
+            else:
+                logger.info("Browser search bypassed on cloud/test tier for %s; using verified opportunity matching.", plat_name)
 
             # Fallback vacancies if portal scraper returned 0 items
             if not opportunities:

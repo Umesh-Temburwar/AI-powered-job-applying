@@ -25,19 +25,12 @@ ROLE_MAPPINGS = [
 ]
 
 
+from core.supabase import get_supabase_client
+
+
 def _get_supabase_client():
-    settings = get_settings()
-    if not settings.SUPABASE_URL or not (
-        settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_ANON_KEY
-    ):
-        return None
-    try:
-        from supabase import create_client
-        key = settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_ANON_KEY
-        return create_client(settings.SUPABASE_URL, key)
-    except Exception as exc:
-        logger.warning("Could not initialize Supabase client for preferences: %s", exc)
-        return None
+    """Return shared singleton authenticated Supabase client."""
+    return get_supabase_client()
 
 
 async def get_user_preferences(user_id: str) -> JobPreferencesResponse:

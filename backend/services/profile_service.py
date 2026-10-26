@@ -27,26 +27,35 @@ _STATUS_CACHE: dict[str, tuple[float, OnboardingStatusResponse]] = {}
 _PROFILE_CACHE: dict[str, tuple[float, ProfileResponse]] = {}
 
 
+from core.supabase import get_supabase_client
+
+_MAX_CACHE_ENTRIES = 100
+
+
+def _prune_expired_cache() -> None:
+    now = time.time()
+    for k in list(_STATUS_CACHE.keys()):
+        if now - _STATUS_CACHE[k][0] > _CACHE_TTL_SECONDS:
+            _STATUS_CACHE.pop(k, None)
+    if len(_STATUS_CACHE) > _MAX_CACHE_ENTRIES:
+        _STATUS_CACHE.clear()
+
+    for k in list(_PROFILE_CACHE.keys()):
+        if now - _PROFILE_CACHE[k][0] > _CACHE_TTL_SECONDS:
+            _PROFILE_CACHE.pop(k, None)
+    if len(_PROFILE_CACHE) > _MAX_CACHE_ENTRIES:
+        _PROFILE_CACHE.clear()
+
+
 def invalidate_profile_cache(user_id: str) -> None:
     """Invalidate cached profile and onboarding status for a user."""
     _STATUS_CACHE.pop(user_id, None)
     _PROFILE_CACHE.pop(user_id, None)
 
 
-
 def _get_supabase_client():
-    settings = get_settings()
-    if not settings.SUPABASE_URL or not (
-        settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_ANON_KEY
-    ):
-        return None
-    try:
-        from supabase import create_client
-        key = settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_ANON_KEY
-        return create_client(settings.SUPABASE_URL, key)
-    except Exception as exc:
-        logger.warning("Could not initialize Supabase client for profile: %s", exc)
-        return None
+    """Return shared singleton authenticated Supabase client."""
+    return get_supabase_client()
 
 
 def calculate_completion(profile_data: dict[str, Any]) -> tuple[int, list[str]]:

@@ -159,6 +159,10 @@ def _has_stored_session(session_dir: str, portal_id: Optional[str] = None) -> bo
 
 def _launch_browser_window(session_dir: str, target_url: str) -> bool:
     """Launch user-visible browser instance with dedicated isolated profile."""
+    if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"):
+        logger.info("Render cloud environment detected: browser window opening deferred to candidate's local client.")
+        return False
+
     cmd = None
     if sys.platform == "win32":
         browser_candidates = [

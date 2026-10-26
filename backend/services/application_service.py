@@ -59,7 +59,7 @@ class ApplicationService:
         page_size: int = 10,
     ) -> ApplicationListResponse:
         page = max(1, page)
-        page_size = max(1, min(2000, page_size))
+        page_size = max(1, min(100, page_size))
 
         if self.supabase:
             try:
@@ -136,6 +136,24 @@ class ApplicationService:
         )
 
     list_applications = get_applications
+
+    def get_applied_job_urls(self, user_id: str, limit: int = 200) -> set[str]:
+        """Lightweight query returning set of recently applied job URLs to prevent duplicates without loading full model payloads."""
+        if self.supabase:
+            try:
+                res = (
+                    self.supabase.table("applications")
+                    .select("job_url")
+                    .eq("user_id", user_id)
+                    .order("created_at", desc=True)
+                    .limit(limit)
+                    .execute()
+                )
+                return {r["job_url"] for r in (res.data or []) if r.get("job_url")}
+            except Exception:
+                pass
+        user_apps = _MEMORY_APPLICATIONS.get(user_id, [])
+        return {a.get("job_url") for a in user_apps[:limit] if a.get("job_url")}
 
     def create_application(
         self, user_id: str, req: ApplicationCreateRequest
@@ -329,7 +347,7 @@ class ApplicationService:
         return [item for _, item in activities[:8]]
 
     def export_csv(self, user_id: str) -> str:
-        apps = self.get_applications(user_id=user_id, page=1, page_size=5000).items
+        apps = self.get_applications(user_id=user_id, page=1, page_size=500).items
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(

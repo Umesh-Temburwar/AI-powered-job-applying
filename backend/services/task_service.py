@@ -19,29 +19,27 @@ from schemas.application import ApplicationCreateRequest
 from services.application_service import application_service
 from services.platform_automation.runner import run_platform_automation_task
 
+from core.supabase import get_supabase_client
+
 logger = logging.getLogger("tasks")
 
 # Thread-safe in-memory task registry for test / mock runs or fallback
 _MEMORY_TASKS: dict[str, dict[str, Any]] = {}
 _RUNNING_ASYNC_TASKS: dict[str, asyncio.Task] = {}
+_MAX_MEMORY_TASKS = 200
+_PIPELINE_SEMAPHORE = asyncio.Semaphore(1)
+
+
+def _prune_memory_tasks() -> None:
+    if len(_MEMORY_TASKS) > _MAX_MEMORY_TASKS:
+        keys_to_remove = list(_MEMORY_TASKS.keys())[:len(_MEMORY_TASKS) - _MAX_MEMORY_TASKS]
+        for k in keys_to_remove:
+            _MEMORY_TASKS.pop(k, None)
 
 
 def _get_supabase_client():
-    """Instantiate authenticated Supabase client using server-side service role key."""
-    settings = get_settings()
-    if not settings.SUPABASE_URL or not (
-        settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_ANON_KEY
-    ):
-        return None
-
-    try:
-        from supabase import Client, create_client
-
-        key = settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_ANON_KEY
-        return create_client(settings.SUPABASE_URL, key)
-    except Exception as exc:
-        logger.warning("Could not initialize Supabase client: %s", exc)
-        return None
+    """Return shared singleton authenticated Supabase client with connection reuse."""
+    return get_supabase_client()
 
 
 def _is_test_mock_user(user_id: str) -> bool:
@@ -128,13 +126,14 @@ async def _execute_task_pipeline(task_id: str, user_id: str, record: dict[str, A
         return False
 
     try:
-        await run_platform_automation_task(
-            task_id=task_id,
-            user_id=user_id,
-            record=record,
-            update_task_state=update_task_state,
-            is_cancelled=is_cancelled,
-        )
+        async with _PIPELINE_SEMAPHORE:
+            await run_platform_automation_task(
+                task_id=task_id,
+                user_id=user_id,
+                record=record,
+                update_task_state=update_task_state,
+                is_cancelled=is_cancelled,
+            )
     finally:
         _RUNNING_ASYNC_TASKS.pop(task_id, None)
 
@@ -261,6 +260,7 @@ async def enqueue_task(user_id: str, request: TaskCreateRequest) -> TaskResponse
         except Exception as exc:
             logger.warning("Supabase task enqueue failed (%s), falling back to memory store.", exc)
             _MEMORY_TASKS[task_id] = record
+            _prune_memory_tasks()
             if not is_mock_user:
                 task_runner = asyncio.create_task(_execute_task_pipeline(task_id, user_id, record, None))
                 _RUNNING_ASYNC_TASKS[task_id] = task_runner
@@ -268,6 +268,7 @@ async def enqueue_task(user_id: str, request: TaskCreateRequest) -> TaskResponse
 
     # Memory fallback
     _MEMORY_TASKS[task_id] = record
+    _prune_memory_tasks()
     if not is_mock_user:
         task_runner = asyncio.create_task(_execute_task_pipeline(task_id, user_id, record, None))
         _RUNNING_ASYNC_TASKS[task_id] = task_runner
@@ -576,19 +577,20 @@ async def resume_stuck_queued_tasks() -> None:
                 t_id = str(row["id"])
                 if t_id not in _RUNNING_ASYNC_TASKS:
                     client.table("automation_tasks").update({
-                        "status": "completed",
-                        "progress": 100,
-                        "message": "Task completed successfully.",
+                        "status": "failed",
+                        "progress": 0,
+                        "message": "Task interrupted: server instance restarted.",
+                        "error_details": "Task execution was interrupted by server instance restart.",
                         "completed_at": now_iso,
                     }).eq("id", t_id).execute()
 
-        # 2. Resume queued tasks
+        # 2. Resume queued tasks safely (limit to 1 sequential resumption on startup)
         res = (
             client.table("automation_tasks")
             .select("*")
             .eq("status", "queued")
             .order("created_at", desc=False)
-            .limit(5)
+            .limit(1)
             .execute()
         )
         if res.data:

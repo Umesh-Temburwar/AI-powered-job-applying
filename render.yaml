@@ -3,12 +3,18 @@ services:
     name: universal-job-apply-bot
     runtime: python
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: uvicorn main:app --app-dir backend --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn main:app --app-dir backend --host 0.0.0.0 --port $PORT --workers 1 --limit-concurrency 50 --timeout-keep-alive 5
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3
       - key: ENVIRONMENT
         value: production
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: MALLOC_TRIM_THRESHOLD_
+        value: "100000"
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
