@@ -78,15 +78,19 @@ function mapBackendTaskToAutomationTask(item: BackendTaskItem): AutomationTask {
   };
 }
 
+let cachedCurrentTaskData: AutomationTask | null = null;
+let cachedHistoryData: AutomationTask[] | null = null;
+let cachedIsLiveBackend = false;
+
 export function useTasks() {
   const { session, getToken } = useAuth();
 
-  const [currentTask, setCurrentTask] = useState<AutomationTask | null>(null);
-  const [history, setHistory] = useState<AutomationTask[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [currentTask, setCurrentTask] = useState<AutomationTask | null>(() => cachedCurrentTaskData);
+  const [history, setHistory] = useState<AutomationTask[]>(() => cachedHistoryData || []);
+  const [loading, setLoading] = useState<boolean>(!cachedHistoryData);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLiveBackend, setIsLiveBackend] = useState<boolean>(false);
+  const [isLiveBackend, setIsLiveBackend] = useState<boolean>(() => cachedIsLiveBackend);
 
   const getActiveToken = useCallback(async (): Promise<string | null> => {
     return (await getToken?.()) || session?.token || null;
@@ -103,27 +107,41 @@ export function useTasks() {
     }
 
     try {
+      if (!cachedHistoryData) {
+        setLoading(true);
+      }
       const response = await listTasksApi(activeToken, 30);
       setIsLiveBackend(true);
+      cachedIsLiveBackend = true;
       if (response.tasks && response.tasks.length > 0) {
         const mapped = response.tasks.map(mapBackendTaskToAutomationTask);
         const active = mapped.find((t) => t.status === 'queued' || t.status === 'running');
         if (active) {
+          cachedCurrentTaskData = active;
+          const hist = mapped.filter((t) => t.id !== active.id);
+          cachedHistoryData = hist;
           setCurrentTask(active);
-          setHistory(mapped.filter((t) => t.id !== active.id));
+          setHistory(hist);
         } else {
+          cachedCurrentTaskData = mapped[0];
+          const hist = mapped.slice(1);
+          cachedHistoryData = hist;
           setCurrentTask(mapped[0]);
-          setHistory(mapped.slice(1));
+          setHistory(hist);
         }
       } else {
+        cachedCurrentTaskData = null;
+        cachedHistoryData = [];
         setCurrentTask(null);
         setHistory([]);
       }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to retrieve task data');
-      setCurrentTask(null);
-      setHistory([]);
+      if (!cachedHistoryData) {
+        setCurrentTask(null);
+        setHistory([]);
+      }
     } finally {
       setLoading(false);
     }

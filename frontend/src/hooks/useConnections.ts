@@ -23,10 +23,12 @@ const DEFAULT_PORTALS: BackendConnectionItem[] = [
   { user_id: '', platform: 'Cutshort', portal_id: 'cutshort', status: 'not_connected', website_url: 'https://cutshort.io' },
 ];
 
+let cachedConnectionsData: BackendConnectionItem[] | null = null;
+
 export function useConnections() {
   const { session, getToken } = useAuth();
-  const [connections, setConnections] = useState<BackendConnectionItem[]>(DEFAULT_PORTALS);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [connections, setConnections] = useState<BackendConnectionItem[]>(() => cachedConnectionsData || DEFAULT_PORTALS);
+  const [loading, setLoading] = useState<boolean>(!cachedConnectionsData);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,8 +45,12 @@ export function useConnections() {
     }
 
     try {
+      if (!cachedConnectionsData) {
+        setLoading(true);
+      }
       const res = await getConnectionsApi(token);
       if (res.connections && res.connections.length > 0) {
+        cachedConnectionsData = res.connections;
         setConnections(res.connections);
       }
       setError(null);
@@ -114,6 +120,7 @@ export function useConnections() {
       setError(null);
       const res = await connectAllPortalsApi(token, payload);
       if (res.connections) {
+        cachedConnectionsData = res.connections;
         setConnections(res.connections);
       }
       return res;
@@ -191,6 +198,7 @@ export function useConnections() {
       setError(null);
       const res = await syncEnvConnectionsApi(token);
       if (res.connections) {
+        cachedConnectionsData = res.connections;
         setConnections(res.connections);
       }
       return res;

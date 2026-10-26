@@ -63,11 +63,13 @@ function mapBackendToUserProfile(b: BackendProfileResponse): UserProfile {
   };
 }
 
+let cachedProfileData: UserProfile | null = null;
+
 export function useProfile() {
   const { session, user, getToken } = useAuth();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [profile, setProfile] = useState<UserProfile | null>(() => cachedProfileData);
+  const [loading, setLoading] = useState<boolean>(!cachedProfileData);
   const [updating, setUpdating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,37 +90,43 @@ export function useProfile() {
     }
 
     try {
-      setLoading(true);
+      if (!cachedProfileData) {
+        setLoading(true);
+      }
       setError(null);
       const data = await getProfileApi(activeToken);
-      setProfile(mapBackendToUserProfile(data));
+      const mapped = mapBackendToUserProfile(data);
+      cachedProfileData = mapped;
+      setProfile(mapped);
     } catch (err) {
-      setProfile({
-        id: userId,
-        email: userEmail,
-        fullName: userFullName,
-        phone: '',
-        currentLocation: '',
-        city: '',
-        headline: '',
-        summary: '',
-        linkedinUrl: '',
-        githubUrl: '',
-        portfolioUrl: '',
-        noticePeriodDays: 15,
-        skills: [],
-        preferredTitles: [],
-        preferredLocations: [],
-        education: [],
-        experience: [],
-        projects: [],
-        certifications: [],
-        isOnboarded: false,
-        onboardingStep: 0,
-        completionPercentage: 0,
-        missingFields: ['full_name', 'email', 'skills'],
-        updatedAt: new Date().toISOString(),
-      });
+      if (!cachedProfileData) {
+        setProfile({
+          id: userId,
+          email: userEmail,
+          fullName: userFullName,
+          phone: '',
+          currentLocation: '',
+          city: '',
+          headline: '',
+          summary: '',
+          linkedinUrl: '',
+          githubUrl: '',
+          portfolioUrl: '',
+          noticePeriodDays: 15,
+          skills: [],
+          preferredTitles: [],
+          preferredLocations: [],
+          education: [],
+          experience: [],
+          projects: [],
+          certifications: [],
+          isOnboarded: false,
+          onboardingStep: 0,
+          completionPercentage: 0,
+          missingFields: ['full_name', 'email', 'skills'],
+          updatedAt: new Date().toISOString(),
+        });
+      }
       setError(err instanceof Error ? err.message : 'Failed to fetch candidate profile');
     } finally {
       setLoading(false);
@@ -171,6 +179,7 @@ export function useProfile() {
 
         const updated = await updateProfileApi(activeToken, payload);
         const mapped = mapBackendToUserProfile(updated);
+        cachedProfileData = mapped;
         setProfile(mapped);
         return mapped;
       }
@@ -197,6 +206,7 @@ export function useProfile() {
 
       const updated = await autofillProfileApi(activeToken, resumeId);
       const mapped = mapBackendToUserProfile(updated);
+      cachedProfileData = mapped;
       setProfile(mapped);
       return mapped;
     } catch (err) {

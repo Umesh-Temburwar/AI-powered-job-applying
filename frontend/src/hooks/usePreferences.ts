@@ -24,11 +24,13 @@ function mapBackendToPreferences(b: BackendJobPreferences): JobPreferences {
   };
 }
 
+let cachedPreferencesData: JobPreferences | null = null;
+
 export function usePreferences() {
   const { session, getToken } = useAuth();
 
-  const [preferences, setPreferences] = useState<JobPreferences | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [preferences, setPreferences] = useState<JobPreferences | null>(() => cachedPreferencesData);
+  const [loading, setLoading] = useState<boolean>(!cachedPreferencesData);
   const [error, setError] = useState<string | null>(null);
 
   const getActiveToken = useCallback(async (): Promise<string | null> => {
@@ -44,13 +46,19 @@ export function usePreferences() {
     }
 
     try {
-      setLoading(true);
+      if (!cachedPreferencesData) {
+        setLoading(true);
+      }
       setError(null);
       const data = await getPreferencesApi(activeToken);
-      setPreferences(mapBackendToPreferences(data));
+      const mapped = mapBackendToPreferences(data);
+      cachedPreferencesData = mapped;
+      setPreferences(mapped);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch job preferences');
-      setPreferences(null);
+      if (!cachedPreferencesData) {
+        setPreferences(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -77,6 +85,7 @@ export function usePreferences() {
 
       const updated = await updatePreferencesApi(activeToken, payload);
       const mapped = mapBackendToPreferences(updated);
+      cachedPreferencesData = mapped;
       setPreferences(mapped);
       return mapped;
     } catch (err) {

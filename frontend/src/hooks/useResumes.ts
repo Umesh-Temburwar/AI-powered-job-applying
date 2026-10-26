@@ -24,11 +24,13 @@ function mapBackendToResume(b: BackendResumeItem): Resume {
   };
 }
 
+let cachedResumesData: Resume[] | null = null;
+
 export function useResumes() {
   const { session, getToken } = useAuth();
 
-  const [resumes, setResumes] = useState<Resume[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [resumes, setResumes] = useState<Resume[]>(() => cachedResumesData || []);
+  const [loading, setLoading] = useState<boolean>(!cachedResumesData);
   const [error, setError] = useState<string | null>(null);
 
   const getActiveToken = useCallback(async (): Promise<string | null> => {
@@ -44,13 +46,19 @@ export function useResumes() {
     }
 
     try {
-      setLoading(true);
+      if (!cachedResumesData) {
+        setLoading(true);
+      }
       setError(null);
       const data = await listResumesApi(activeToken);
-      setResumes((data.resumes || []).map(mapBackendToResume));
+      const mapped = (data.resumes || []).map(mapBackendToResume);
+      cachedResumesData = mapped;
+      setResumes(mapped);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch candidate resumes');
-      setResumes([]);
+      if (!cachedResumesData) {
+        setResumes([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -69,7 +77,9 @@ export function useResumes() {
 
       setResumes((prev) => {
         const updated = isDefault ? prev.map((r) => ({ ...r, isDefault: false })) : [...prev];
-        return [mapped, ...updated];
+        const nextList = [mapped, ...updated];
+        cachedResumesData = nextList;
+        return nextList;
       });
 
       return uploadRes;
@@ -87,12 +97,14 @@ export function useResumes() {
     try {
       setError(null);
       await setDefaultResumeApi(activeToken, id);
-      setResumes((prev) =>
-        prev.map((r) => ({
+      setResumes((prev) => {
+        const nextList = prev.map((r) => ({
           ...r,
           isDefault: r.id === id,
-        }))
-      );
+        }));
+        cachedResumesData = nextList;
+        return nextList;
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to set default resume';
       setError(msg);
@@ -107,7 +119,11 @@ export function useResumes() {
     try {
       setError(null);
       await deleteResumeApi(activeToken, id);
-      setResumes((prev) => prev.filter((r) => r.id !== id));
+      setResumes((prev) => {
+        const nextList = prev.filter((r) => r.id !== id);
+        cachedResumesData = nextList;
+        return nextList;
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to delete resume';
       setError(msg);

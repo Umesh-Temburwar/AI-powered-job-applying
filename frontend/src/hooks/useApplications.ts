@@ -48,17 +48,47 @@ function mapBackendToActivity(b: BackendActivityItem): ActivityItem {
   };
 }
 
+interface CachedApplicationsData {
+  key: string;
+  items: Application[];
+  total: number;
+  totalPages: number;
+  timestamp: number;
+}
+
+let cachedApplicationsData: CachedApplicationsData | null = null;
+
+interface CachedDashboardData {
+  metrics: DashboardMetrics;
+  apiSummary: DashboardSummaryApiResponse;
+  activities: ActivityItem[];
+  timestamp: number;
+}
+
+let cachedDashboardData: CachedDashboardData | null = null;
+
 export function useApplications(initialParams?: ApplicationFilterParams) {
   const { session, getToken } = useAuth();
   const token = session?.token;
 
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [totalPages, setTotalPages] = useState<number>(1);
   const [page, setPage] = useState<number>(initialParams?.page || 1);
   const [pageSize] = useState<number>(initialParams?.pageSize || 10);
   const [filters, setFilters] = useState<ApplicationFilterParams>(initialParams || {});
-  const [loading, setLoading] = useState<boolean>(true);
+
+  const currentCacheKey = `${filters.status || ''}-${filters.platform || ''}-${filters.query || ''}-${page}-${pageSize}`;
+  const hasMatchedCache = cachedApplicationsData && cachedApplicationsData.key === currentCacheKey;
+
+  const [applications, setApplications] = useState<Application[]>(() =>
+    hasMatchedCache ? cachedApplicationsData!.items : (cachedApplicationsData?.items || [])
+  );
+  const [total, setTotal] = useState<number>(() =>
+    hasMatchedCache ? cachedApplicationsData!.total : (cachedApplicationsData?.total || 0)
+  );
+  const [totalPages, setTotalPages] = useState<number>(() =>
+    hasMatchedCache ? cachedApplicationsData!.totalPages : (cachedApplicationsData?.totalPages || 1)
+  );
+  // Never block UI with full skeleton if we already have any cached items
+  const [loading, setLoading] = useState<boolean>(!cachedApplicationsData);
   const [error, setError] = useState<string | null>(null);
 
   const fetchApplications = useCallback(async () => {
@@ -72,24 +102,36 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
     }
 
     try {
-      setLoading(true);
+      if (!cachedApplicationsData) {
+        setLoading(true);
+      }
       setError(null);
       const res = await getApplicationsApi(activeToken, {
         ...filters,
         page,
         pageSize,
       });
-      setApplications(res.items.map(mapBackendToApplication));
+      const mapped = res.items.map(mapBackendToApplication);
+      cachedApplicationsData = {
+        key: currentCacheKey,
+        items: mapped,
+        total: res.total,
+        totalPages: res.total_pages,
+        timestamp: Date.now(),
+      };
+      setApplications(mapped);
       setTotal(res.total);
       setTotalPages(res.total_pages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch applications');
-      setApplications([]);
-      setTotal(0);
+      if (!cachedApplicationsData) {
+        setApplications([]);
+        setTotal(0);
+      }
     } finally {
       setLoading(false);
     }
-  }, [getToken, token, filters, page, pageSize]);
+  }, [getToken, token, filters, page, pageSize, currentCacheKey]);
 
   useEffect(() => {
     fetchApplications();
@@ -142,15 +184,23 @@ export function useDashboard() {
   const { session, getToken } = useAuth();
   const token = session?.token;
 
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [apiSummary, setApiSummary] = useState<DashboardSummaryApiResponse | null>(null);
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(() =>
+    cachedDashboardData ? cachedDashboardData.metrics : null
+  );
+  const [apiSummary, setApiSummary] = useState<DashboardSummaryApiResponse | null>(() =>
+    cachedDashboardData ? cachedDashboardData.apiSummary : null
+  );
+  const [activities, setActivities] = useState<ActivityItem[]>(() =>
+    cachedDashboardData ? cachedDashboardData.activities : []
+  );
+  const [loading, setLoading] = useState<boolean>(!cachedDashboardData);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!cachedDashboardData) {
+        setLoading(true);
+      }
       setError(null);
       const activeToken = (await getToken?.()) || token;
       const [summary, acts] = await Promise.all([
@@ -158,15 +208,25 @@ export function useDashboard() {
         activeToken ? getDashboardActivitiesApi(activeToken) : Promise.resolve([]),
       ]);
 
-      setApiSummary(summary);
-      setActivities(acts.map(mapBackendToActivity));
-      setMetrics({
+      const mappedActivities = acts.map(mapBackendToActivity);
+      const computedMetrics: DashboardMetrics = {
         totalApplied: summary.total_applications,
         successful: summary.successful_submissions,
         pendingReview: summary.pending_review,
         failedOrSkipped: summary.failed_tasks,
         dailyStreak: 0,
-      });
+      };
+
+      cachedDashboardData = {
+        metrics: computedMetrics,
+        apiSummary: summary,
+        activities: mappedActivities,
+        timestamp: Date.now(),
+      };
+
+      setApiSummary(summary);
+      setActivities(mappedActivities);
+      setMetrics(computedMetrics);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to connect to backend API');
     } finally {
