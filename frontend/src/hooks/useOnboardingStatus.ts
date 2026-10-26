@@ -2,21 +2,29 @@ import { useState, useEffect, useCallback } from 'react';
 import { getOnboardingStatusApi, type BackendOnboardingStatus } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+let memoryCachedStatus: BackendOnboardingStatus | null = null;
+
 export function useOnboardingStatus() {
   const { session, user } = useAuth();
   const token = session?.token;
   const userId = user?.id;
 
   const [status, setStatus] = useState<BackendOnboardingStatus | null>(() => {
+    if (memoryCachedStatus) return memoryCachedStatus;
     try {
       const cached = sessionStorage.getItem('onboarding_status_cache');
-      return cached ? JSON.parse(cached) : null;
+      if (cached) {
+        memoryCachedStatus = JSON.parse(cached);
+        return memoryCachedStatus;
+      }
     } catch {
       return null;
     }
+    return null;
   });
 
   const [loading, setLoading] = useState<boolean>(() => {
+    if (memoryCachedStatus) return false;
     try {
       return !sessionStorage.getItem('onboarding_status_cache');
     } catch {
@@ -32,11 +40,12 @@ export function useOnboardingStatus() {
       return;
     }
     try {
-      if (isInitial && !status) {
+      if (isInitial && !status && !memoryCachedStatus) {
         setLoading(true);
       }
       setError(null);
       const res = await getOnboardingStatusApi(token);
+      memoryCachedStatus = res;
       setStatus(res);
       try {
         sessionStorage.setItem('onboarding_status_cache', JSON.stringify(res));
@@ -54,6 +63,7 @@ export function useOnboardingStatus() {
         has_resume: true,
         has_preferences: true,
       };
+      memoryCachedStatus = fallback;
       setStatus(fallback);
       try {
         sessionStorage.setItem('onboarding_status_cache', JSON.stringify(fallback));

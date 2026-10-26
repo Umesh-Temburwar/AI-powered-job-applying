@@ -10,6 +10,8 @@ export interface ProtectedRouteProps {
   requireAdmin?: boolean;
 }
 
+let globalInitialCheckResolved = false;
+
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowIncompleteOnboarding = false,
@@ -19,11 +21,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isOnboarded, loading: statusLoading } = useOnboardingStatus();
   const location = useLocation();
 
-  // Once the page has resolved the initial check, prevent full-page skeleton on window minimize/maximize
-  const [hasResolvedInitialCheck, setHasResolvedInitialCheck] = React.useState(false);
+  // Once resolved once across the entire SPA lifecycle, never block route navigation
+  const [hasResolvedInitialCheck, setHasResolvedInitialCheck] = React.useState(globalInitialCheckResolved);
 
   React.useEffect(() => {
     if (!authLoading && !statusLoading) {
+      globalInitialCheckResolved = true;
       setHasResolvedInitialCheck(true);
     }
   }, [authLoading, statusLoading]);
