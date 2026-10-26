@@ -45,6 +45,22 @@ async def connect_all_portals(
         ) from exc
 
 
+@router.post("/sync-env", response_model=ConnectionListResponse)
+async def sync_connections_from_env(
+    user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+):
+    """Sync candidate portal credentials and account emails from root .env file."""
+    try:
+        updated = connection_service.sync_from_env(user_id=user.id)
+        return ConnectionListResponse(connections=updated)
+    except Exception as exc:
+        logger.error("Failed to sync env credentials for candidate %s: %s", user.id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not sync credentials from .env.",
+        ) from exc
+
+
 @router.get("/registry", response_model=PortalRegistryResponse)
 async def get_portal_registry():
     """Retrieve all supported and audited job portals with metadata, capabilities, and restrictions."""
@@ -163,18 +179,20 @@ async def verify_portal_connection(
     try:
         account_email = payload.account_email if payload else None
         confirmed = payload.confirmed if payload else True
+        live_check = payload.live_check if payload else False
 
         verified = connection_service.verify_platform_connection(
             user_id=user.id,
             platform=platform,
             account_email=account_email,
             confirmed=confirmed,
+            live_driver_check=live_check,
         )
         is_conn = verified.status == "connected"
         msg = (
             f"Successfully verified active session on {verified.platform}."
             if is_conn
-            else f"No active login detected on {verified.platform}. Click 'Open Portal' to sign in on the official site."
+            else f"No active login detected on {verified.platform}. Click 'Open' to sign in on the official site."
         )
         return ConnectionActionResponse(
             success=is_conn,

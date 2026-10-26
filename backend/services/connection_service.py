@@ -29,6 +29,18 @@ SESSION_ROOT = os.path.abspath(
 _MEMORY_CONNECTIONS: dict[str, dict[str, dict[str, Any]]] = {}
 
 
+PORTAL_DOMAINS: dict[str, list[str]] = {
+    "naukri": ["naukri.com"],
+    "internshala": ["internshala.com"],
+    "indeed": ["indeed.com"],
+    "linkedin": ["linkedin.com"],
+    "foundit": ["foundit.in", "monsterindia.com"],
+    "wellfound": ["wellfound.com", "angel.co"],
+    "glassdoor": ["glassdoor.com", "glassdoor.co.in"],
+    "cutshort": ["cutshort.io"],
+}
+
+
 def _get_user_session_dir(user_id: str, portal_id: str) -> str:
     """Return isolated directory for a candidate's portal browser profile."""
     safe_uid = "".join(c for c in user_id if c.isalnum() or c in "-_")
@@ -38,10 +50,98 @@ def _get_user_session_dir(user_id: str, portal_id: str) -> str:
     return session_dir
 
 
-def _has_stored_session(session_dir: str) -> bool:
+def _read_env_credentials() -> dict[str, dict[str, str]]:
+    """Read portal credentials configured in root .env file."""
+    root_env = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+    creds: dict[str, dict[str, str]] = {}
+    if os.path.exists(root_env):
+        try:
+            with open(root_env, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    k, v = line.split("=", 1)
+                    k, v = k.strip().upper(), v.strip().strip("'\"")
+                    if k == "NAUKRI_EMAIL":
+                        creds.setdefault("naukri", {})["email"] = v
+                    elif k == "NAUKRI_PASSWORD":
+                        creds.setdefault("naukri", {})["password"] = v
+                    elif k == "INTERNSHALA_EMAIL":
+                        creds.setdefault("internshala", {})["email"] = v
+                    elif k == "INTERNSHALA_PASSWORD":
+                        creds.setdefault("internshala", {})["password"] = v
+                    elif k == "INDEED_EMAIL":
+                        creds.setdefault("indeed", {})["email"] = v
+                    elif k == "INDEED_PASSWORD":
+                        creds.setdefault("indeed", {})["password"] = v
+                    elif k == "LINKEDIN_EMAIL":
+                        creds.setdefault("linkedin", {})["email"] = v
+                    elif k == "LINKEDIN_PASSWORD":
+                        creds.setdefault("linkedin", {})["password"] = v
+        except Exception as e:
+            logger.warning("Could not parse root .env for credentials: %s", e)
+
+    # Fallback to system environment
+    env_mappings = {
+        "naukri": ("NAUKRI_EMAIL", "NAUKRI_PASSWORD"),
+        "internshala": ("INTERNSHALA_EMAIL", "INTERNSHALA_PASSWORD"),
+        "indeed": ("INDEED_EMAIL", "INDEED_PASSWORD"),
+        "linkedin": ("LINKEDIN_EMAIL", "LINKEDIN_PASSWORD"),
+    }
+    for p_id, (e_var, p_var) in env_mappings.items():
+        e_val = os.getenv(e_var, "").strip()
+        p_val = os.getenv(p_var, "").strip()
+        if e_val:
+            creds.setdefault(p_id, {})["email"] = e_val
+        if p_val:
+            creds.setdefault(p_id, {})["password"] = p_val
+
+    return creds
+
+
+def _has_portal_cookies(session_dir: str, portal_id: str) -> bool:
+    """Check if Chromium user-data-dir contains established session cookies for this specific portal."""
+    if not os.path.exists(session_dir):
+        return False
+
+    candidate_files = [
+        os.path.join(session_dir, "Default", "Network", "Cookies"),
+        os.path.join(session_dir, "Default", "Cookies"),
+        os.path.join(session_dir, "Cookies"),
+    ]
+    domains = PORTAL_DOMAINS.get(portal_id.lower(), [f"{portal_id.lower()}.com"])
+
+    import sqlite3
+    for path in candidate_files:
+        if not os.path.exists(path) or os.path.getsize(path) < 2048:
+            continue
+        try:
+            uri = f"file:{path}?mode=ro"
+            conn = sqlite3.connect(uri, uri=True, timeout=1.0)
+            cur = conn.cursor()
+            for d in domains:
+                cur.execute("SELECT count(*) FROM cookies WHERE host_key LIKE ?", (f"%{d}%",))
+                row = cur.fetchone()
+                if row and row[0] > 0:
+                    conn.close()
+                    return True
+            conn.close()
+        except Exception:
+            # If SQLite file is currently locked by a live browser process, size check
+            if os.path.getsize(path) > 8192:
+                return True
+
+    return False
+
+
+def _has_stored_session(session_dir: str, portal_id: Optional[str] = None) -> bool:
     """Check if Chromium user-data-dir contains established session cookies or profile files."""
     if not os.path.exists(session_dir):
         return False
+
+    if portal_id:
+        return _has_portal_cookies(session_dir, portal_id)
 
     candidate_files = [
         os.path.join(session_dir, "Default", "Network", "Cookies"),
@@ -51,17 +151,9 @@ def _has_stored_session(session_dir: str) -> bool:
         os.path.join(session_dir, "Default", "Web Data"),
     ]
     for path in candidate_files:
-        if os.path.exists(path) and os.path.getsize(path) > 1024:
+        if os.path.exists(path) and os.path.getsize(path) > 4096:
             return True
 
-    default_dir = os.path.join(session_dir, "Default")
-    if os.path.exists(default_dir):
-        try:
-            entries = os.listdir(default_dir)
-            if len(entries) > 5:
-                return True
-        except OSError:
-            pass
     return False
 
 
@@ -75,6 +167,10 @@ def _launch_browser_window(session_dir: str, target_url: str) -> bool:
             os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
             r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
             r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            os.path.expandvars(r"%PROGRAMFILES%\Microsoft\Edge\Application\msedge.exe"),
+            os.path.expandvars(r"%PROGRAMFILES(X86)%\Microsoft\Edge\Application\msedge.exe"),
+            r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe"),
         ]
         for c in browser_candidates:
             if os.path.exists(c):
@@ -82,7 +178,6 @@ def _launch_browser_window(session_dir: str, target_url: str) -> bool:
                 break
 
     if not cmd:
-        # Fallback to python webbrowser or generic command
         try:
             import webbrowser
             webbrowser.open(target_url)
@@ -132,8 +227,18 @@ class ConnectionService:
     def get_user_connections(self, user_id: str) -> list[PlatformConnectionItem]:
         """Retrieve connection states for all registry portals for the authenticated candidate."""
         db_records: dict[str, dict[str, Any]] = {}
+        env_creds = _read_env_credentials()
 
-        if self.supabase:
+        # Check if user_id is a valid UUID before querying Supabase
+        is_uuid = False
+        try:
+            import uuid
+            uuid.UUID(str(user_id))
+            is_uuid = True
+        except (ValueError, AttributeError, TypeError):
+            is_uuid = False
+
+        if self.supabase and is_uuid:
             try:
                 res = (
                     self.supabase.table("platform_connections")
@@ -158,17 +263,20 @@ class ConnectionService:
             p_id = portal.id
             record = db_records.get(p_id) or db_records.get(portal.name.lower())
             session_dir = _get_user_session_dir(user_id, p_id)
-            has_session = _has_stored_session(session_dir)
+            has_cookies = _has_portal_cookies(session_dir, p_id)
+            env_email = env_creds.get(p_id, {}).get("email")
 
             if record:
                 status = record.get("status", "not_connected")
                 meta = record.get("metadata") or {}
-                if has_session or meta.get("permission_granted") or status == "connected":
+                if has_cookies or status == "connected" or meta.get("permission_granted"):
                     status = "connected"
                 elif status == "connecting":
                     status = "connecting"
                 elif status != "unsupported":
                     status = record.get("status", "not_connected")
+
+                acc_email = record.get("account_email") or env_email
 
                 results.append(
                     PlatformConnectionItem(
@@ -185,14 +293,14 @@ class ConnectionService:
                         restrictions=portal.restrictions,
                         portal_status=portal.status,
                         status=status,
-                        account_email=record.get("account_email"),
-                        last_verified=record.get("last_verified"),
+                        account_email=acc_email,
+                        last_verified=record.get("last_verified") or (datetime.now(timezone.utc).isoformat() if has_cookies else None),
                         error_message=record.get("error_message"),
                         metadata={"session_dir": session_dir},
                     )
                 )
             else:
-                default_status = "connected" if has_session else "not_connected"
+                default_status = "connected" if has_cookies else "not_connected"
                 results.append(
                     PlatformConnectionItem(
                         user_id=user_id,
@@ -207,8 +315,8 @@ class ConnectionService:
                         restrictions=portal.restrictions,
                         portal_status=portal.status,
                         status=default_status,
-                        account_email=None,
-                        last_verified=None,
+                        account_email=env_email,
+                        last_verified=datetime.now(timezone.utc).isoformat() if has_cookies else None,
                         error_message=None,
                         metadata={"session_dir": session_dir},
                     )
@@ -281,13 +389,29 @@ class ConnectionService:
             return item
 
         session_dir = _get_user_session_dir(user_id, portal.id)
+        has_cookies = _has_portal_cookies(session_dir, portal.id)
         opened = False
         if launch_browser:
             opened = _launch_browser_window(session_dir, portal.login_url)
 
+        # Lookup in .env if account_email not provided
+        if not account_email:
+            env_creds = _read_env_credentials()
+            account_email = env_creds.get(portal.id, {}).get("email")
+
         now_iso = datetime.now(timezone.utc).isoformat()
-        new_status = "connected" if permission_granted else "connecting"
-        err_msg = None if permission_granted else "Permission required to automate applications."
+        if has_cookies:
+            new_status = "connected"
+            err_msg = None
+        elif opened:
+            new_status = "connecting"
+            err_msg = f"Browser login window opened for {portal.name}. Please sign in, then click Verify."
+        elif permission_granted:
+            new_status = "connected"
+            err_msg = None
+        else:
+            new_status = "connecting"
+            err_msg = "Permission required to automate applications."
 
         meta: dict[str, Any] = {
             "session_dir": session_dir,
@@ -312,7 +436,7 @@ class ConnectionService:
             portal_status=portal.status,
             status=new_status,
             account_email=account_email,
-            last_verified=now_iso if permission_granted else None,
+            last_verified=now_iso if new_status == "connected" else None,
             error_message=err_msg,
             metadata=meta,
         )
@@ -348,6 +472,7 @@ class ConnectionService:
         platform: str,
         account_email: Optional[str] = None,
         confirmed: bool = True,
+        live_driver_check: bool = False,
     ) -> PlatformConnectionItem:
         """Step 4 & 5: Verify whether an active, valid session exists in candidate's isolated profile."""
         portal = get_portal(platform)
@@ -355,17 +480,43 @@ class ConnectionService:
             raise ValueError(f"Portal '{platform}' is not recognized in the registry.")
 
         session_dir = _get_user_session_dir(user_id, portal.id)
-        has_session = _has_stored_session(session_dir)
+        has_cookies = _has_portal_cookies(session_dir, portal.id)
         now_iso = datetime.now(timezone.utc).isoformat()
 
-        # If user explicitly confirmed verification, has stored profile cookies, or supplied account email
-        if has_session or confirmed or account_email:
+        # Check .env credentials if account_email not provided
+        if not account_email:
+            env_creds = _read_env_credentials()
+            account_email = env_creds.get(portal.id, {}).get("email")
+
+        # Optional live browser inspection via Selenium driver
+        if live_driver_check:
+            try:
+                from services.platform_automation.runner import get_adapter_for_platform, launch_isolated_driver
+                driver = launch_isolated_driver(user_id=user_id, platform=portal.id, headless=True)
+                if driver:
+                    try:
+                        adapter = get_adapter_for_platform(portal.id)
+                        is_valid, _ = adapter.check_session(driver)
+                        if is_valid:
+                            has_cookies = True
+                        else:
+                            has_cookies = False
+                    finally:
+                        try:
+                            driver.quit()
+                        except Exception:
+                            pass
+            except Exception as exc:
+                logger.info("Live driver session check note for %s: %s", portal.name, exc)
+
+        # Verified if portal cookies exist OR explicitly confirmed with account email
+        if has_cookies or (confirmed and account_email):
             new_status = "connected"
             err_msg = None
             last_ver = now_iso
         else:
             new_status = "login_required"
-            err_msg = f"No active login detected on {portal.name}. Click 'Open Portal' to sign in on the official site."
+            err_msg = f"No active login detected on {portal.name}. Click 'Open' to sign in on the official site."
             last_ver = None
 
         item = PlatformConnectionItem(
@@ -388,6 +539,46 @@ class ConnectionService:
         )
         self._upsert_connection(user_id, portal.id, item)
         return item
+
+    def sync_from_env(self, user_id: str) -> list[PlatformConnectionItem]:
+        """Automatically load credentials and portal emails from root .env and configure connections."""
+        env_creds = _read_env_credentials()
+        results = []
+        for portal in get_all_portals():
+            p_id = portal.id
+            cred = env_creds.get(p_id, {})
+            email = cred.get("email")
+            pwd = cred.get("password")
+            session_dir = _get_user_session_dir(user_id, p_id)
+            has_cookies = _has_portal_cookies(session_dir, p_id)
+
+            status = "connected" if has_cookies else ("login_required" if email else "not_connected")
+            now_iso = datetime.now(timezone.utc).isoformat()
+            item = PlatformConnectionItem(
+                user_id=user_id,
+                platform=portal.name,
+                portal_id=portal.id,
+                display_name=portal.name,
+                website_url=portal.website_url,
+                login_url=portal.login_url,
+                job_discovery_url=portal.job_discovery_url,
+                integration_type=portal.integration_type,
+                capabilities=portal.capabilities.__dict__,
+                restrictions=portal.restrictions,
+                portal_status=portal.status,
+                status=status,
+                account_email=email,
+                last_verified=now_iso if has_cookies else None,
+                error_message=None if has_cookies else (f"Credentials synced from .env for {portal.name}. Open portal to verify login." if email else None),
+                metadata={
+                    "session_dir": session_dir,
+                    "has_credentials": bool(pwd),
+                    "synced_from_env": True,
+                },
+            )
+            self._upsert_connection(user_id, p_id, item)
+            results.append(item)
+        return results
 
     def disconnect_platform(self, user_id: str, platform: str) -> PlatformConnectionItem:
         """Step 6: Clear candidate session data and mark connection as not connected."""
@@ -443,7 +634,16 @@ class ConnectionService:
             "updated_at": now_iso,
         }
 
-        if self.supabase:
+        # Validate UUID format before hitting Supabase
+        is_uuid = False
+        try:
+            import uuid
+            uuid.UUID(str(user_id))
+            is_uuid = True
+        except (ValueError, AttributeError, TypeError):
+            is_uuid = False
+
+        if self.supabase and is_uuid:
             try:
                 existing = (
                     self.supabase.table("platform_connections")

@@ -68,6 +68,7 @@ class ConnectionVerifyRequest(BaseModel):
     account_email: Optional[str] = None
     cookies: Optional[dict[str, str]] = None
     confirmed: bool = True
+    live_check: bool = False
 
 
 class ConnectionConnectRequest(BaseModel):

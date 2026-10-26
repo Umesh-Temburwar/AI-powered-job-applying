@@ -319,3 +319,12 @@ def test_connections_multi_platform_verification(client):
         )
         assert v_res.status_code == 200
         assert v_res.json()["status"] == "connected"
+
+
+def test_connections_sync_env(client):
+    auth_headers = {"Authorization": "Bearer test-token-candidate-connections"}
+    sync_res = client.post("/api/v1/connections/sync-env", headers=auth_headers)
+    assert sync_res.status_code == 200
+    data = sync_res.json()
+    assert "connections" in data
+    assert len(data["connections"]) >= 4
