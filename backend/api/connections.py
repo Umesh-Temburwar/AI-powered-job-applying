@@ -133,7 +133,7 @@ async def connect_portal(
         account_email = payload.account_email if payload else None
         account_password = payload.account_password if payload else None
         permission_granted = payload.permission_granted if payload else True
-        launch_browser = payload.launch_browser if payload else False
+        launch_browser = payload.launch_browser if (payload and payload.launch_browser is not None) else True
 
         updated = connection_service.connect_platform(
             user_id=user.id,

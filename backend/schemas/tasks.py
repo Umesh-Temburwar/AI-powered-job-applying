@@ -40,6 +40,10 @@ class TaskCreateRequest(BaseModel):
         default=False,
         description="If True, bypasses single-active-task constraint for this user",
     )
+    headless: bool = Field(
+        default=False,
+        description="Whether to run browser in headless mode. Default is False (visible browser window)",
+    )
 
     @field_validator("task_type")
     @classmethod

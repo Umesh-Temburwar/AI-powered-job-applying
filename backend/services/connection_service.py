@@ -174,29 +174,32 @@ def _launch_browser_window(session_dir: str, target_url: str) -> bool:
         ]
         for c in browser_candidates:
             if os.path.exists(c):
-                cmd = [c, f"--user-data-dir={session_dir}", target_url]
+                cmd = [c, f"--user-data-dir={session_dir}", "--new-window", target_url]
                 break
 
-    if not cmd:
+    launched = False
+    if cmd:
         try:
-            import webbrowser
-            webbrowser.open(target_url)
-            return True
-        except Exception:
-            return False
+            logger.info("Launching isolated browser window: %s -> %s", cmd[0], target_url)
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
+            )
+            launched = True
+        except Exception as exc:
+            logger.warning("Could not launch browser directly: %s", exc)
 
+    # Always ensure browser window opens using system default browser as guaranteed fallback
     try:
-        logger.info("Launching isolated browser: %s -> %s", cmd[0], target_url)
-        subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
-        )
-        return True
-    except Exception as exc:
-        logger.warning("Could not launch browser directly: %s", exc)
-        return False
+        import webbrowser
+        webbrowser.open(target_url, new=1)
+        launched = True
+    except Exception as wb_err:
+        logger.debug("Webbrowser open fallback note: %s", wb_err)
+
+    return launched
 
 
 class ConnectionService:
@@ -361,7 +364,7 @@ class ConnectionService:
         account_email: Optional[str] = None,
         account_password: Optional[str] = None,
         permission_granted: bool = True,
-        launch_browser: bool = False,
+        launch_browser: bool = True,
     ) -> PlatformConnectionItem:
         """Connect candidate portal with explicit user permission and optional credentials."""
         portal = get_portal(platform)

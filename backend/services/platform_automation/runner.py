@@ -66,11 +66,17 @@ def append_to_universal_csv(platform: str, job_title: str, company: str, job_url
         logger.debug("Could not append to universal CSV: %s", exc)
 
 
-def launch_isolated_driver(user_id: str, platform: str, headless: bool = True):
-    """Launch WebDriver with candidate's isolated user-data-dir using Selenium native manager."""
+def launch_isolated_driver(user_id: str, platform: str, headless: Optional[bool] = None):
+    """Launch WebDriver with candidate's isolated user-data-dir using Selenium native manager.
+    Defaults to headless=False so a visible browser window opens on screen when bot starts.
+    """
     from selenium import webdriver
     from selenium.webdriver.edge.service import Service as EdgeService
     from selenium.webdriver.chrome.service import Service as ChromeService
+
+    if headless is None:
+        headless_env = os.getenv("HEADLESS", "false").lower()
+        headless = headless_env in ("true", "1", "yes")
 
     session_dir = _get_user_session_dir(user_id, platform)
 
@@ -99,10 +105,25 @@ def launch_isolated_driver(user_id: str, platform: str, headless: bool = True):
             service = EdgeService()
             driver = webdriver.Edge(service=service, options=options)
 
-        driver.set_page_load_timeout(25)
+        driver.set_page_load_timeout(35)
         return driver
     except Exception as edge_err:
-        logger.info("Direct Edge launch failed: %s. Trying Chrome...", edge_err)
+        logger.info("Direct Edge launch with session_dir failed: %s. Trying clean profile or Chrome...", edge_err)
+
+    # 1b. Try Edge without locked session_dir if already running
+    try:
+        options = webdriver.EdgeOptions()
+        for a in ["--disable-blink-features=AutomationControlled", "--disable-notifications", "--start-maximized"]:
+            options.add_argument(a)
+        if headless:
+            options.add_argument("--headless=new")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+        driver = webdriver.Edge(options=options)
+        driver.set_page_load_timeout(35)
+        return driver
+    except Exception:
+        pass
 
     # 2. Try Google Chrome
     try:
@@ -120,11 +141,34 @@ def launch_isolated_driver(user_id: str, platform: str, headless: bool = True):
             service = ChromeService()
             driver = webdriver.Chrome(service=service, options=options)
 
-        driver.set_page_load_timeout(25)
+        driver.set_page_load_timeout(35)
         return driver
     except Exception as chrome_err:
-        logger.warning("Local browser driver launch failed: %s", chrome_err)
-        return None
+        logger.warning("Local Chrome launch with session_dir failed: %s. Trying clean Chrome...", chrome_err)
+
+    # 2b. Try Chrome without locked session_dir
+    try:
+        options = webdriver.ChromeOptions()
+        for a in ["--disable-blink-features=AutomationControlled", "--disable-notifications", "--start-maximized"]:
+            options.add_argument(a)
+        if headless:
+            options.add_argument("--headless=new")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+        driver = webdriver.Chrome(options=options)
+        driver.set_page_load_timeout(35)
+        return driver
+    except Exception:
+        pass
+
+    # 3. Fallback to platforms.browser_manager
+    try:
+        from platforms.browser_manager import create_driver
+        return create_driver(headless=headless, user_data_dir=session_dir)
+    except Exception as bm_err:
+        logger.warning("Browser manager fallback failed: %s", bm_err)
+
+    return None
 
 
 async def run_platform_automation_task(
@@ -322,41 +366,38 @@ async def run_platform_automation_task(
                 continue
 
             # Standard Job Apply Workflow
+            is_headless = bool(payload.get("headless", False))
             update_task_state(
                 status_val="running",
                 progress_val=step_pct,
-                message_val=f"[{idx+1}/{num_plats}] Searching {plat_name} for '{', '.join(keywords[:2])}' in {locations[0]}...",
+                message_val=f"[{idx+1}/{num_plats}] Launching visible browser on {plat_name} to search '{', '.join(keywords[:2])}' in {locations[0]}...",
             )
             await asyncio.sleep(0.5)
             if is_cancelled():
                 return
 
             opportunities: list[JobOpportunity] = []
+            active_driver = None
             try:
-                def _do_search() -> list[JobOpportunity]:
-                    d = None
-                    try:
-                        d = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=True)
-                        if d:
+                def _do_platform_search() -> tuple[Any, list[JobOpportunity]]:
+                    d = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=is_headless)
+                    opps = []
+                    if d:
+                        try:
                             s_urls = adapter.build_search_urls(keywords=keywords, locations=locations)
-                            return adapter.search_jobs(
+                            opps = adapter.search_jobs(
                                 driver=d,
                                 search_urls=s_urls,
                                 max_results=per_platform_max,
                                 cancel_check=is_cancelled,
                             )
-                    finally:
-                        if d:
-                            try:
-                                d.quit()
-                            except Exception:
-                                pass
-                    return []
+                        except Exception as search_err:
+                            logger.warning("Search exception on %s: %s", plat_name, search_err)
+                    return d, opps
 
-                # Enforce a non-blocking timeout on live browser initialization
-                opportunities = await asyncio.wait_for(asyncio.to_thread(_do_search), timeout=15.0)
+                active_driver, opportunities = await asyncio.wait_for(asyncio.to_thread(_do_platform_search), timeout=35.0)
             except asyncio.TimeoutError:
-                logger.info("Live browser search for %s timed out after 15s. Falling back to curated vacancies.", plat_name)
+                logger.info("Live browser search for %s timed out after 35s. Falling back to curated vacancies.", plat_name)
             except Exception as d_err:
                 logger.info("Driver search attempt note for %s: %s", plat_name, d_err)
 
@@ -399,54 +440,71 @@ async def run_platform_automation_task(
                     )
 
             if is_cancelled():
+                if active_driver:
+                    try:
+                        active_driver.quit()
+                    except Exception:
+                        pass
                 return
 
             plat_applied_count = 0
-            for opp in opportunities:
-                if is_cancelled():
-                    return
-                if opp.job_url in applied_urls:
-                    continue
+            try:
+                for opp in opportunities:
+                    if is_cancelled():
+                        return
+                    if opp.job_url in applied_urls:
+                        continue
 
-                app_status = "applied" if not dry_run else "review_needed"
-                note_text = (
-                    f"Application submitted on {plat_name} for '{opp.job_title}' at {opp.company}."
-                    if not dry_run
-                    else f"[DRY RUN] Job match discovered on {plat_name} for '{opp.job_title}'. Details verified."
-                )
+                    app_status = "applied" if not dry_run else "review_needed"
+                    note_text = (
+                        f"Application submitted on {plat_name} for '{opp.job_title}' at {opp.company}."
+                        if not dry_run
+                        else f"[DRY RUN] Job match discovered on {plat_name} for '{opp.job_title}'. Details verified."
+                    )
 
-                if not dry_run and user_confirmed:
-                    try:
-                        def _do_live_apply() -> Optional[str]:
-                            app_driver = None
-                            try:
-                                app_driver = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=True)
-                                if app_driver:
-                                    apply_res = adapter.apply_to_job(
-                                        driver=app_driver,
-                                        job=opp,
-                                        user_profile=profile_dict,
-                                        resume_path=None,
-                                        dry_run=False,
-                                        user_confirmed=user_confirmed,
-                                    )
-                                    if apply_res and apply_res.notes:
-                                        return apply_res.notes
-                            finally:
-                                if app_driver:
+                    if not dry_run and user_confirmed:
+                        try:
+                            def _do_live_apply(drv, target_opp) -> Optional[str]:
+                                d = drv
+                                should_close = False
+                                if not d:
+                                    d = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=is_headless)
+                                    should_close = True
+                                if d:
                                     try:
-                                        app_driver.quit()
-                                    except Exception:
-                                        pass
-                            return None
+                                        apply_res = adapter.apply_to_job(
+                                            driver=d,
+                                            job=target_opp,
+                                            user_profile=profile_dict,
+                                            resume_path=None,
+                                            dry_run=False,
+                                            user_confirmed=user_confirmed,
+                                        )
+                                        if apply_res and apply_res.notes:
+                                            return apply_res.notes
+                                    finally:
+                                        if should_close:
+                                            try:
+                                                d.quit()
+                                            except Exception:
+                                                pass
+                                return None
 
-                        live_note = await asyncio.wait_for(asyncio.to_thread(_do_live_apply), timeout=15.0)
-                        if live_note:
-                            note_text = live_note
-                    except Exception as live_err:
-                        logger.warning("Live application submission attempt note: %s", live_err)
-                        app_status = "review_needed"
-                        note_text = f"Live application deferred: candidate session requires re-verification on {plat_name}."
+                            live_note = await asyncio.wait_for(
+                                asyncio.to_thread(_do_live_apply, active_driver, opp), timeout=25.0
+                            )
+                            if live_note:
+                                note_text = live_note
+                        except Exception as live_err:
+                            logger.warning("Live application submission attempt note: %s", live_err)
+                            app_status = "review_needed"
+                            note_text = f"Live application deferred: candidate session requires re-verification on {plat_name}."
+            finally:
+                if active_driver:
+                    try:
+                        active_driver.quit()
+                    except Exception:
+                        pass
 
                 try:
                     application_service.create_application(
