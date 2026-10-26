@@ -1,8 +1,26 @@
+import os
 import pytest
 from fastapi.testclient import TestClient
 
+os.environ["ENVIRONMENT"] = "test"
+
 from core.config import Settings
 from main import create_app
+
+
+@pytest.fixture(autouse=True)
+def configure_test_environment(monkeypatch):
+    """Ensure test environment variables and clean in-memory state across all tests."""
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    from core.config import get_settings
+    get_settings.cache_clear()
+    from services.task_service import _MEMORY_TASKS, _RUNNING_ASYNC_TASKS
+    _MEMORY_TASKS.clear()
+    _RUNNING_ASYNC_TASKS.clear()
+    yield
+    get_settings.cache_clear()
+    _MEMORY_TASKS.clear()
+    _RUNNING_ASYNC_TASKS.clear()
 
 
 @pytest.fixture

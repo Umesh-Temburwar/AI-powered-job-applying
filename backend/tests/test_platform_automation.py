@@ -56,8 +56,9 @@ def test_platform_adapter_resolution():
 def test_naukri_url_generation_and_dry_run():
     adapter = NaukriPlatformAdapter()
     urls = adapter.build_search_urls(keywords=["Full Stack Developer"], locations=["Pune"])
-    assert len(urls) == 1
+    assert len(urls) == 2
     assert "full-stack-developer-jobs-in-pune" in urls[0]
+    assert "jobs-in-pune?k=Full%20Stack%20Developer" in urls[1]
 
     job = JobOpportunity(
         job_title="Full Stack Developer",
