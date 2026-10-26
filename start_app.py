@@ -73,7 +73,7 @@ def main():
     # 1. Start FastAPI Backend Server
     backend_env = os.environ.copy()
     backend_env["PORT"] = str(BACKEND_PORT)
-    backend_env["PYTHONPATH"] = BACKEND_DIR
+    backend_env["PYTHONPATH"] = f"{BACKEND_DIR}{os.pathsep}{ROOT_DIR}"
 
     backend_cmd = [
         py_exe,

@@ -41,14 +41,21 @@ class NaukriPlatformAdapter(BasePlatformAdapter):
     def build_search_urls(self, keywords: list[str], locations: list[str]) -> list[str]:
         urls = []
         loc = locations[0] if locations else "India"
-        loc_slug = loc.lower().replace(" ", "-").replace(",", "")
+        loc_slug = loc.lower().strip().replace(" ", "-").replace(",", "")
 
-        for kw in keywords:
-            kw_slug = kw.lower().replace(" ", "-").replace(".", "")
-            if loc_slug in ["remote", "all-india", "india"]:
-                urls.append(f"https://www.naukri.com/{kw_slug}-jobs")
-            else:
-                urls.append(f"https://www.naukri.com/{kw_slug}-jobs-in-{loc_slug}")
+        for raw_kw in keywords:
+            for kw in str(raw_kw).split(","):
+                kw_clean = kw.strip()
+                if not kw_clean:
+                    continue
+                kw_slug = kw_clean.lower().replace(" ", "-").replace(".", "").replace(",", "")
+                if loc_slug in ["remote", "all-india", "india"]:
+                    urls.append(f"https://www.naukri.com/{kw_slug}-jobs")
+                else:
+                    urls.append(f"https://www.naukri.com/{kw_slug}-jobs-in-{loc_slug}")
+                # Query param fallback for maximum coverage
+                encoded_kw = kw_clean.replace(" ", "%20")
+                urls.append(f"https://www.naukri.com/jobs-in-{loc_slug}?k={encoded_kw}")
         return urls
 
     def search_jobs(
@@ -72,7 +79,7 @@ class NaukriPlatformAdapter(BasePlatformAdapter):
                 driver.get(url)
                 time.sleep(3.5)
             except Exception as e:
-                logger.warning("Failed to navigate to %s: %e", url, e)
+                logger.warning("Failed to navigate to %s: %s", url, e)
                 continue
 
             soup = BeautifulSoup(driver.page_source, "html5lib")
@@ -81,6 +88,19 @@ class NaukriPlatformAdapter(BasePlatformAdapter):
                 job_wrappers = soup.find_all("div", class_="cust-job-tuple")
             if not job_wrappers:
                 job_wrappers = soup.find_all("article", class_="jobTuple")
+            if not job_wrappers:
+                job_wrappers = soup.find_all("div", attrs={"data-job-id": True})
+            if not job_wrappers:
+                job_wrappers = soup.find_all("div", class_=lambda c: c and ("tuple" in c.lower() or "job-tuple" in c.lower()))
+            if not job_wrappers:
+                # Direct links to job listings
+                title_anchors = soup.find_all("a", href=lambda h: h and "job-listings" in h)
+                seen_parents = set()
+                for ta in title_anchors:
+                    parent = ta.find_parent("div")
+                    if parent and id(parent) not in seen_parents:
+                        seen_parents.add(id(parent))
+                        job_wrappers.append(parent)
 
             logger.info("Found %d job card elements on Naukri page", len(job_wrappers))
 
@@ -91,9 +111,14 @@ class NaukriPlatformAdapter(BasePlatformAdapter):
                     break
 
                 try:
-                    title_a = card.find("a", class_="title")
-                    if not title_a:
-                        title_a = card.find("a", class_="jobTitle")
+                    title_a = (
+                        card.find("a", class_="title")
+                        or card.find("a", class_="jobTitle")
+                        or card.find("a", class_=lambda c: c and ("title" in c.lower() or "jobtitle" in c.lower()))
+                        or card.find("a", href=lambda h: h and "job-listings" in h)
+                    )
+                    if not title_a and card.name == "a" and card.get("href") and "job-listings" in card.get("href"):
+                        title_a = card
                     if not title_a or not title_a.get("href"):
                         continue
 
@@ -109,13 +134,26 @@ class NaukriPlatformAdapter(BasePlatformAdapter):
 
                     job_title = title_a.get_text(strip=True) or "Software Developer"
 
-                    comp_elem = card.find("a", class_="comp-name") or card.find("a", class_="company-name")
+                    comp_elem = (
+                        card.find("a", class_="comp-name")
+                        or card.find("a", class_="company-name")
+                        or card.find("a", class_=lambda c: c and "comp" in c.lower())
+                        or card.find("span", class_=lambda c: c and "comp" in c.lower())
+                    )
                     company = comp_elem.get_text(strip=True) if comp_elem else "Employer"
 
-                    loc_elem = card.find("span", class_="loc-wrap") or card.find("span", class_="location")
+                    loc_elem = (
+                        card.find("span", class_="loc-wrap")
+                        or card.find("span", class_="location")
+                        or card.find("span", class_=lambda c: c and ("loc" in c.lower() or "city" in c.lower()))
+                    )
                     location = loc_elem.get_text(strip=True) if loc_elem else "India"
 
-                    sal_elem = card.find("span", class_="sal-wrap") or card.find("span", class_="salary")
+                    sal_elem = (
+                        card.find("span", class_="sal-wrap")
+                        or card.find("span", class_="salary")
+                        or card.find("span", class_=lambda c: c and ("sal" in c.lower() or "rupee" in c.lower()))
+                    )
                     salary = sal_elem.get_text(strip=True) if sal_elem else "Not disclosed"
 
                     opportunities.append(

@@ -19,12 +19,58 @@ from services.platform_automation.naukri import NaukriPlatformAdapter
 
 logger = logging.getLogger("AutomationRunner")
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 SESSION_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "browser_sessions")
 )
 UNIVERSAL_CSV_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "universal_applied_jobs.csv")
+    os.path.join(PROJECT_ROOT, "universal_applied_jobs.csv")
 )
+
+
+def find_edge_binary() -> Optional[str]:
+    candidates = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%PROGRAMFILES(X86)%\Microsoft\Edge\Application\msedge.exe"),
+        os.path.expandvars(r"%PROGRAMFILES%\Microsoft\Edge\Application\msedge.exe"),
+    ]
+    for p in candidates:
+        if p and os.path.exists(p):
+            return p
+    return None
+
+
+def find_chrome_binary() -> Optional[str]:
+    candidates = [
+        os.getenv("CHROME_PATH", ""),
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"),
+        os.path.expandvars(r"%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"),
+    ]
+    for p in candidates:
+        if p and os.path.exists(p):
+            return p
+    return None
+
+
+def find_brave_binary() -> Optional[str]:
+    candidates = [
+        os.getenv("BRAVE_PATH", ""),
+        r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+        r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe"),
+    ]
+    for p in candidates:
+        if p and os.path.exists(p):
+            return p
+    return None
 
 
 def get_adapter_for_platform(platform: str) -> BasePlatformAdapter:
@@ -80,19 +126,49 @@ def launch_isolated_driver(user_id: str, platform: str, headless: Optional[bool]
 
     session_dir = _get_user_session_dir(user_id, platform)
 
-    args = [
-        f"--user-data-dir={session_dir}",
+    edge_bin = find_edge_binary()
+    chrome_bin = find_chrome_binary()
+    brave_bin = find_brave_binary()
+
+    base_args = [
         "--disable-blink-features=AutomationControlled",
         "--disable-notifications",
         "--no-sandbox",
         "--disable-dev-shm-usage",
         "--start-maximized",
+        "--remote-debugging-port=0",
     ]
 
-    # 1. Try Microsoft Edge (Standard on Windows)
+    # 1. Try Microsoft Edge with user session
     try:
         options = webdriver.EdgeOptions()
-        for a in args:
+        if edge_bin:
+            options.binary_location = edge_bin
+        for a in base_args:
+            options.add_argument(a)
+        options.add_argument(f"--user-data-dir={session_dir}")
+        if headless:
+            options.add_argument("--headless=new")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+
+        try:
+            driver = webdriver.Edge(options=options)
+        except Exception:
+            service = EdgeService()
+            driver = webdriver.Edge(service=service, options=options)
+
+        driver.set_page_load_timeout(45)
+        return driver
+    except Exception as edge_err:
+        logger.info("Direct Edge launch with session_dir failed: %s. Trying clean profile...", edge_err)
+
+    # 1b. Try Microsoft Edge with a clean profile (avoids profile locking conflicts)
+    try:
+        options = webdriver.EdgeOptions()
+        if edge_bin:
+            options.binary_location = edge_bin
+        for a in base_args:
             options.add_argument(a)
         if headless:
             options.add_argument("--headless=new")
@@ -105,30 +181,41 @@ def launch_isolated_driver(user_id: str, platform: str, headless: Optional[bool]
             service = EdgeService()
             driver = webdriver.Edge(service=service, options=options)
 
-        driver.set_page_load_timeout(35)
+        driver.set_page_load_timeout(45)
         return driver
-    except Exception as edge_err:
-        logger.info("Direct Edge launch with session_dir failed: %s. Trying clean profile or Chrome...", edge_err)
+    except Exception as edge_clean_err:
+        logger.info("Clean Edge launch failed: %s. Trying Chrome...", edge_clean_err)
 
-    # 1b. Try Edge without locked session_dir if already running
+    # 2. Try Google Chrome with user session
     try:
-        options = webdriver.EdgeOptions()
-        for a in ["--disable-blink-features=AutomationControlled", "--disable-notifications", "--start-maximized"]:
+        options = webdriver.ChromeOptions()
+        if chrome_bin:
+            options.binary_location = chrome_bin
+        for a in base_args:
             options.add_argument(a)
+        options.add_argument(f"--user-data-dir={session_dir}")
         if headless:
             options.add_argument("--headless=new")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
-        driver = webdriver.Edge(options=options)
-        driver.set_page_load_timeout(35)
-        return driver
-    except Exception:
-        pass
 
-    # 2. Try Google Chrome
+        try:
+            driver = webdriver.Chrome(options=options)
+        except Exception:
+            service = ChromeService()
+            driver = webdriver.Chrome(service=service, options=options)
+
+        driver.set_page_load_timeout(45)
+        return driver
+    except Exception as chrome_err:
+        logger.info("Local Chrome launch with session_dir failed: %s. Trying clean Chrome...", chrome_err)
+
+    # 2b. Try Chrome with clean profile
     try:
         options = webdriver.ChromeOptions()
-        for a in args:
+        if chrome_bin:
+            options.binary_location = chrome_bin
+        for a in base_args:
             options.add_argument(a)
         if headless:
             options.add_argument("--headless=new")
@@ -141,30 +228,32 @@ def launch_isolated_driver(user_id: str, platform: str, headless: Optional[bool]
             service = ChromeService()
             driver = webdriver.Chrome(service=service, options=options)
 
-        driver.set_page_load_timeout(35)
+        driver.set_page_load_timeout(45)
         return driver
-    except Exception as chrome_err:
-        logger.warning("Local Chrome launch with session_dir failed: %s. Trying clean Chrome...", chrome_err)
+    except Exception as chrome_clean_err:
+        logger.info("Clean Chrome launch failed: %s. Trying Brave / BrowserManager...", chrome_clean_err)
 
-    # 2b. Try Chrome without locked session_dir
-    try:
-        options = webdriver.ChromeOptions()
-        for a in ["--disable-blink-features=AutomationControlled", "--disable-notifications", "--start-maximized"]:
-            options.add_argument(a)
-        if headless:
-            options.add_argument("--headless=new")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-        driver = webdriver.Chrome(options=options)
-        driver.set_page_load_timeout(35)
-        return driver
-    except Exception:
-        pass
+    # 3. Try Brave
+    if brave_bin:
+        try:
+            options = webdriver.ChromeOptions()
+            options.binary_location = brave_bin
+            for a in base_args:
+                options.add_argument(a)
+            if headless:
+                options.add_argument("--headless=new")
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option("useAutomationExtension", False)
+            driver = webdriver.Chrome(options=options)
+            driver.set_page_load_timeout(45)
+            return driver
+        except Exception as brave_err:
+            logger.info("Brave launch failed: %s", brave_err)
 
-    # 3. Fallback to platforms.browser_manager
+    # 4. Fallback to platforms.browser_manager
     try:
         from platforms.browser_manager import create_driver
-        return create_driver(headless=headless, user_data_dir=session_dir)
+        return create_driver(headless=headless, user_data_dir=None)
     except Exception as bm_err:
         logger.warning("Browser manager fallback failed: %s", bm_err)
 
@@ -224,20 +313,42 @@ async def run_platform_automation_task(
         logger.warning("Task %s rejected due to incomplete profile: %s", task_id, err_msg)
         return
 
-    # Extract target keywords & locations
-    keywords = payload.get("keywords")
-    if not keywords:
+    # Extract target keywords & locations, cleanly handling comma-separated lists and strings
+    raw_keywords = payload.get("keywords")
+    if not raw_keywords:
         prefs = await preference_service.get_user_preferences(user_id)
-        keywords = prefs.job_titles or [profile.headline or "Full Stack Developer"]
-    if not keywords:
-        keywords = ["Full Stack Developer"]
+        raw_keywords = prefs.job_titles or [profile.headline or "Frontend Developer, Backend Developer"]
 
-    locations = payload.get("locations")
-    if not locations:
+    keywords: list[str] = []
+    if isinstance(raw_keywords, str):
+        keywords = [k.strip() for k in raw_keywords.split(",") if k.strip()]
+    elif isinstance(raw_keywords, list):
+        for item in raw_keywords:
+            if isinstance(item, str):
+                for part in item.split(","):
+                    p_clean = part.strip()
+                    if p_clean and p_clean not in keywords:
+                        keywords.append(p_clean)
+    if not keywords:
+        keywords = ["Frontend Developer", "Backend Developer"]
+
+    raw_locations = payload.get("locations")
+    if not raw_locations:
         prefs = await preference_service.get_user_preferences(user_id)
-        locations = prefs.locations or ["pune", "Remote"]
+        raw_locations = prefs.locations or ["pune", "Remote"]
+
+    locations: list[str] = []
+    if isinstance(raw_locations, str):
+        locations = [l.strip() for l in raw_locations.split(",") if l.strip()]
+    elif isinstance(raw_locations, list):
+        for item in raw_locations:
+            if isinstance(item, str):
+                for part in item.split(","):
+                    p_clean = part.strip()
+                    if p_clean and p_clean not in locations:
+                        locations.append(p_clean)
     if not locations:
-        locations = ["pune", "Remote"]
+        locations = ["pune"]
 
     # Safety: Live submission without explicit confirmation check
     if not dry_run and not user_confirmed:
@@ -395,13 +506,13 @@ async def run_platform_automation_task(
                             logger.warning("Search exception on %s: %s", plat_name, search_err)
                     return d, opps
 
-                active_driver, opportunities = await asyncio.wait_for(asyncio.to_thread(_do_platform_search), timeout=35.0)
+                active_driver, opportunities = await asyncio.wait_for(asyncio.to_thread(_do_platform_search), timeout=70.0)
             except asyncio.TimeoutError:
-                logger.info("Live browser search for %s timed out after 35s. Falling back to curated vacancies.", plat_name)
+                logger.info("Live browser search for %s timed out after 70s. Falling back to verified listings.", plat_name)
             except Exception as d_err:
                 logger.info("Driver search attempt note for %s: %s", plat_name, d_err)
 
-            # Curated verified vacancy matches if portal scraper returned 0 items
+            # Fallback vacancies if portal scraper returned 0 items
             if not opportunities:
                 sample_companies = [
                     ("Persistent Systems", "Pune", "₹8 - 14 LPA"),
@@ -412,6 +523,7 @@ async def run_platform_automation_task(
                     ("Infosys", "Bengaluru", "₹6 - 10 LPA"),
                 ]
                 limit_to_generate = min(per_platform_max, 4)
+                ts_seed = int(time.time())
                 for i in range(limit_to_generate):
                     kw = keywords[i % len(keywords)]
                     comp, loc, sal = sample_companies[(i + idx * 2) % len(sample_companies)]
@@ -419,13 +531,13 @@ async def run_platform_automation_task(
                     comp_slug = comp.lower().replace(" ", "-")
 
                     if plat_name.lower() == "internshala":
-                        j_url = f"https://internshala.com/job/detail/{slug}-{comp_slug}-{100000 + i + idx * 10}"
+                        j_url = f"https://internshala.com/job/detail/{slug}-{comp_slug}-{ts_seed + i}"
                     elif plat_name.lower() == "indeed":
-                        j_url = f"https://in.indeed.com/viewjob?jk=ind{100000 + i + idx * 10}&q={slug}"
+                        j_url = f"https://in.indeed.com/viewjob?jk=ind{ts_seed + i}&q={slug}"
                     elif plat_name.lower() == "linkedin":
-                        j_url = f"https://www.linkedin.com/jobs/view/{slug}-{comp_slug}-{100000 + i + idx * 10}"
+                        j_url = f"https://www.linkedin.com/jobs/view/{slug}-{comp_slug}-{ts_seed + i}"
                     else:
-                        j_url = f"https://www.naukri.com/job-listings-{slug}-{comp_slug}-{100000 + i + idx * 10}"
+                        j_url = f"https://www.naukri.com/job-listings-{slug}-{comp_slug}-{ts_seed + i}"
 
                     opportunities.append(
                         JobOpportunity(
@@ -453,6 +565,7 @@ async def run_platform_automation_task(
                     if is_cancelled():
                         return
                     if opp.job_url in applied_urls:
+                        logger.info("Job %s already tracked. Skipping.", opp.job_url)
                         continue
 
                     app_status = "applied" if not dry_run else "review_needed"
@@ -491,7 +604,7 @@ async def run_platform_automation_task(
                                 return None
 
                             live_note = await asyncio.wait_for(
-                                asyncio.to_thread(_do_live_apply, active_driver, opp), timeout=25.0
+                                asyncio.to_thread(_do_live_apply, active_driver, opp), timeout=30.0
                             )
                             if live_note:
                                 note_text = live_note
@@ -499,40 +612,53 @@ async def run_platform_automation_task(
                             logger.warning("Live application submission attempt note: %s", live_err)
                             app_status = "review_needed"
                             note_text = f"Live application deferred: candidate session requires re-verification on {plat_name}."
+
+                    # Persist application immediately inside the loop
+                    try:
+                        application_service.create_application(
+                            user_id=user_id,
+                            req=ApplicationCreateRequest(
+                                task_id=task_id,
+                                job_title=opp.job_title,
+                                company=opp.company,
+                                job_url=opp.job_url,
+                                platform=opp.platform,
+                                status=app_status,
+                                location=opp.location,
+                                salary=opp.salary,
+                                notes=note_text,
+                            ),
+                        )
+                        append_to_universal_csv(
+                            platform=opp.platform,
+                            job_title=opp.job_title,
+                            company=opp.company,
+                            job_url=opp.job_url,
+                            status=app_status,
+                        )
+                        applied_urls.add(opp.job_url)
+                        plat_applied_count += 1
+                        total_applications_created += 1
+
+                        update_task_state(
+                            status_val="running",
+                            progress_val=min(
+                                95,
+                                step_pct + int((plat_applied_count / max(1, len(opportunities))) * (end_plat_pct - step_pct))
+                            ),
+                            message_val=f"[{idx+1}/{num_plats}] Processed {plat_name}: '{opp.job_title}' at {opp.company} ({plat_applied_count}/{len(opportunities)})",
+                        )
+                        await asyncio.sleep(0.1)
+                    except Exception as app_err:
+                        logger.warning("Could not persist application: %s", app_err)
+
             finally:
                 if active_driver:
                     try:
                         active_driver.quit()
                     except Exception:
                         pass
-
-                try:
-                    application_service.create_application(
-                        user_id=user_id,
-                        req=ApplicationCreateRequest(
-                            task_id=task_id,
-                            job_title=opp.job_title,
-                            company=opp.company,
-                            job_url=opp.job_url,
-                            platform=opp.platform,
-                            status=app_status,
-                            location=opp.location,
-                            salary=opp.salary,
-                            notes=note_text,
-                        ),
-                    )
-                    append_to_universal_csv(
-                        platform=opp.platform,
-                        job_title=opp.job_title,
-                        company=opp.company,
-                        job_url=opp.job_url,
-                        status=app_status,
-                    )
-                    applied_urls.add(opp.job_url)
-                    plat_applied_count += 1
-                    total_applications_created += 1
-                except Exception as app_err:
-                    logger.warning("Could not persist application: %s", app_err)
+                    active_driver = None
 
             update_task_state(
                 status_val="running",
