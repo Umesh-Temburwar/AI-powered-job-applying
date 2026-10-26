@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     FRONTEND_ORIGINS: str | list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://universal-job-apply-bot.vercel.app",
     ]
 
     # Supabase Configuration
@@ -32,9 +33,18 @@ class Settings(BaseSettings):
     @field_validator("FRONTEND_ORIGINS", mode="before")
     @classmethod
     def parse_frontend_origins(cls, value: str | list[str]) -> list[str]:
+        default_prod = "https://universal-job-apply-bot.vercel.app"
         if isinstance(value, str):
             # Handles comma-separated values from environment strings
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            origins = [origin.strip() for origin in value.split(",") if origin.strip()]
+            if default_prod not in origins:
+                origins.append(default_prod)
+            return origins
+        if isinstance(value, list):
+            origins = list(value)
+            if default_prod not in origins:
+                origins.append(default_prod)
+            return origins
         return value
 
     @property

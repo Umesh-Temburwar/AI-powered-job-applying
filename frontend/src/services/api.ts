@@ -37,19 +37,65 @@ export interface DashboardSummaryApiResponse {
   platform_breakdown: PlatformBreakdownItem[];
 }
 
+const DEFAULT_LOCAL_API_URL = 'http://127.0.0.1:8001';
+const DEFAULT_PROD_API_URL = 'https://universal-job-apply-bot-1.onrender.com';
+
 export function getBaseApiUrl(): string {
   const envUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
   const isBrowser = typeof window !== 'undefined';
-  const isLocalHost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const isLocalHost =
+    isBrowser &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '[::1]');
 
+  // 1. If VITE_API_BASE_URL is provided, prioritize it
   if (envUrl) {
+    // Edge case safety: If deployed in production on web but envUrl points to localhost,
+    // fallback to production cloud backend so the deployed app doesn't fail
     if (isBrowser && !isLocalHost && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
-      return '';
+      return DEFAULT_PROD_API_URL;
     }
     return envUrl;
   }
 
-  return import.meta.env.DEV ? 'http://127.0.0.1:8001' : '';
+  // 2. Local development fallback when VITE_API_BASE_URL is not set
+  if (import.meta.env.DEV || isLocalHost) {
+    return DEFAULT_LOCAL_API_URL;
+  }
+
+  // 3. Production fallback when VITE_API_BASE_URL is not set
+  return DEFAULT_PROD_API_URL;
+}
+
+export function buildApiUrl(endpoint: string): string {
+  let baseUrl = getBaseApiUrl().trim();
+
+  // Strip all trailing slashes from baseUrl
+  baseUrl = baseUrl.replace(/\/+$/, '');
+
+  // Normalize endpoint with leading slash
+  let cleanEndpoint = endpoint.trim();
+  if (!cleanEndpoint.startsWith('/')) {
+    cleanEndpoint = `/${cleanEndpoint}`;
+  }
+
+  if (!baseUrl) {
+    return cleanEndpoint;
+  }
+
+  // Prevent duplicate prefixes if baseUrl already includes /api/v1 or /api
+  if (baseUrl.endsWith('/api/v1') && cleanEndpoint.startsWith('/api/v1/')) {
+    cleanEndpoint = cleanEndpoint.slice('/api/v1'.length);
+  } else if (baseUrl.endsWith('/api/v1') && cleanEndpoint === '/api/v1') {
+    cleanEndpoint = '';
+  } else if (baseUrl.endsWith('/api') && cleanEndpoint.startsWith('/api/')) {
+    cleanEndpoint = cleanEndpoint.slice('/api'.length);
+  } else if (baseUrl.endsWith('/api') && cleanEndpoint === '/api') {
+    cleanEndpoint = '';
+  }
+
+  return `${baseUrl}${cleanEndpoint}`;
 }
 
 const DEFAULT_TIMEOUT_MS = 35000;
@@ -58,8 +104,7 @@ export async function apiClient<T>(
   endpoint: string,
   options: RequestInit & { timeoutMs?: number; retries?: number } = {}
 ): Promise<T> {
-  const baseUrl = getBaseApiUrl();
-  const url = `${baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
+  const url = buildApiUrl(endpoint);
 
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxRetries = options.retries ?? (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') ? 3 : 0);
@@ -620,8 +665,7 @@ export async function deleteApplicationApi(token: string, id: string): Promise<{
 }
 
 export async function exportApplicationsCsvApi(token: string): Promise<string> {
-  const baseUrl = getBaseApiUrl();
-  const url = `${baseUrl.replace(/\/$/, '')}/api/v1/applications/export`;
+  const url = buildApiUrl('/api/v1/applications/export');
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });

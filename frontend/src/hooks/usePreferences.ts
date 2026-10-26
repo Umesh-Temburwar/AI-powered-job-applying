@@ -39,30 +39,44 @@ export function usePreferences() {
     return (await getTokenRef.current?.()) || session?.token || null;
   }, [session?.token]);
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const fetchPreferences = useCallback(async () => {
     const activeToken = await getActiveToken();
     if (!activeToken) {
-      setPreferences(null);
-      setLoading(false);
+      if (isMountedRef.current) {
+        setPreferences(null);
+        setLoading(false);
+      }
       return;
     }
 
     try {
-      if (!cachedPreferencesData) {
+      if (!cachedPreferencesData && isMountedRef.current) {
         setLoading(true);
       }
-      setError(null);
+      if (isMountedRef.current) setError(null);
       const data = await getPreferencesApi(activeToken);
       const mapped = mapBackendToPreferences(data);
       cachedPreferencesData = mapped;
-      setPreferences(mapped);
+      if (isMountedRef.current) setPreferences(mapped);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch job preferences');
-      if (!cachedPreferencesData) {
-        setPreferences(null);
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch job preferences');
+        if (!cachedPreferencesData) {
+          setPreferences(null);
+        }
       }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [getActiveToken]);
 
