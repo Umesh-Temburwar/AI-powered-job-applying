@@ -445,6 +445,8 @@ async def run_platform_automation_task(
                             note_text = live_note
                     except Exception as live_err:
                         logger.warning("Live application submission attempt note: %s", live_err)
+                        app_status = "review_needed"
+                        note_text = f"Live application deferred: candidate session requires re-verification on {plat_name}."
 
                 try:
                     application_service.create_application(
