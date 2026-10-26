@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Application, DashboardMetrics, ActivityItem } from '../types';
 import {
   getApplicationsApi,
@@ -70,6 +70,8 @@ let cachedDashboardData: CachedDashboardData | null = null;
 export function useApplications(initialParams?: ApplicationFilterParams) {
   const { session, getToken } = useAuth();
   const token = session?.token;
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [page, setPage] = useState<number>(initialParams?.page || 1);
   const [pageSize] = useState<number>(initialParams?.pageSize || 10);
@@ -92,7 +94,7 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchApplications = useCallback(async () => {
-    const activeToken = (await getToken?.()) || token;
+    const activeToken = (await getTokenRef.current?.()) || token;
     if (!activeToken) {
       setApplications([]);
       setTotal(0);
@@ -131,7 +133,7 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
     } finally {
       setLoading(false);
     }
-  }, [getToken, token, filters, page, pageSize, currentCacheKey]);
+  }, [token, filters, page, pageSize, currentCacheKey]);
 
   useEffect(() => {
     fetchApplications();
@@ -183,6 +185,8 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
 export function useDashboard() {
   const { session, getToken } = useAuth();
   const token = session?.token;
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(() =>
     cachedDashboardData ? cachedDashboardData.metrics : null
@@ -202,7 +206,7 @@ export function useDashboard() {
         setLoading(true);
       }
       setError(null);
-      const activeToken = (await getToken?.()) || token;
+      const activeToken = (await getTokenRef.current?.()) || token;
       const [summary, acts] = await Promise.all([
         getDashboardSummary(activeToken || undefined),
         activeToken ? getDashboardActivitiesApi(activeToken) : Promise.resolve([]),
@@ -232,7 +236,7 @@ export function useDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [getToken, token]);
+  }, [token]);
 
   useEffect(() => {
     fetchDashboardData();

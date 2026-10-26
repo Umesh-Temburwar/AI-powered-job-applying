@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Resume } from '../types';
 import {
   listResumesApi,
@@ -28,14 +28,16 @@ let cachedResumesData: Resume[] | null = null;
 
 export function useResumes() {
   const { session, getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [resumes, setResumes] = useState<Resume[]>(() => cachedResumesData || []);
   const [loading, setLoading] = useState<boolean>(!cachedResumesData);
   const [error, setError] = useState<string | null>(null);
 
   const getActiveToken = useCallback(async (): Promise<string | null> => {
-    return (await getToken?.()) || session?.token || null;
-  }, [getToken, session?.token]);
+    return (await getTokenRef.current?.()) || session?.token || null;
+  }, [session?.token]);
 
   const fetchResumes = useCallback(async () => {
     const activeToken = await getActiveToken();

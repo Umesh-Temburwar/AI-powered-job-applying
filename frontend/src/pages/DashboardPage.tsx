@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDashboard, useApplications } from '../hooks/useApplications';
 import { useTasks } from '../hooks/useTasks';
 import { usePreferences } from '../hooks/usePreferences';
@@ -70,8 +70,10 @@ export const DashboardPage: React.FC = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Sync saved user preferences
+  const preferencesSyncedRef = useRef(false);
   useEffect(() => {
-    if (preferences) {
+    if (preferences && !preferencesSyncedRef.current) {
+      preferencesSyncedRef.current = true;
       if (preferences.targetTitles && preferences.targetTitles.length > 0) {
         setKeywords(preferences.targetTitles);
       }
@@ -276,10 +278,7 @@ export const DashboardPage: React.FC = () => {
 
   const handleConnect = async (platform: string) => {
     try {
-      await connectPlatform(platform, {
-        permission_granted: true,
-        launch_browser: true,
-      });
+      await connectPlatform(platform);
       showToast(`Opened browser login for ${platform}. Please sign in on the official portal.`, 'info');
     } catch (err) {
       showToast(err instanceof Error ? err.message : `Failed to connect ${platform}`, 'error');

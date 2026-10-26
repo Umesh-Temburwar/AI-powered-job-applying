@@ -6,13 +6,15 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { ToastProvider } from '../context/ToastContext';
 import * as apiModule from '../services/api';
 
+const mockGetToken = vi.fn().mockResolvedValue('mock-jwt-token-123');
+
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
     user: { id: 'usr_test_123', email: 'test@example.com', fullName: 'Tester' },
     session: { token: 'mock-jwt-token-123', user: { id: 'usr_test_123', email: 'test@example.com' } },
     isLoading: false,
     isConfigured: true,
-    getToken: vi.fn().mockResolvedValue('mock-jwt-token-123'),
+    getToken: mockGetToken,
   }),
 }));
 

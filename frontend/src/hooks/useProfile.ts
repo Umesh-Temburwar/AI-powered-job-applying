@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { UserProfile } from '../types';
 import {
   autofillProfileApi,
@@ -77,9 +77,12 @@ export function useProfile() {
   const userEmail = user?.email || session?.user?.email || '';
   const userFullName = user?.fullName || '';
 
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+
   const getActiveToken = useCallback(async (): Promise<string | null> => {
-    return (await getToken?.()) || session?.token || null;
-  }, [getToken, session?.token]);
+    return (await getTokenRef.current?.()) || session?.token || null;
+  }, [session?.token]);
 
   const fetchProfile = useCallback(async () => {
     const activeToken = await getActiveToken();

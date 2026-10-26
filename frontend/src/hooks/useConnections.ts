@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getConnectionsApi,
   openPlatformPortalApi,
@@ -27,14 +27,17 @@ let cachedConnectionsData: BackendConnectionItem[] | null = null;
 
 export function useConnections() {
   const { session, getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+
   const [connections, setConnections] = useState<BackendConnectionItem[]>(() => cachedConnectionsData || DEFAULT_PORTALS);
   const [loading, setLoading] = useState<boolean>(!cachedConnectionsData);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const getActiveToken = useCallback(async (): Promise<string | null> => {
-    return (await getToken?.()) || session?.token || null;
-  }, [getToken, session?.token]);
+    return (await getTokenRef.current?.()) || session?.token || null;
+  }, [session?.token]);
 
   const fetchConnections = useCallback(async () => {
     const token = await getActiveToken();

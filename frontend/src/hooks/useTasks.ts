@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { AutomationTask, PlatformName } from '../types';
 import {
   enqueueTaskApi,
@@ -85,6 +85,8 @@ let cachedIsLiveBackend = false;
 
 export function useTasks() {
   const { session, getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [currentTask, setCurrentTask] = useState<AutomationTask | null>(() => cachedCurrentTaskData);
   const [history, setHistory] = useState<AutomationTask[]>(() => cachedHistoryData || []);
@@ -94,8 +96,8 @@ export function useTasks() {
   const [isLiveBackend, setIsLiveBackend] = useState<boolean>(() => cachedIsLiveBackend);
 
   const getActiveToken = useCallback(async (): Promise<string | null> => {
-    return (await getToken?.()) || session?.token || null;
-  }, [getToken, session?.token]);
+    return (await getTokenRef.current?.()) || session?.token || null;
+  }, [session?.token]);
 
   const fetchTaskState = useCallback(async () => {
     const activeToken = await getActiveToken();

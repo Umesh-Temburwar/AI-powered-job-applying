@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { JobPreferences, PlatformName, ExperienceLevel, EmploymentType } from '../types';
 import {
   getPreferencesApi,
@@ -28,14 +28,16 @@ let cachedPreferencesData: JobPreferences | null = null;
 
 export function usePreferences() {
   const { session, getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [preferences, setPreferences] = useState<JobPreferences | null>(() => cachedPreferencesData);
   const [loading, setLoading] = useState<boolean>(!cachedPreferencesData);
   const [error, setError] = useState<string | null>(null);
 
   const getActiveToken = useCallback(async (): Promise<string | null> => {
-    return (await getToken?.()) || session?.token || null;
-  }, [getToken, session?.token]);
+    return (await getTokenRef.current?.()) || session?.token || null;
+  }, [session?.token]);
 
   const fetchPreferences = useCallback(async () => {
     const activeToken = await getActiveToken();
