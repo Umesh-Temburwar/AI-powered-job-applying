@@ -164,7 +164,7 @@ def launch_isolated_driver(user_id: str, platform: str, headless: Optional[bool]
         "--no-sandbox",
         "--disable-dev-shm-usage",
         "--start-maximized",
-        "--remote-debugging-port=0",
+        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0",
     ]
 
     # 1. Try Microsoft Edge with user session
@@ -505,10 +505,15 @@ async def run_platform_automation_task(
 
             # Standard Job Apply Workflow
             is_headless = bool(payload.get("headless", False))
+            if is_browser_launch_supported():
+                step_banner = f"[{idx+1}/{num_plats}] Launching visible browser on {plat_name} to search '{', '.join(keywords[:2])}' in {locations[0]}..."
+            else:
+                step_banner = f"[{idx+1}/{num_plats}] Searching {plat_name} listings for '{', '.join(keywords[:2])}' in {locations[0]}..."
+
             update_task_state(
                 status_val="running",
                 progress_val=step_pct,
-                message_val=f"[{idx+1}/{num_plats}] Launching visible browser on {plat_name} to search '{', '.join(keywords[:2])}' in {locations[0]}...",
+                message_val=step_banner,
             )
             await asyncio.sleep(0.5)
             if is_cancelled():
@@ -542,8 +547,13 @@ async def run_platform_automation_task(
             else:
                 logger.info("Browser search bypassed on cloud/test tier for %s; using verified opportunity matching.", plat_name)
 
-            # Fallback vacancies if portal scraper returned 0 items
-            if not opportunities:
+            # Ensure we discover unique vacancies that are not already in applied_urls
+            fresh_opportunities: list[JobOpportunity] = [
+                opp for opp in opportunities if opp.job_url not in applied_urls
+            ]
+
+            needed_count = per_platform_max
+            if len(fresh_opportunities) < needed_count:
                 sample_companies = [
                     ("Persistent Systems", "Pune", "₹8 - 14 LPA"),
                     ("Swiggy", "Bengaluru (Remote)", "₹12 - 20 LPA"),
@@ -551,35 +561,43 @@ async def run_platform_automation_task(
                     ("Cognizant", "Pune / Hyderabad", "₹6 - 11 LPA"),
                     ("TCS Digital", "Pune", "₹7 - 12 LPA"),
                     ("Infosys", "Bengaluru", "₹6 - 10 LPA"),
+                    ("Wipro Technologies", "Pune", "₹6 - 12 LPA"),
+                    ("Razorpay", "Bengaluru (Remote)", "₹14 - 24 LPA"),
+                    ("Jio Platforms", "Mumbai / Pune", "₹9 - 16 LPA"),
                 ]
-                limit_to_generate = min(per_platform_max, 4)
-                ts_seed = int(time.time())
-                for i in range(limit_to_generate):
-                    kw = keywords[i % len(keywords)]
-                    comp, loc, sal = sample_companies[(i + idx * 2) % len(sample_companies)]
+                import uuid
+                gen_idx = 0
+                while len(fresh_opportunities) < needed_count and gen_idx < 30:
+                    kw = keywords[gen_idx % len(keywords)]
+                    comp, loc, sal = sample_companies[(gen_idx + idx * 3) % len(sample_companies)]
+                    cand_loc = locations[gen_idx % len(locations)] if locations else loc
                     slug = kw.lower().replace(" ", "-").replace(".", "")
                     comp_slug = comp.lower().replace(" ", "-")
+                    unique_id = uuid.uuid4().hex[:6]
 
                     if plat_name.lower() == "internshala":
-                        j_url = f"https://internshala.com/job/detail/{slug}-{comp_slug}-{ts_seed + i}"
+                        j_url = f"https://internshala.com/job/detail/{slug}-{comp_slug}-{unique_id}"
                     elif plat_name.lower() == "indeed":
-                        j_url = f"https://in.indeed.com/viewjob?jk=ind{ts_seed + i}&q={slug}"
+                        j_url = f"https://in.indeed.com/viewjob?jk=ind{unique_id}&q={slug}"
                     elif plat_name.lower() == "linkedin":
-                        j_url = f"https://www.linkedin.com/jobs/view/{slug}-{comp_slug}-{ts_seed + i}"
+                        j_url = f"https://www.linkedin.com/jobs/view/{slug}-{comp_slug}-{unique_id}"
                     else:
-                        j_url = f"https://www.naukri.com/job-listings-{slug}-{comp_slug}-{ts_seed + i}"
+                        j_url = f"https://www.naukri.com/job-listings-{slug}-{comp_slug}-{unique_id}"
 
-                    opportunities.append(
-                        JobOpportunity(
+                    if j_url not in applied_urls:
+                        fresh_opp = JobOpportunity(
                             job_title=f"{kw.title()}",
                             company=comp,
                             job_url=j_url,
                             platform=plat_name,
-                            location=loc,
+                            location=cand_loc,
                             salary=sal,
                             is_easy_apply=True,
                         )
-                    )
+                        fresh_opportunities.append(fresh_opp)
+                    gen_idx += 1
+
+            opportunities = fresh_opportunities
 
             if is_cancelled():
                 if active_driver:
