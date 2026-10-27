@@ -1,0 +1,50 @@
+[
+  {
+    "question_text": "Experience with Supabase?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "database"
+  },
+  {
+    "question_text": "Years of experience in Supabase",
+    "answer": "1",
+    "field_type": "text",
+    "category": "database"
+  },
+  {
+    "question_text": "Have you written complex SQL queries with joins, indexes, and constraints in PostgreSQL?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "database"
+  },
+  {
+    "question_text": "Experience configuring Row Level Security (RLS) policies in PostgreSQL?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "database"
+  },
+  {
+    "question_text": "Experience with MongoDB CRUD operations and Mongoose models?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "database"
+  },
+  {
+    "question_text": "Have you executed database migrations using SQL migration scripts?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "database"
+  },
+  {
+    "question_text": "Do you understand database indexing and query performance optimization?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "database"
+  },
+  {
+    "question_text": "Experience with Redis or in-memory caching?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "database"
+  }
+]
