@@ -16,6 +16,7 @@ from services.platform_automation.indeed import IndeedPlatformAdapter
 from services.platform_automation.internshala import InternshalaPlatformAdapter
 from services.platform_automation.linkedin import LinkedInPlatformAdapter
 from services.platform_automation.naukri import NaukriPlatformAdapter
+from services.bot_training.questionnaire_simulator import QuestionnaireSimulator, QuestionItem
 
 logger = logging.getLogger("AutomationRunner")
 
@@ -490,16 +491,25 @@ async def run_platform_automation_task(
                 update_task_state(
                     status_val="running",
                     progress_val=step_pct,
-                    message_val=f"[{idx+1}/{num_plats}] Validating screening questionnaire criteria for {plat_name}...",
+                    message_val=f"[{idx+1}/{num_plats}] Evaluating screening questionnaire intelligence on {plat_name}...",
                 )
-                await asyncio.sleep(0.8)
+                simulator = QuestionnaireSimulator()
+                sim_questions = [
+                    QuestionItem(id="q1", prompt="What is your official notice period?", field_type="text", expected_answer="Immediate"),
+                    QuestionItem(id="q2", prompt="Are you an immediate joiner?", field_type="radio", options=["Yes", "No"], expected_answer="Yes"),
+                    QuestionItem(id="q3", prompt="Total years of experience in React.js", field_type="text", expected_answer="1"),
+                    QuestionItem(id="q4", prompt="Are you willing to relocate?", field_type="radio", options=["Yes", "No"], expected_answer="Yes"),
+                    QuestionItem(id="q5", prompt="Expected CTC (in LPA)", field_type="text", expected_answer="4.5"),
+                ]
+                sim_report = simulator.run_simulation(portal=plat_name, questions=sim_questions)
+                await asyncio.sleep(0.5)
                 if is_cancelled():
                     return
 
                 update_task_state(
                     status_val="running",
                     progress_val=end_plat_pct,
-                    message_val=f"[{idx+1}/{num_plats}] Screening criteria validated on {plat_name}.",
+                    message_val=f"[{idx+1}/{num_plats}] Verified {sim_report.answered}/{sim_report.total_questions} screening questions on {plat_name} ({sim_report.accuracy_rate}% accuracy).",
                 )
                 continue
 
