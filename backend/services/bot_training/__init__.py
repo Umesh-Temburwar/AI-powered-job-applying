@@ -16,6 +16,7 @@ from .formatters import (
     adapt_answer_for_field,
 )
 from .scoring import ConfidenceScorer, ConfidenceReport
+from .learning_registry import LearningRegistry
 
 __all__ = [
     "BotTrainer",
@@ -36,4 +37,5 @@ __all__ = [
     "adapt_answer_for_field",
     "ConfidenceScorer",
     "ConfidenceReport",
+    "LearningRegistry",
 ]
