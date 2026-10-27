@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "What is your expected monthly stipend for internship?",
+    "answer": "15000 - 25000",
+    "field_type": "text",
+    "category": "compensation"
+  },
+  {
+    "question_text": "Are you negotiable on salary / CTC?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "compensation"
+  },
+  {
+    "question_text": "Minimum acceptable annual CTC (in INR)?",
+    "answer": "400000",
+    "field_type": "text",
+    "category": "compensation"
+  },
+  {
+    "question_text": "What is your present monthly in-hand salary?",
+    "answer": "0",
+    "field_type": "text",
+    "category": "compensation"
+  },
+  {
+    "question_text": "Expected salary breakdown preference",
+    "answer": "Standard fixed pay component",
+    "field_type": "text",
+    "category": "compensation"
+  }
+]
