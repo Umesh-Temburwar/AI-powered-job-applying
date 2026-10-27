@@ -21,6 +21,7 @@ from .dataset_exporter import DatasetExporter
 from .ats_analyzer import ATSAnalyzer
 from .skill_gap import SkillGapAnalyzer
 from .questionnaire_simulator import QuestionnaireSimulator, QuestionItem, SimulationReport
+from .feedback_promoter import FeedbackPromoter
 
 __all__ = [
     "BotTrainer",
@@ -48,4 +49,5 @@ __all__ = [
     "QuestionnaireSimulator",
     "QuestionItem",
     "SimulationReport",
+    "FeedbackPromoter",
 ]
