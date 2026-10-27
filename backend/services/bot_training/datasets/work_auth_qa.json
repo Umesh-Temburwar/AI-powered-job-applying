@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "Are you legally authorized to work in India without sponsorship?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "legal_auth"
+  },
+  {
+    "question_text": "Will you now or in the future require visa sponsorship?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "legal_auth"
+  },
+  {
+    "question_text": "Nationality / Citizenship",
+    "answer": "Indian",
+    "field_type": "text",
+    "category": "legal_auth"
+  },
+  {
+    "question_text": "Are you comfortable undergoing standard employment background verification (BGV)?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "legal_auth"
+  },
+  {
+    "question_text": "Have you ever been convicted of any criminal charges?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "legal_auth"
+  }
+]
