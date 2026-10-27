@@ -15,6 +15,7 @@ from .formatters import (
     format_boolean_choice,
     adapt_answer_for_field,
 )
+from .scoring import ConfidenceScorer, ConfidenceReport
 
 __all__ = [
     "BotTrainer",
@@ -33,4 +34,6 @@ __all__ = [
     "format_experience",
     "format_boolean_choice",
     "adapt_answer_for_field",
+    "ConfidenceScorer",
+    "ConfidenceReport",
 ]
