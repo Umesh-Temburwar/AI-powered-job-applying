@@ -15,10 +15,18 @@ class SkillGapAnalyzer:
     @staticmethod
     def extract_experience_required(description: str) -> Optional[float]:
         """Extract minimum years of experience mentioned in job description."""
+        desc_lower = description.lower()
+        if "fresher" in desc_lower or "freshers" in desc_lower or "entry level" in desc_lower:
+            match_num = re.search(r"(\d+)\s*years?", desc_lower)
+            if match_num:
+                return float(match_num.group(1))
+            return 0.0
+
         patterns = [
             r"(\d+)\s*[-to]+\s*(\d+)\s*years?",
-            r"(\d+)\+?\s*years?\s*(?:of)?\s*experience",
+            r"(\d+)\+?\s*years?\s*(?:of)?\s*(?:experience|required)?",
             r"minimum\s*(\d+)\s*years?",
+            r"(\d+)\+?\s*years?",
         ]
         for pat in patterns:
             match = re.search(pat, description, re.IGNORECASE)

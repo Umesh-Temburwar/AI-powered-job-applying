@@ -104,12 +104,16 @@ def adapt_answer_for_field(raw_answer: str, field_type: str = "text") -> str:
     ans = raw_answer.strip()
 
     if ft in ("radio", "checkbox", "boolean"):
-        ans_lower = ans.lower()
-        if ans_lower in ("yes", "y", "true", "1", "comfortable", "willing", "immediate"):
-            return "Yes"
-        elif ans_lower in ("no", "n", "false", "0"):
+        ans_lower = ans.lower().strip()
+        if ans_lower.startswith("no") or ans_lower in ("false", "0", "not willing", "disagree"):
             return "No"
-        return ans
+        if ans_lower.startswith("yes") or ans_lower in ("true", "1", "comfortable", "willing", "immediate", "agree"):
+            return "Yes"
+        if "yes" in ans_lower.split() or "true" in ans_lower.split():
+            return "Yes"
+        if "no" in ans_lower.split() or "not" in ans_lower.split() or "false" in ans_lower.split():
+            return "No"
+        return "Yes"
 
     if ft == "number" or ft == "numeric":
         digits = re.findall(r"\d+\.?\d*", ans)

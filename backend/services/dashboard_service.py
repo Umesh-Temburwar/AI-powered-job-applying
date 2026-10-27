@@ -48,8 +48,21 @@ def get_user_dashboard_summary(user_id: Optional[str] = None) -> DashboardSummar
             tasks = tasks_res.data or []
             failed_tasks = len([t for t in tasks if t.get("status") in ("failed", "error")])
             active_tasks = len([t for t in tasks if t.get("status") in ("queued", "running")])
+            STATUS_MAP = {
+                "queued": "queued",
+                "running": "running",
+                "paused": "paused",
+                "review_required": "review_required",
+                "review_needed": "review_required",
+                "completed": "completed",
+                "success": "completed",
+                "failed": "failed",
+                "error": "error",
+                "cancelled": "idle",
+            }
             if tasks:
-                automation_status = tasks[0].get("status", "idle")
+                raw_status = tasks[0].get("status", "idle")
+                automation_status = STATUS_MAP.get(raw_status, "idle")
         except Exception:
             pass
 
