@@ -7,8 +7,7 @@ and approving active learning submissions.
 
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
-
-from core.supabase import get_current_user
+from core.auth import get_current_user
 from schemas.training import (
     TrainingStatsResponse,
     EvaluateQuestionRequest,

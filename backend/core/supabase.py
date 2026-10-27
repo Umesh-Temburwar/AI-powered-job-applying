@@ -33,3 +33,11 @@ def get_supabase_client():
     except Exception as e:
         logger.warning("Could not initialize Supabase client: %s", e)
         return None
+
+
+# Backwards compatibility re-export
+try:
+    from core.auth import get_current_user
+except ImportError:
+    pass
+
