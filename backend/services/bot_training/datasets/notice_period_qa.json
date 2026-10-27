@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "Are you currently serving a notice period?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "notice_period"
+  },
+  {
+    "question_text": "Is notice buyout required for your current organization?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "notice_period"
+  },
+  {
+    "question_text": "Earliest date of joining",
+    "answer": "Immediate",
+    "field_type": "text",
+    "category": "notice_period"
+  },
+  {
+    "question_text": "If offered today, when can you report for onboarding?",
+    "answer": "Immediate / Next working day",
+    "field_type": "text",
+    "category": "notice_period"
+  },
+  {
+    "question_text": "Are you available for immediate interview and joining?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "notice_period"
+  }
+]
