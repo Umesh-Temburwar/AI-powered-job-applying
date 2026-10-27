@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "Experience implementing JWT authentication and refresh tokens?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "security"
+  },
+  {
+    "question_text": "Do you understand password hashing with bcrypt or argon2?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "security"
+  },
+  {
+    "question_text": "Experience configuring CORS and security headers for API servers?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "security"
+  },
+  {
+    "question_text": "Have you implemented Role-Based Access Control (RBAC) in web applications?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "security"
+  },
+  {
+    "question_text": "Understand protection against common OWASP vulnerabilities (SQL Injection, XSS, CSRF)?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "security"
+  }
+]
