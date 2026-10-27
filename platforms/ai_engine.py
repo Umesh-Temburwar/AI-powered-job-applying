@@ -95,6 +95,22 @@ class QuestionAnswerer:
             if "expected ctc" in q_clean:
                 return "4.5"
 
+        if "linkedin" in plat:
+            if any(term in q_clean for term in ["phone", "mobile", "contact number"]):
+                return str(self.personal.get("phone", "+91 9172288005"))
+            if any(term in q_clean for term in ["authorized", "sponsorship", "legally"]):
+                return "Yes" if "sponsorship" not in q_clean else "No"
+            if "commute" in q_clean or "on-site" in q_clean:
+                return "Yes"
+
+        if "indeed" in plat:
+            if "education" in q_clean or "degree" in q_clean:
+                return "Bachelor's Degree"
+            if "shift" in q_clean:
+                return "Flexible"
+            if "willing to relocate" in q_clean:
+                return "Yes"
+
         # 1. Exact or substring match in answer bank
         for k, v in self.answer_bank.items():
             if k in q_clean or q_clean in k:
