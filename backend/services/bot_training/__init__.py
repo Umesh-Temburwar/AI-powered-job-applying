@@ -17,6 +17,7 @@ from .formatters import (
 )
 from .scoring import ConfidenceScorer, ConfidenceReport
 from .learning_registry import LearningRegistry
+from .dataset_exporter import DatasetExporter
 
 __all__ = [
     "BotTrainer",
@@ -38,4 +39,5 @@ __all__ = [
     "ConfidenceScorer",
     "ConfidenceReport",
     "LearningRegistry",
+    "DatasetExporter",
 ]
