@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "Experience writing unit tests with Pytest or Jest?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "testing"
+  },
+  {
+    "question_text": "Have you tested React components using React Testing Library or Vitest?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "testing"
+  },
+  {
+    "question_text": "Comfortable with test mocks, fixtures, and API response stubbing?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "testing"
+  },
+  {
+    "question_text": "Experience writing API endpoint tests with FastAPI TestClient?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "testing"
+  },
+  {
+    "question_text": "Do you practice clean code, regression testing, and code quality linting?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "testing"
+  }
+]
