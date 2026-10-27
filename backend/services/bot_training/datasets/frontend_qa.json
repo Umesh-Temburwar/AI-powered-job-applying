@@ -1,0 +1,62 @@
+[
+  {
+    "question_text": "Years of experience in Next.js",
+    "answer": "1",
+    "field_type": "text",
+    "category": "frontend"
+  },
+  {
+    "question_text": "Experience with TypeScript?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "frontend"
+  },
+  {
+    "question_text": "Years of experience in TypeScript",
+    "answer": "1",
+    "field_type": "text",
+    "category": "frontend"
+  },
+  {
+    "question_text": "Experience with Tailwind CSS?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "frontend"
+  },
+  {
+    "question_text": "Experience with Redux or state management?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "frontend"
+  },
+  {
+    "question_text": "Do you know React Hooks (useState, useEffect, useMemo, useCallback)?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "frontend"
+  },
+  {
+    "question_text": "Can you build responsive mobile-first UI using CSS and Tailwind?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "frontend"
+  },
+  {
+    "question_text": "Have you worked with HTML5 semantic tags and modern CSS Flexbox/Grid?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "frontend"
+  },
+  {
+    "question_text": "Experience integrating REST APIs into React frontends?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "frontend"
+  },
+  {
+    "question_text": "Years of experience in HTML5 and CSS3",
+    "answer": "1",
+    "field_type": "text",
+    "category": "frontend"
+  }
+]
