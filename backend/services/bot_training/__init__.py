@@ -22,6 +22,7 @@ from .ats_analyzer import ATSAnalyzer
 from .skill_gap import SkillGapAnalyzer
 from .questionnaire_simulator import QuestionnaireSimulator, QuestionItem, SimulationReport
 from .feedback_promoter import FeedbackPromoter
+from .regression_detector import RegressionDetector
 
 __all__ = [
     "BotTrainer",
@@ -50,4 +51,5 @@ __all__ = [
     "QuestionItem",
     "SimulationReport",
     "FeedbackPromoter",
+    "RegressionDetector",
 ]
