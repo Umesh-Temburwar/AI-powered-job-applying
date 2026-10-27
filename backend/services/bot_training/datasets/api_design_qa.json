@@ -1,0 +1,38 @@
+[
+  {
+    "question_text": "Do you follow RESTful API standards (HTTP methods, status codes, JSON formatting)?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "api_design"
+  },
+  {
+    "question_text": "Experience implementing API pagination, filtering, and sorting?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "api_design"
+  },
+  {
+    "question_text": "Understand idempotency in HTTP methods (GET, PUT, DELETE vs POST)?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "api_design"
+  },
+  {
+    "question_text": "Experience handling API errors with standardized error payloads and HTTP status codes?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "api_design"
+  },
+  {
+    "question_text": "Have you worked with WebSockets or Realtime subscriptions?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "api_design"
+  },
+  {
+    "question_text": "Can you design clean database schemas from business requirements?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "api_design"
+  }
+]
