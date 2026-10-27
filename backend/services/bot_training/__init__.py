@@ -19,6 +19,7 @@ from .scoring import ConfidenceScorer, ConfidenceReport
 from .learning_registry import LearningRegistry
 from .dataset_exporter import DatasetExporter
 from .ats_analyzer import ATSAnalyzer
+from .skill_gap import SkillGapAnalyzer
 
 __all__ = [
     "BotTrainer",
@@ -42,4 +43,5 @@ __all__ = [
     "LearningRegistry",
     "DatasetExporter",
     "ATSAnalyzer",
+    "SkillGapAnalyzer",
 ]
