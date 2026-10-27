@@ -8,6 +8,13 @@ and semantic matching algorithms for the Universal Job Apply Bot.
 from .engine import BotTrainer, EvaluationResult, BenchmarkSummary
 from .similarity import QuestionMatcher, levenshtein_ratio, token_set_ratio, normalize_text
 from .synonyms import get_canonical_category, expand_tech_aliases, SYNONYM_CLUSTERS, TECH_ALIASES
+from .formatters import (
+    format_salary_response,
+    format_notice_period,
+    format_experience,
+    format_boolean_choice,
+    adapt_answer_for_field,
+)
 
 __all__ = [
     "BotTrainer",
@@ -21,4 +28,9 @@ __all__ = [
     "expand_tech_aliases",
     "SYNONYM_CLUSTERS",
     "TECH_ALIASES",
+    "format_salary_response",
+    "format_notice_period",
+    "format_experience",
+    "format_boolean_choice",
+    "adapt_answer_for_field",
 ]
