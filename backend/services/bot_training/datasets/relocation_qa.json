@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "Are you willing to relocate anywhere across India?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "relocation"
+  },
+  {
+    "question_text": "Are you comfortable with a hybrid work setup (3 days office, 2 days remote)?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "relocation"
+  },
+  {
+    "question_text": "Are you open to relocate to Gurgaon or Noida (NCR)?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "relocation"
+  },
+  {
+    "question_text": "Are you willing to relocate to Chennai or Kolkata?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "relocation"
+  },
+  {
+    "question_text": "Do you possess a personal laptop and high-speed broadband connection for remote work?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "relocation"
+  }
+]
