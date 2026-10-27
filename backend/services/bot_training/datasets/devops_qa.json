@@ -1,0 +1,44 @@
+[
+  {
+    "question_text": "Experience with Docker containerization?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "devops"
+  },
+  {
+    "question_text": "Years of experience in Docker",
+    "answer": "1",
+    "field_type": "text",
+    "category": "devops"
+  },
+  {
+    "question_text": "Comfortable working with Git version control, branching, and PR reviews?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "devops"
+  },
+  {
+    "question_text": "Have you set up automated CI/CD workflows using GitHub Actions?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "devops"
+  },
+  {
+    "question_text": "Experience deploying full-stack applications to Render or Vercel?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "devops"
+  },
+  {
+    "question_text": "Comfortable with Linux terminal navigation, bash scripts, and file permissions?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "devops"
+  },
+  {
+    "question_text": "Do you understand environment secrets management (.env) for production safety?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "devops"
+  }
+]
