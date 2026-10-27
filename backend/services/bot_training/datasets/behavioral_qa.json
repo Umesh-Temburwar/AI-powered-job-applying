@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "How do you handle technical disagreements or code review feedback?",
+    "answer": "I focus on objective merits, test benchmarks, and team guidelines, approaching code reviews constructively to ensure code quality.",
+    "field_type": "text",
+    "category": "behavioral"
+  },
+  {
+    "question_text": "How do you manage deadlines when project requirements change?",
+    "answer": "I break features into critical milestones, communicate trade-offs early with stakeholders, and focus on delivering core stable functionality first.",
+    "field_type": "text",
+    "category": "behavioral"
+  },
+  {
+    "question_text": "Describe your approach to picking up new technologies and stacks",
+    "answer": "I dive into official documentation, build hands-on proof-of-concept projects, and study established production open-source architectures.",
+    "field_type": "text",
+    "category": "behavioral"
+  },
+  {
+    "question_text": "Are you comfortable with cross-functional collaboration and pair programming?",
+    "answer": "Yes, I actively communicate with frontend, backend, and product team members to ensure smooth integrations.",
+    "field_type": "text",
+    "category": "behavioral"
+  }
+]
