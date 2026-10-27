@@ -1,0 +1,38 @@
+[
+  {
+    "question_text": "Do you have any active backlogs or pending academic arrears?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "education"
+  },
+  {
+    "question_text": "Do you have any academic gaps between schooling and graduation?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "education"
+  },
+  {
+    "question_text": "What is your B.Tech graduation CGPA?",
+    "answer": "6.06",
+    "field_type": "text",
+    "category": "education"
+  },
+  {
+    "question_text": "10th / SSC percentage",
+    "answer": "85.4",
+    "field_type": "text",
+    "category": "education"
+  },
+  {
+    "question_text": "12th / HSC percentage",
+    "answer": "62.92",
+    "field_type": "text",
+    "category": "education"
+  },
+  {
+    "question_text": "University affiliation name",
+    "answer": "Dr. Babasaheb Ambedkar Marathwada University",
+    "field_type": "text",
+    "category": "education"
+  }
+]
