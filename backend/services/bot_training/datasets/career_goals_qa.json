@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "Where do you see yourself in 3 to 5 years?",
+    "answer": "Growing into a Senior Full Stack Engineer, driving scalable system architecture, and mentoring high-performing engineering teams.",
+    "field_type": "text",
+    "category": "career"
+  },
+  {
+    "question_text": "Why do you want to join our organization?",
+    "answer": "Your engineering culture, impactful product domain, and emphasis on robust software architecture align directly with my career aspirations and skill set.",
+    "field_type": "text",
+    "category": "career"
+  },
+  {
+    "question_text": "What are your key technical strengths?",
+    "answer": "Full stack architecture with React.js, Node.js, and PostgreSQL, rapid problem-solving, clean code standards, and ownership of end-to-end features.",
+    "field_type": "text",
+    "category": "career"
+  },
+  {
+    "question_text": "What is an area you are actively working to improve?",
+    "answer": "I am deepening my knowledge in distributed microservices, Docker orchestration, and advanced database indexing patterns.",
+    "field_type": "text",
+    "category": "career"
+  }
+]
