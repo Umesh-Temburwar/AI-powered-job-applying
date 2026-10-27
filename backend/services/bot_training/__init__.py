@@ -20,6 +20,7 @@ from .learning_registry import LearningRegistry
 from .dataset_exporter import DatasetExporter
 from .ats_analyzer import ATSAnalyzer
 from .skill_gap import SkillGapAnalyzer
+from .questionnaire_simulator import QuestionnaireSimulator, QuestionItem, SimulationReport
 
 __all__ = [
     "BotTrainer",
@@ -44,4 +45,7 @@ __all__ = [
     "DatasetExporter",
     "ATSAnalyzer",
     "SkillGapAnalyzer",
+    "QuestionnaireSimulator",
+    "QuestionItem",
+    "SimulationReport",
 ]
