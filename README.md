@@ -28,9 +28,12 @@
   - Auto-detects Windows default browser (**Microsoft Edge**, **Google Chrome**, **Brave**, **Firefox**).
 - 🖥️ **Modern Web UI Dashboard**:
   - Full-featured dark-mode Web Dashboard (`http://localhost:5000`) with live KPI metrics, real-time log terminal feed, application search/filter CRM table, and in-browser profile editor.
-- 🧠 **AI Screening Answerer & ATS Matcher**:
-  - Auto-answers subjective employer questions ("Why should we hire you?", "Describe your experience with React") using Candidate profile heuristics or optional Gemini Flash API.
-  - ATS Keyword Matcher evaluates job descriptions against candidate skills and calculates match compatibility score.
+- 🧠 **AI Screening Answerer, Training Engine & ATS Matcher**:
+  - Auto-answers subjective and technical employer questions with fuzzy string matching, Levenshtein ratio, token-set permutations, and domain synonym resolution.
+  - 100+ pre-trained domain screening datasets across Frontend, Backend, Database, DevOps, API Design, Compensation, Notice Period, and Legal Authorization.
+  - Active learning registry (`unanswered_questions.json`) captures novel recruiter queries and auto-promotes approved answers.
+  - Benchmark evaluation CLI ([`train_bot.py`](train_bot.py)) with regression detection and fine-tuning JSONL dataset exporter.
+  - Comprehensive documentation: [`docs/BOT_TRAINING.md`](docs/BOT_TRAINING.md).
 - 💾 **SQLite Application Tracker & CRM**:
   - Persistent `jobs_tracker.db` database tracks every application and prevents duplicate submissions across all platforms.
 - 🔔 **Instant Smartphone Push Alerts**:
