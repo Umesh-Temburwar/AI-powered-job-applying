@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "Experience with Redux Toolkit or Zustand state management?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "performance"
+  },
+  {
+    "question_text": "Do you understand React memoization using useMemo and useCallback to avoid re-renders?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "performance"
+  },
+  {
+    "question_text": "Have you implemented code splitting with React.lazy and Suspense?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "performance"
+  },
+  {
+    "question_text": "Experience optimizing web performance and Core Web Vitals (LCP, FID, CLS)?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "performance"
+  },
+  {
+    "question_text": "Can you debug memory leaks or slow database queries in production?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "performance"
+  }
+]
