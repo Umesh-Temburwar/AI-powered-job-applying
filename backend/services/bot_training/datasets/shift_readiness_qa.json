@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "Are you comfortable working in rotational shifts or flexible hours?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "logistics"
+  },
+  {
+    "question_text": "Are you open to providing on-call or weekend support for critical releases?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "logistics"
+  },
+  {
+    "question_text": "Are you comfortable aligning working hours with US / UK client timezones?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "logistics"
+  },
+  {
+    "question_text": "Are you willing to work in a fast-paced agile startup environment?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "logistics"
+  },
+  {
+    "question_text": "Do you hold a valid Indian passport for international travel?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "logistics"
+  }
+]
