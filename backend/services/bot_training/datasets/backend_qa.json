@@ -1,0 +1,50 @@
+[
+  {
+    "question_text": "Experience with FastAPI?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "backend"
+  },
+  {
+    "question_text": "Years of experience in FastAPI",
+    "answer": "1",
+    "field_type": "text",
+    "category": "backend"
+  },
+  {
+    "question_text": "Do you have experience building asynchronous APIs with Python asyncio?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "backend"
+  },
+  {
+    "question_text": "Experience creating middleware and authentication in Express.js?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "backend"
+  },
+  {
+    "question_text": "Have you implemented rate limiting and request validation in Node.js?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "backend"
+  },
+  {
+    "question_text": "Experience with Pydantic for data validation?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "backend"
+  },
+  {
+    "question_text": "Do you have experience handling background tasks and worker queues?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "backend"
+  },
+  {
+    "question_text": "Can you design modular backend service layers and controllers?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "backend"
+  }
+]
