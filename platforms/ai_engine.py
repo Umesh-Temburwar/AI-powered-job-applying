@@ -65,9 +65,35 @@ class QuestionAnswerer:
             "React.js", "Node.js", "Express.js", "MongoDB", "PostgreSQL", "Supabase", "REST APIs", "Git"
         ])
 
-    def answer_question(self, question: str, role_title: str = "Full Stack Developer", max_len: int = 500) -> str:
+    def answer_question(
+        self,
+        question: str,
+        role_title: str = "Full Stack Developer",
+        max_len: int = 500,
+        platform: str = "generic"
+    ) -> str:
         """Find or generate the best answer for any screening question."""
         q_clean = question.strip().lower()
+        plat = platform.lower()
+
+        # Platform-specific answer overrides
+        if "internshala" in plat:
+            if any(term in q_clean for term in ["available for", "months", "duration", "start date", "availability"]):
+                return "Yes, I am available full-time immediately for the entire required duration."
+            if any(term in q_clean for term in ["why should you be hired", "why should we hire you"]):
+                return (
+                    f"As a Computer Science graduate specializing in {', '.join(self.skills[:4])}, "
+                    "I have built complete web applications including an EdTech platform with responsive UI and REST APIs. "
+                    "I am ready to contribute immediately with high dedication."
+                )[:max_len]
+
+        if "naukri" in plat:
+            if "notice period in days" in q_clean:
+                return "0"
+            if "notice period" in q_clean:
+                return "Immediate"
+            if "expected ctc" in q_clean:
+                return "4.5"
 
         # 1. Exact or substring match in answer bank
         for k, v in self.answer_bank.items():
@@ -77,6 +103,8 @@ class QuestionAnswerer:
         # 2. Rule-based heuristic pattern matching
         # Notice Period
         if any(term in q_clean for term in ["notice period", "joining", "how soon", "when can you join"]):
+            if "naukri" in plat:
+                return "Immediate"
             return "Immediate (0 Days) - Can join immediately"
 
         # Years of Experience
