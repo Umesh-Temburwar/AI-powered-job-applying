@@ -467,7 +467,7 @@ def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = Non
     existing_env = get_current_env_dict()
 
     def _get_val(cfg_key: str, env_key: str, default: str = "") -> str:
-        if cfg_key in config and config[cfg_key] is not None and str(config[cfg_key]).strip() != "":
+        if cfg_key in config and config[cfg_key] is not None:
             return str(config[cfg_key]).strip()
         return existing_env.get(env_key, default).strip()
 
@@ -552,14 +552,14 @@ def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = Non
         ("dashboard_port", "DASHBOARD_PORT"),
     ]
     for cfg_k, env_k in portal_keys:
-        if cfg_k in config and config[cfg_k] is not None and str(config[cfg_k]).strip() != "":
+        if cfg_k in config and config[cfg_k] is not None:
             env_map[env_k] = str(config[cfg_k]).strip()
         elif env_k in existing_env and existing_env[env_k].strip() != "":
             env_map[env_k] = existing_env[env_k].strip()
 
     # Candidate profile email fallback for NAUKRI_EMAIL if not set
     cand_email = str(config.get("email") or "").strip()
-    if cand_email and not env_map.get("NAUKRI_EMAIL"):
+    if cand_email and "naukri_email" not in config and not env_map.get("NAUKRI_EMAIL"):
         env_map["NAUKRI_EMAIL"] = cand_email
 
     # Update .env
@@ -849,7 +849,8 @@ def parse_and_save_user_resume(
     }
 
 def delete_user_resume_file() -> dict[str, Any]:
-    """Physically remove all uploaded resume files from data/resumes/, clear resume_path in profile and env."""
+    """Physically remove all uploaded resume files from data/resumes/, clear resume_path,
+    and wipe all candidate details and portal credentials from root .env and profile_data.json."""
     deleted_files = []
     if os.path.exists(RESUMES_DIR):
         for f in os.listdir(RESUMES_DIR):
@@ -863,22 +864,107 @@ def delete_user_resume_file() -> dict[str, Any]:
                     logger.warning("Could not delete resume file %s: %s", f_path, e)
 
     # Clear from running environment
-    if "RESUME_PATH" in os.environ:
-        del os.environ["RESUME_PATH"]
+    for env_var in ["RESUME_PATH", "RESUME_NAME", "FIRSTNAME", "LASTNAME", "PHONE", "KEYWORDS", "LOCATION"]:
+        if env_var in os.environ:
+            del os.environ[env_var]
 
-    # Clear from profile_data.json
+    # Clear all candidate personal fields and portal credentials from root .env
+    env_wipes = {
+        "FIRSTNAME": "",
+        "LASTNAME": "",
+        "PHONE": "",
+        "KEYWORDS": "",
+        "LOCATION": "",
+        "NAUKRI_EMAIL": "",
+        "NAUKRI_PASSWORD": "",
+        "INTERNSHALA_EMAIL": "",
+        "INTERNSHALA_PASSWORD": "",
+        "INDEED_EMAIL": "",
+        "INDEED_PASSWORD": "",
+        "LINKEDIN_EMAIL": "",
+        "LINKEDIN_PASSWORD": "",
+        "FOUNDIT_EMAIL": "",
+        "FOUNDIT_PASSWORD": "",
+        "WELLFOUND_EMAIL": "",
+        "WELLFOUND_PASSWORD": "",
+        "GLASSDOOR_EMAIL": "",
+        "GLASSDOOR_PASSWORD": "",
+        "CUTSHORT_EMAIL": "",
+        "CUTSHORT_PASSWORD": "",
+        "RESUME_PATH": "",
+        "RESUME_NAME": "",
+        "TOTAL_EXPERIENCE_YEARS": "0",
+        "RELEVANT_EXPERIENCE_YEARS": "0",
+        "CURRENT_CTC": "0",
+        "EXPECTED_CTC": "0",
+        "NOTICE_PERIOD": "Immediate (0 Days)",
+        "WORK_MODE": "Remote / Hybrid",
+        "WILLING_TO_RELOCATE": "Yes",
+        "GENDER": "Male",
+        "EDUCATION_DEGREE": "",
+        "EDUCATION_COLLEGE": "",
+        "EDUCATION_PASSING_YEAR": "",
+        "EDUCATION_SCORE": "",
+        "LINKEDIN_URL": "",
+        "GITHUB_URL": "",
+        "PORTFOLIO_URL": "",
+    }
     try:
-        prof = get_current_profile_data()
-        prof["resume_path"] = None
-        prof["resume_name"] = None
-        with open(PROFILE_DATA_PATH, "w", encoding="utf-8") as pf:
-            json.dump(prof, pf, indent=2)
+        update_root_env_file(env_wipes)
     except Exception as e:
-        logger.warning("Could not update profile_data.json after resume delete: %s", e)
+        logger.warning("Could not wipe root .env on resume delete: %s", e)
+
+    # Completely reset profile_data.json
+    try:
+        clean_prof = {
+            "personal": {
+                "name": "",
+                "firstname": "",
+                "lastname": "",
+                "email": "",
+                "phone": "",
+                "current_location": "",
+                "preferred_locations": [],
+                "notice_period": "Immediate (0 Days)",
+                "total_experience_years": "0",
+                "expected_ctc": "0",
+                "relevant_experience_years": "0",
+                "current_ctc": "0",
+                "work_mode": "Remote / Hybrid",
+                "willing_to_relocate": "Yes",
+                "gender": "Male",
+                "linkedin_url": "",
+                "github_url": "",
+                "portfolio_url": ""
+            },
+            "naukri_headline": "",
+            "profile_summary": "",
+            "key_skills": [],
+            "education": {
+                "degree": "",
+                "field_of_study": "",
+                "college": "",
+                "location": "",
+                "cgpa": "",
+                "passing_year": "",
+                "institution": "",
+                "year": "",
+                "score": ""
+            },
+            "experience": [],
+            "projects": [],
+            "certifications": [],
+            "resume_name": None,
+            "resume_path": None
+        }
+        with open(PROFILE_DATA_PATH, "w", encoding="utf-8") as pf:
+            json.dump(clean_prof, pf, indent=2)
+    except Exception as e:
+        logger.warning("Could not reset profile_data.json after resume delete: %s", e)
 
     return {
         "status": "success",
-        "message": f"Successfully deleted {len(deleted_files)} resume file(s) from project storage.",
+        "message": f"Successfully deleted {len(deleted_files)} resume file(s) and cleared candidate data from .env and storage.",
         "deleted_files": deleted_files,
     }
 

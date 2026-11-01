@@ -1004,16 +1004,6 @@ export const ProfilePage: React.FC = () => {
               Unsaved changes
             </span>
           )}
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleSave}
-            disabled={saving}
-            leftIcon={<Save className="w-3.5 h-3.5" />}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
-          >
-            {saving ? 'Saving...' : '💾 Save Profile'}
-          </Button>
         </div>
       </div>
 
