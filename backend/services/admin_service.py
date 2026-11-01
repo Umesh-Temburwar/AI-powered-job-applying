@@ -333,11 +333,10 @@ class AdminService:
         # 1b. Fallback: If client query failed or returned empty, fetch directly via Supabase PostgREST HTTP
         if not profs_data:
             settings = get_settings()
-            url = getattr(settings, "SUPABASE_URL", "") or "https://rwtimhnxghgzkgrdymmq.supabase.co"
+            url = getattr(settings, "SUPABASE_URL", "") or "https://zhazioldgvjwodzjurzy.supabase.co"
             key = (
                 getattr(settings, "SUPABASE_SERVICE_ROLE_KEY", "")
                 or getattr(settings, "SUPABASE_ANON_KEY", "")
-                or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3dGltaG54Z2hnemtncmR5bW1xIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjY3MTQ2OSwiZXhwIjoyMTA4MjQ3NDY5fQ.bkeKhR5u5aCSukEDpUKEDZKkjMqCAtrYZbspumWR6ec"
             )
             try:
                 headers = {"apikey": key, "Authorization": f"Bearer {key}"}

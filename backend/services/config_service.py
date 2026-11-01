@@ -450,6 +450,7 @@ def train_bot_with_candidate_details(config: dict[str, Any]) -> int:
                 if a:
                     sb_answers.append({
                         "user_id": uid,
+                        "question": q,
                         "question_text": q,
                         "answer": a,
                         "field_type": ft,

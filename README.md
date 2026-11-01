@@ -184,10 +184,10 @@ The Universal Job Apply Bot now includes a multi-user web application powered by
 - **Database & Storage**: PostgreSQL schema with automatic user provisioning triggers, user-scoped RLS policies, and private resume PDF storage.
 
 ### 1. Supabase Setup Instructions
-1. Navigate to [Supabase](https://supabase.com) and create or open your project (e.g. `rwtimhnxghgzkgrdymmq`).
+1. Navigate to [Supabase](https://supabase.com) and create or open your project (e.g. `zhazioldgvjwodzjurzy`).
 2. Go to **SQL Editor** in your Supabase Dashboard.
-3. Open [`backend/migrations/001_initial_schema.sql`](backend/migrations/001_initial_schema.sql), paste its contents, and click **Run**.
-   - Creates `profiles`, `resumes`, `job_preferences`, `automation_tasks`, `applications`, and `application_answers`.
+3. Run the migrations in `backend/migrations/` in order, or apply [`012_complete_jobbot_supabase_schema.sql`](backend/migrations/012_complete_jobbot_supabase_schema.sql) on a connected project.
+   - Creates job-bot tables: `resumes`, `job_preferences`, `automation_tasks`, `applications`, `application_answers`, `platform_connections`, `portal_configs`, `system_audit_logs`, `resume_analyses`.
    - Enables Row Level Security (RLS) on all user tables (`auth.uid() = user_id`).
    - Creates the private `resumes` storage bucket with path-isolated access policies (`resumes/{user_id}/*`).
 4. In **Project Settings > API Keys**, retrieve:
