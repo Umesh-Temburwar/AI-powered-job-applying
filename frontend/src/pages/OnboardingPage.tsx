@@ -21,8 +21,10 @@ import {
   MapPin,
   Bot,
   Loader2,
+  LogOut,
   X,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
 import { useResumes } from '../hooks/useResumes';
 import { usePreferences } from '../hooks/usePreferences';
@@ -56,10 +58,21 @@ const STEPS = [
 
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const { profile, loading: profileLoading, updateProfile } = useProfile();
   const { uploadResume } = useResumes();
   const { preferences, updatePreferences, suggestRoles } = usePreferences();
   const { showToast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      showToast('Logged out successfully.', 'info');
+      navigate('/login', { replace: true });
+    } catch {
+      navigate('/login', { replace: true });
+    }
+  };
 
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [saving, setSaving] = useState(false);
@@ -529,6 +542,15 @@ export const OnboardingPage: React.FC = () => {
             >
               Skip to Dashboard
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              leftIcon={<LogOut className="w-3.5 h-3.5" />}
+              className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 border-red-500/40 font-bold"
+            >
+              Log Out
+            </Button>
           </div>
         </div>
 
@@ -541,7 +563,10 @@ export const OnboardingPage: React.FC = () => {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => setCurrentStep(s.id)}
+                onClick={() => {
+                  setValidationError(null);
+                  setCurrentStep(s.id);
+                }}
                 className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-colors flex flex-col items-center gap-1 ${
                   s.id === currentStep
                     ? 'bg-[var(--accent)] text-white shadow-xs'
