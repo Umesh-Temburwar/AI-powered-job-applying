@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MapPin,
@@ -10,9 +10,13 @@ import {
   Sparkles,
   CheckCircle2,
   Award,
+  UploadCloud,
+  FileText,
+  Download,
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { usePreferences } from '../hooks/usePreferences';
+import { useResumes } from '../hooks/useResumes';
 import { useTasks } from '../hooks/useTasks';
 import { configService } from '../services/configService';
 import { useToast } from '../context/ToastContext';
@@ -24,6 +28,9 @@ import {
   Modal,
   Skeleton,
   Select,
+  Badge,
+  ProgressBar,
+  ConfirmDialog,
 } from '../components/ui';
 import type { EducationItem, ExperienceItem, ProjectItem, CertificationItem } from '../types';
 
@@ -54,8 +61,23 @@ export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { profile, loading: profileLoading, updateProfile, autofillProfile } = useProfile();
   const { preferences, updatePreferences } = usePreferences();
+  const {
+    resumes,
+    uploadResume: uploadSbResume,
+    deleteResume: deleteSbResume,
+    getDownloadUrl,
+    refreshResumes,
+  } = useResumes();
   const { startTask } = useTasks();
   const { showToast } = useToast();
+
+  const [localResumeName, setLocalResumeName] = useState<string | null>(null);
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+  const [deleteResumeModalOpen, setDeleteResumeModalOpen] = useState(false);
+  const [deletingResume, setDeletingResume] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [botConfigLoading, setBotConfigLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -132,6 +154,11 @@ export const ProfilePage: React.FC = () => {
       setBotConfigLoading(true);
       const cfg = await configService.fetchConfig();
       if (cfg) {
+        if (cfg.resume_name) {
+          setLocalResumeName(cfg.resume_name);
+        } else {
+          setLocalResumeName(null);
+        }
         if (cfg.firstname) setFirstname(cfg.firstname);
         if (cfg.lastname) setLastname(cfg.lastname);
         if (cfg.email) setEmail(cfg.email);
@@ -362,6 +389,180 @@ export const ProfilePage: React.FC = () => {
     if (!id) return;
     setCertifications((prev) => prev.filter((c) => c.id !== id));
     setIsDirty(true);
+  };
+
+  // Active Resume Resolution & Formatting
+  const activeSbResume = resumes.find((r) => r.isDefault) || resumes[0];
+  const activeResume = activeSbResume
+    ? {
+        id: activeSbResume.id,
+        fileName: activeSbResume.fileName,
+        fileSize: activeSbResume.fileSizeBytes,
+        uploadedAt: activeSbResume.uploadedAt,
+      }
+    : localResumeName
+    ? {
+        id: null,
+        fileName: localResumeName,
+        fileSize: null,
+        uploadedAt: null,
+      }
+    : null;
+
+  const formatFileSize = (bytes?: number | null) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const handleResumeFileUpload = async (file: File) => {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.pdf') && !name.endsWith('.docx') && !name.endsWith('.txt')) {
+      showToast('Invalid format. Only PDF (.pdf), Word (.docx), and Text (.txt) files are supported.', 'error');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('File exceeds maximum size limit of 10 MB.', 'error');
+      return;
+    }
+
+    try {
+      setUploadingResume(true);
+      setUploadProgress(20);
+      playRetroSound('click');
+
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => (prev >= 85 ? prev : prev + 15));
+      }, 150);
+
+      // 1. Upload to local bot filesystem & update .env
+      let autofillRes: any = null;
+      try {
+        autofillRes = await configService.uploadResumeAutofill(file);
+      } catch (localErr) {
+        console.warn('Local bot resume upload error:', localErr);
+      }
+
+      // 2. Upload to Supabase Storage
+      let sbRes: any = null;
+      try {
+        sbRes = await uploadSbResume(file, true);
+      } catch (sbErr) {
+        console.warn('Supabase resume upload error:', sbErr);
+      }
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      // 3. Extract and autofill candidate profile
+      if (sbRes?.resume?.id) {
+        try {
+          await autofillProfile(sbRes.resume.id);
+        } catch {
+          // ignore
+        }
+      } else if (autofillRes?.data) {
+        const d = autofillRes.data;
+        if (d.firstname) setFirstname(d.firstname);
+        if (d.lastname) setLastname(d.lastname);
+        if (d.email) setEmail(d.email);
+        if (d.phone) setPhone(d.phone);
+        if (d.city) {
+          setCurrentCity(d.city);
+          setLocationList((prev) => (prev.includes(d.city) ? prev : [d.city, ...prev]));
+        }
+        if (d.headline) setHeadline(d.headline);
+        if (d.skills && d.skills.length > 0) setSkills(d.skills);
+        if (d.linkedin_url) setLinkedinUrl(d.linkedin_url);
+        if (d.github_url) setGithubUrl(d.github_url);
+        if (d.portfolio_url) setPortfolioUrl(d.portfolio_url);
+        if (d.education_degree) setEducationDegree(d.education_degree);
+        if (d.education_college) setEducationCollege(d.education_college);
+      }
+
+      setLocalResumeName(file.name);
+      await Promise.allSettled([loadData(), refreshResumes()]);
+
+      playRetroSound('success');
+      showToast(`✓ Resume "${file.name}" uploaded successfully and linked to profile!`, 'success');
+    } catch (err: any) {
+      playRetroSound('error');
+      showToast(err?.message || 'Resume upload failed', 'error');
+    } finally {
+      setTimeout(() => {
+        setUploadingResume(false);
+        setUploadProgress(0);
+      }, 350);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleResumeFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleResumeFileUpload(e.target.files[0]);
+    }
+  };
+
+  const handleDeleteResumeConfirmed = async () => {
+    try {
+      setDeletingResume(true);
+      playRetroSound('click');
+
+      // 1. Delete physical resume from local bot engine (data/resumes/ and .env)
+      try {
+        await configService.deleteResume();
+      } catch (localErr) {
+        console.warn('Local resume delete error:', localErr);
+      }
+
+      // 2. Delete all resumes associated with user in Supabase
+      if (resumes.length > 0) {
+        for (const r of resumes) {
+          try {
+            await deleteSbResume(r.id);
+          } catch (sbErr) {
+            console.warn('Supabase resume delete error:', sbErr);
+          }
+        }
+      }
+
+      setLocalResumeName(null);
+      await Promise.allSettled([loadData(), refreshResumes()]);
+
+      playRetroSound('success');
+      showToast('✓ Resume removed from profile and bot automation storage.', 'success');
+      setDeleteResumeModalOpen(false);
+    } catch (err: any) {
+      playRetroSound('error');
+      showToast(err?.message || 'Failed to remove resume', 'error');
+    } finally {
+      setDeletingResume(false);
+    }
+  };
+
+  const handleDownloadResume = async (resumeId: string) => {
+    try {
+      const url = await getDownloadUrl(resumeId);
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        showToast('Download URL could not be generated', 'error');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to download resume', 'error');
+    }
   };
 
   // 1-Click Autofill Profile from existing resume
@@ -677,6 +878,172 @@ export const ProfilePage: React.FC = () => {
             ? '🧪 Dry-Run mode queries matching vacancies & navigates application forms without submitting.'
             : '⚡ Live mode logs into portal accounts and submits real applications using this profile.'}
         </p>
+      </div>
+
+      {/* SECTION: CANDIDATE RESUME & ATS DOCUMENT ATTACHMENT */}
+      <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 bg-[var(--accent)] text-black text-xs font-mono font-bold flex items-center justify-center">
+              📄
+            </span>
+            <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono">
+              CANDIDATE RESUME & ATS ATTACHMENT
+            </h2>
+          </div>
+          <span className="text-[11px] text-[var(--text-secondary)] font-mono">
+            {activeResume ? '1 Document Attached' : 'No Resume Attached'}
+          </span>
+        </div>
+
+        {activeResume ? (
+          <div className="p-4 border-2 border-emerald-500/40 bg-emerald-950/10 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 border-2 border-emerald-500/60 bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-[var(--text-primary)] font-mono break-all">
+                      {activeResume.fileName}
+                    </span>
+                    <Badge variant="success" size="sm">ACTIVE RESUME</Badge>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-secondary)] font-mono mt-0.5">
+                    {activeResume.fileSize ? formatFileSize(activeResume.fileSize) : 'Bot Engine Storage'}
+                    {activeResume.uploadedAt ? ` • Uploaded ${new Date(activeResume.uploadedAt).toLocaleDateString()}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAutofillFromResume}
+                  disabled={autofilling}
+                  leftIcon={<Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />}
+                  className="text-xs border-[var(--border-color)]"
+                  title="Re-extract candidate details from this resume"
+                >
+                  {autofilling ? 'Autofilling...' : 'Autofill Fields'}
+                </Button>
+
+                {activeResume.id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadResume(activeResume.id!)}
+                    leftIcon={<Download className="w-3.5 h-3.5" />}
+                    className="text-xs border-[var(--border-color)]"
+                    title="Download attached resume"
+                  >
+                    Download
+                  </Button>
+                )}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  leftIcon={<UploadCloud className="w-3.5 h-3.5" />}
+                  className="text-xs border-[var(--border-color)]"
+                  title="Replace with another resume document"
+                >
+                  Replace
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteResumeModalOpen(true)}
+                  leftIcon={<Trash2 className="w-3.5 h-3.5 text-red-400" />}
+                  className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 border-red-500/40 font-bold"
+                  title="Remove this resume document"
+                >
+                  Remove Resume
+                </Button>
+              </div>
+            </div>
+
+            {uploadingResume && (
+              <div className="space-y-1.5 pt-2 border-t border-[var(--border-color)]">
+                <div className="flex justify-between text-[11px] font-mono text-[var(--text-secondary)]">
+                  <span>Uploading & parsing replacement resume...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <ProgressBar progress={uploadProgress} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={`p-6 border-2 border-dashed text-center transition-all cursor-pointer ${
+              dragOver
+                ? 'border-[var(--accent)] bg-[var(--accent)]/10'
+                : 'border-[var(--border-color)] bg-[var(--bg-base)] hover:border-[var(--accent)]/60'
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <div className="w-12 h-12 border-2 border-[var(--border-color)] bg-[var(--bg-card)] flex items-center justify-center text-[var(--accent)]">
+                <UploadCloud className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[var(--text-primary)] font-mono uppercase">
+                  {uploadingResume ? 'Processing Resume Document...' : 'Drag & Drop Resume Here, or Click to Browse'}
+                </p>
+                <p className="text-[11px] text-[var(--text-secondary)] font-mono mt-0.5">
+                  Supports PDF (.pdf), Microsoft Word (.docx), and Text (.txt). Max file size 10 MB.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                isLoading={uploadingResume}
+                leftIcon={<UploadCloud className="w-4 h-4" />}
+                className="mt-2 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+              >
+                Upload Resume
+              </Button>
+            </div>
+
+            {uploadingResume && (
+              <div className="mt-4 max-w-xs mx-auto space-y-1.5">
+                <div className="flex justify-between text-[11px] font-mono text-[var(--text-secondary)]">
+                  <span>Parsing and extracting skills...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <ProgressBar progress={uploadProgress} />
+              </div>
+            )}
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.txt"
+          className="hidden"
+          onChange={handleFileChange}
+        />
       </div>
 
       {/* SECTION 1: CANDIDATE IDENTITY & CONTACT */}
@@ -1597,6 +1964,18 @@ export const ProfilePage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Resume Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteResumeModalOpen}
+        onClose={() => !deletingResume && setDeleteResumeModalOpen(false)}
+        onConfirm={handleDeleteResumeConfirmed}
+        title="Remove Attached Resume"
+        description="Are you sure you want to remove this resume from your profile? This will delete the resume file from bot automation storage and Supabase. You can upload a new resume anytime."
+        confirmLabel={deletingResume ? "Removing Resume..." : "Remove Resume"}
+        isDestructive
+        isLoading={deletingResume}
+      />
     </div>
   );
 };
