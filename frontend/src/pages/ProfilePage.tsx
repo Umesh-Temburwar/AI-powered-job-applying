@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   MapPin,
   Plus,
   Trash2,
   Save,
-  Play,
   X,
   Sparkles,
   CheckCircle2,
@@ -17,7 +15,6 @@ import {
 import { useProfile } from '../hooks/useProfile';
 import { usePreferences } from '../hooks/usePreferences';
 import { useResumes } from '../hooks/useResumes';
-import { useTasks } from '../hooks/useTasks';
 import { configService } from '../services/configService';
 import { useToast } from '../context/ToastContext';
 import { playRetroSound } from '../utils/soundEffects';
@@ -58,7 +55,6 @@ const SUGGESTED_CITIES = [
 ];
 
 export const ProfilePage: React.FC = () => {
-  const navigate = useNavigate();
   const { profile, loading: profileLoading, updateProfile, autofillProfile } = useProfile();
   const { preferences, updatePreferences } = usePreferences();
   const {
@@ -68,7 +64,6 @@ export const ProfilePage: React.FC = () => {
     getDownloadUrl,
     refreshResumes,
   } = useResumes();
-  const { startTask } = useTasks();
   const { showToast } = useToast();
 
   const [localResumeName, setLocalResumeName] = useState<string | null>(null);
@@ -84,11 +79,7 @@ export const ProfilePage: React.FC = () => {
   const [autofilling, setAutofilling] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
-  // Automation Launch Target & Execution Mode (Direct Master Setup Sync)
-  const [selectedPlatform, setSelectedPlatform] = useState<string>('All Portals');
-  const [dryRun, setDryRun] = useState<boolean>(true);
-  const [maxApplications, setMaxApplications] = useState<number>(50);
-  const [startingBot, setStartingBot] = useState<boolean>(false);
+
 
   // 1. Identity & Contact Details
   const [firstname, setFirstname] = useState('');
@@ -186,7 +177,6 @@ export const ProfilePage: React.FC = () => {
         if (cfg.github_url) setGithubUrl(cfg.github_url);
         if (cfg.portfolio_url) setPortfolioUrl(cfg.portfolio_url);
         if (cfg.cover_letter) setCoverLetter(cfg.cover_letter);
-        if (cfg.max_applications) setMaxApplications(Number(cfg.max_applications) || 50);
         if (cfg.keywords) {
           const kws = cfg.keywords.split(',').map((s) => s.trim()).filter(Boolean);
           if (kws.length > 0) setKeywordList(kws);
@@ -701,43 +691,6 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  // Launch Universal Bot immediately with all profile & career details
-  const handleLaunchBot = async () => {
-    try {
-      setStartingBot(true);
-      playRetroSound('click');
-
-      // 1. First save all profile data to .env and database
-      await handleSave();
-
-      // 2. Start automation task
-      const plat = selectedPlatform === 'All Portals' ? 'All Portals' : selectedPlatform;
-      const safeKeywords = keywordList.length > 0 ? keywordList : ['Full Stack Developer'];
-      const safeLocations = locationList.length > 0 ? locationList : [currentCity || 'Pune'];
-
-      await startTask({
-        platform: plat as any,
-        taskType: 'job_apply',
-        dryRun,
-        userConfirmedRealSubmission: !dryRun,
-        maxApplications: maxApplications || 50,
-        keywords: safeKeywords,
-        locations: safeLocations,
-        force: true,
-        headless: false,
-      });
-
-      playRetroSound('success');
-      showToast(`🚀 Universal Bot launched on ${plat} (${dryRun ? 'Dry-Run Simulation' : 'Live Mode'})!`, 'success');
-      navigate('/dashboard');
-    } catch (err: any) {
-      playRetroSound('error');
-      showToast(err.message || 'Failed to start bot task', 'error');
-    } finally {
-      setStartingBot(false);
-    }
-  };
-
   if ((profileLoading || botConfigLoading) && !profile && !firstname) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
@@ -762,122 +715,16 @@ export const ProfilePage: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAutofillFromResume}
-            disabled={autofilling || saving}
-            leftIcon={<Sparkles className="w-3.5 h-3.5 text-sky-400" />}
-          >
-            {autofilling ? 'Autofilling...' : '1-Click Autofill'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSave}
-            disabled={saving || startingBot}
-            leftIcon={<Save className="w-3.5 h-3.5" />}
-          >
-            {saving ? 'Saving...' : 'Save .env Only'}
-          </Button>
-          <Button
             variant="primary"
             size="sm"
-            onClick={handleLaunchBot}
-            disabled={startingBot || saving}
-            leftIcon={<Play className="w-3.5 h-3.5 fill-current" />}
+            onClick={handleSave}
+            disabled={saving}
+            leftIcon={<Save className="w-3.5 h-3.5" />}
             className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
           >
-            {startingBot ? 'Starting Bot...' : '🚀 Launch & Start Bot'}
+            {saving ? 'Saving...' : '💾 Save Profile'}
           </Button>
         </div>
-      </div>
-
-      {/* SECTION 0: AUTOMATION LAUNCH TARGET & EXECUTION MODE (Direct Master Setup Sync) */}
-      <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 bg-black text-white text-xs font-mono font-bold flex items-center justify-center">
-              0
-            </span>
-            <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono">
-              AUTOMATION LAUNCH TARGET & EXECUTION MODE
-            </h2>
-          </div>
-          <span className="text-[11px] text-[var(--text-secondary)] font-mono">Single-Run Execution</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:col-span-1">
-            <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
-              Target Job Portal
-            </label>
-            <select
-              value={selectedPlatform}
-              onChange={(e) => setSelectedPlatform(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-primary)] text-xs font-bold focus:outline-none"
-            >
-              <option value="All Portals">All Portals (Naukri, Internshala, Indeed, LinkedIn)</option>
-              <option value="Naukri">Naukri.com</option>
-              <option value="Internshala">Internshala</option>
-              <option value="Indeed">Indeed</option>
-              <option value="LinkedIn">LinkedIn Jobs</option>
-              <option value="Foundit">Foundit (Monster)</option>
-              <option value="Wellfound">Wellfound (AngelList)</option>
-              <option value="Glassdoor">Glassdoor</option>
-              <option value="Cutshort">Cutshort</option>
-            </select>
-          </div>
-
-          <div className="sm:col-span-1">
-            <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
-              Execution Mode
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setDryRun(true)}
-                className={`px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer ${
-                  dryRun
-                    ? 'border-amber-500 bg-amber-400/20 text-amber-300 retro-shadow-sm'
-                    : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
-                }`}
-              >
-                🧪 DRY-RUN (SAFE)
-              </button>
-              <button
-                type="button"
-                onClick={() => setDryRun(false)}
-                className={`px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer ${
-                  !dryRun
-                    ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 retro-shadow-sm'
-                    : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
-                }`}
-              >
-                ⚡ LIVE AUTO-APPLY
-              </button>
-            </div>
-          </div>
-
-          <div className="sm:col-span-1">
-            <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
-              Max Applications
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={maxApplications}
-              onChange={(e) => setMaxApplications(Number(e.target.value) || 25)}
-              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-primary)] text-xs font-bold focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <p className="text-[11px] text-[var(--text-secondary)] italic font-mono">
-          {dryRun
-            ? '🧪 Dry-Run mode queries matching vacancies & navigates application forms without submitting.'
-            : '⚡ Live mode logs into portal accounts and submits real applications using this profile.'}
-        </p>
       </div>
 
       {/* SECTION: CANDIDATE RESUME & ATS DOCUMENT ATTACHMENT */}
@@ -1772,33 +1619,14 @@ export const ProfilePage: React.FC = () => {
           <div className="flex items-center gap-3">
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAutofillFromResume}
-              disabled={autofilling || saving}
-              leftIcon={<Sparkles className="w-3.5 h-3.5 text-sky-400" />}
-            >
-              Autofill from Resume
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
+              variant="primary"
               size="sm"
               onClick={handleSave}
-              disabled={saving || startingBot}
+              disabled={saving}
               leftIcon={<Save className="w-4 h-4" />}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
             >
-              {saving ? 'Saving...' : '💾 SAVE TO .ENV ONLY'}
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={handleLaunchBot}
-              disabled={startingBot || saving}
-              leftIcon={<Play className="w-4 h-4 fill-current" />}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
-            >
-              {startingBot ? 'Starting Bot...' : '🚀 LAUNCH & START BOT NOW'}
+              {saving ? 'Saving Changes...' : '💾 SAVE PROFILE & .ENV'}
             </Button>
           </div>
         </div>

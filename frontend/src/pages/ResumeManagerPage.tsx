@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   UploadCloud,
@@ -9,12 +8,10 @@ import {
   FileCheck,
   Sparkles,
   RefreshCw,
-  Play,
   Save,
 } from 'lucide-react';
 import { useResumes } from '../hooks/useResumes';
 import { useProfile } from '../hooks/useProfile';
-import { useTasks } from '../hooks/useTasks';
 import { configService, type BotEnvConfig } from '../services/configService';
 import { useToast } from '../context/ToastContext';
 import { playRetroSound } from '../utils/soundEffects';
@@ -39,16 +36,13 @@ export const ResumeManagerPage: React.FC = () => {
     deleteResume,
     refreshResumes,
   } = useResumes();
-  const navigate = useNavigate();
   const { autofillProfile } = useProfile();
-  const { startTask } = useTasks();
   const { showToast } = useToast();
 
   const [botConfig, setBotConfig] = useState<BotEnvConfig | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('All Portals');
   const [dryRun, setDryRun] = useState<boolean>(true);
   const [maxApplications, setMaxApplications] = useState<number>(50);
-  const [startingBot, setStartingBot] = useState<boolean>(false);
   const [savingEnv, setSavingEnv] = useState<boolean>(false);
   const [configLoading, setConfigLoading] = useState<boolean>(true);
   const [dragOver, setDragOver] = useState(false);
@@ -249,38 +243,6 @@ export const ResumeManagerPage: React.FC = () => {
       showToast(err instanceof Error ? err.message : 'Failed to save configuration', 'error');
     } finally {
       setSavingEnv(false);
-    }
-  };
-
-  const handleLaunchBot = async () => {
-    try {
-      setStartingBot(true);
-      playRetroSound('click');
-      await configService.saveConfig({
-        max_applications: maxApplications,
-      });
-
-      const plat = selectedPlatform === 'All Portals' ? 'All Portals' : selectedPlatform;
-      await startTask({
-        platform: plat as any,
-        taskType: 'job_apply',
-        dryRun,
-        userConfirmedRealSubmission: !dryRun,
-        maxApplications: maxApplications || 50,
-        keywords: botConfig?.keywords ? botConfig.keywords.split(',').map((s) => s.trim()).filter(Boolean) : ['Full Stack Developer'],
-        locations: botConfig?.location ? botConfig.location.split(',').map((s) => s.trim()).filter(Boolean) : ['Pune', 'Remote'],
-        force: true,
-        headless: false,
-      });
-
-      playRetroSound('success');
-      showToast(`🚀 Universal Bot launched on ${plat} (${dryRun ? 'Dry-Run Simulation' : 'Live Mode'})!`, 'success');
-      navigate('/dashboard');
-    } catch (err: any) {
-      playRetroSound('error');
-      showToast(err.message || 'Failed to start bot task', 'error');
-    } finally {
-      setStartingBot(false);
     }
   };
 
@@ -667,24 +629,14 @@ export const ResumeManagerPage: React.FC = () => {
         <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
           <Button
             type="button"
-            variant="outline"
+            variant="primary"
             size="sm"
             onClick={handleSaveEnvOnly}
-            disabled={savingEnv || startingBot}
+            disabled={savingEnv}
             leftIcon={<Save className="w-3.5 h-3.5" />}
-          >
-            {savingEnv ? 'Saving...' : '💾 SAVE TO .ENV ONLY'}
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="md"
-            onClick={handleLaunchBot}
-            disabled={startingBot || actionLoading}
-            leftIcon={<Play className="w-4 h-4 fill-current" />}
             className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
           >
-            {startingBot ? 'Starting Bot...' : '🚀 LAUNCH & START BOT NOW'}
+            {savingEnv ? 'Saving...' : '💾 SAVE CONFIGURATION'}
           </Button>
         </div>
       </div>
