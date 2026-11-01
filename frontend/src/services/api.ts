@@ -43,11 +43,16 @@ const DEFAULT_PROD_API_URL = 'https://universal-job-apply-bot-1.onrender.com';
 export function getBaseApiUrl(): string {
   const envUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
   const isBrowser = typeof window !== 'undefined';
+  const hostname = isBrowser ? window.location.hostname : '';
   const isLocalHost =
     isBrowser &&
-    (window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.hostname === '[::1]');
+    (hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '[::1]' ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('172.') ||
+      hostname.endsWith('.local'));
 
   // 1. If VITE_API_BASE_URL is provided, prioritize it
   if (envUrl) {
@@ -56,11 +61,19 @@ export function getBaseApiUrl(): string {
     if (isBrowser && !isLocalHost && (envUrl.includes('localhost') || envUrl.includes('127.0.0.1'))) {
       return DEFAULT_PROD_API_URL;
     }
+    // If accessing via LAN (e.g. 192.168.1.101 from phone) and envUrl points to 127.0.0.1:8001,
+    // dynamically route to the host's LAN backend so mobile requests reach the local server
+    if (isBrowser && isLocalHost && hostname !== 'localhost' && hostname !== '127.0.0.1' && envUrl.includes('127.0.0.1:8001')) {
+      return `http://${hostname}:8001`;
+    }
     return envUrl;
   }
 
   // 2. Local development fallback when VITE_API_BASE_URL is not set
   if (import.meta.env.DEV || isLocalHost) {
+    if (isBrowser && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `http://${hostname}:8001`;
+    }
     return DEFAULT_LOCAL_API_URL;
   }
 

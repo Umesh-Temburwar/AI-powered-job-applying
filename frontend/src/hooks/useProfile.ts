@@ -203,7 +203,40 @@ export function useProfile() {
         return mapped;
       }
 
-      throw new Error('Candidate is not authenticated.');
+      // Local / Offline fallback when candidate token is unavailable
+      const fallbackProfile: UserProfile = {
+        ...(profile || {
+          id: userId || 'local_user',
+          email: userEmail || '',
+          fullName: userFullName || 'Candidate',
+          phone: '',
+          currentLocation: '',
+          city: '',
+          headline: '',
+          summary: '',
+          linkedinUrl: '',
+          githubUrl: '',
+          portfolioUrl: '',
+          skills: [],
+          preferredTitles: [],
+          preferredLocations: [],
+          noticePeriodDays: 15,
+          education: [],
+          experience: [],
+          projects: [],
+          certifications: [],
+          isOnboarded: false,
+          onboardingStep: 0,
+          completionPercentage: 0,
+          missingFields: [],
+          updatedAt: new Date().toISOString(),
+        }),
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+      cachedProfileData = fallbackProfile;
+      setProfile(fallbackProfile);
+      return fallbackProfile;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update profile';
       setError(msg);

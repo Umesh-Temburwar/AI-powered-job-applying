@@ -14,6 +14,16 @@ def test_cors_preflight_allowed_origin(client: TestClient):
         response.headers.get("access-control-allow-origin") == "http://localhost:5173"
     )
 
+    # Test LAN IP origin (e.g. mobile access)
+    lan_headers = {
+        "Origin": "http://192.168.1.101:5173",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "Content-Type",
+    }
+    lan_res = client.options("/api/v1/dashboard/summary", headers=lan_headers)
+    assert lan_res.status_code == 200
+    assert lan_res.headers.get("access-control-allow-origin") == "http://192.168.1.101:5173"
+
 
 def test_cors_preflight_disallowed_origin(client: TestClient):
     """Verify preflight request from unknown origin is not granted Access-Control-Allow-Origin."""

@@ -82,7 +82,28 @@ export function usePreferences() {
 
   const updatePreferences = async (updates: Partial<JobPreferences>) => {
     const activeToken = await getActiveToken();
-    if (!activeToken) throw new Error('Candidate is not authenticated.');
+    if (!activeToken) {
+      const fallbackPrefs: JobPreferences = {
+        ...(preferences || {
+          userId: 'local_user',
+          targetTitles: [],
+          targetLocations: [],
+          experienceLevel: 'Fresher / Entry Level' as ExperienceLevel,
+          employmentTypes: ['Full-time' as EmploymentType],
+          minSalaryLakhs: 6,
+          maxSalaryLakhs: 18,
+          selectedPlatforms: ['Naukri', 'Internshala', 'Indeed'] as PlatformName[],
+          dailyApplicationLimit: 25,
+          requireReviewBeforeSubmit: true,
+          updatedAt: new Date().toISOString(),
+        }),
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+      cachedPreferencesData = fallbackPrefs;
+      if (isMountedRef.current) setPreferences(fallbackPrefs);
+      return fallbackPrefs;
+    }
 
     try {
       setLoading(true);

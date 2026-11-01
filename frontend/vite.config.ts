@@ -18,6 +18,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+    host: true, // Listen on all local IPv4 and IPv6 network interfaces for mobile & LAN access
     port: 5173,
     proxy: {
       '/api': {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   UploadCloud,
@@ -8,9 +9,12 @@ import {
   FileCheck,
   Sparkles,
   RefreshCw,
+  Play,
+  Save,
 } from 'lucide-react';
 import { useResumes } from '../hooks/useResumes';
 import { useProfile } from '../hooks/useProfile';
+import { useTasks } from '../hooks/useTasks';
 import { configService, type BotEnvConfig } from '../services/configService';
 import { useToast } from '../context/ToastContext';
 import { playRetroSound } from '../utils/soundEffects';
@@ -35,10 +39,17 @@ export const ResumeManagerPage: React.FC = () => {
     deleteResume,
     refreshResumes,
   } = useResumes();
+  const navigate = useNavigate();
   const { autofillProfile } = useProfile();
+  const { startTask } = useTasks();
   const { showToast } = useToast();
 
   const [botConfig, setBotConfig] = useState<BotEnvConfig | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('All Portals');
+  const [dryRun, setDryRun] = useState<boolean>(true);
+  const [maxApplications, setMaxApplications] = useState<number>(50);
+  const [startingBot, setStartingBot] = useState<boolean>(false);
+  const [savingEnv, setSavingEnv] = useState<boolean>(false);
   const [configLoading, setConfigLoading] = useState<boolean>(true);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -56,6 +67,7 @@ export const ResumeManagerPage: React.FC = () => {
       setConfigLoading(true);
       const data = await configService.fetchConfig();
       setBotConfig(data);
+      if (data?.max_applications) setMaxApplications(Number(data.max_applications) || 50);
     } catch (err) {
       console.warn('Could not load bot config in ResumeManagerPage:', err);
     } finally {
@@ -223,6 +235,55 @@ export const ResumeManagerPage: React.FC = () => {
     }
   };
 
+  const handleSaveEnvOnly = async () => {
+    try {
+      setSavingEnv(true);
+      playRetroSound('click');
+      await configService.saveConfig({
+        max_applications: maxApplications,
+      });
+      playRetroSound('success');
+      showToast('✓ Automation preferences saved to bot .env!', 'success');
+    } catch (err) {
+      playRetroSound('error');
+      showToast(err instanceof Error ? err.message : 'Failed to save configuration', 'error');
+    } finally {
+      setSavingEnv(false);
+    }
+  };
+
+  const handleLaunchBot = async () => {
+    try {
+      setStartingBot(true);
+      playRetroSound('click');
+      await configService.saveConfig({
+        max_applications: maxApplications,
+      });
+
+      const plat = selectedPlatform === 'All Portals' ? 'All Portals' : selectedPlatform;
+      await startTask({
+        platform: plat as any,
+        taskType: 'job_apply',
+        dryRun,
+        userConfirmedRealSubmission: !dryRun,
+        maxApplications: maxApplications || 50,
+        keywords: botConfig?.keywords ? botConfig.keywords.split(',').map((s) => s.trim()).filter(Boolean) : ['Full Stack Developer'],
+        locations: botConfig?.location ? botConfig.location.split(',').map((s) => s.trim()).filter(Boolean) : ['Pune', 'Remote'],
+        force: true,
+        headless: false,
+      });
+
+      playRetroSound('success');
+      showToast(`🚀 Universal Bot launched on ${plat} (${dryRun ? 'Dry-Run Simulation' : 'Live Mode'})!`, 'success');
+      navigate('/dashboard');
+    } catch (err: any) {
+      playRetroSound('error');
+      showToast(err.message || 'Failed to start bot task', 'error');
+    } finally {
+      setStartingBot(false);
+    }
+  };
+
   const activeBotResumeName = botConfig?.resume_name || (resumes.length > 0 ? resumes[0].fileName : null);
 
   return (
@@ -349,7 +410,97 @@ export const ResumeManagerPage: React.FC = () => {
         )}
       </div>
 
-      {/* 2. Upload Dropzone Card */}
+      {/* 2. Automation Target & Execution Mode (Direct from Master Setup Modal) */}
+      <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-none bg-black text-white text-xs font-mono font-bold flex items-center justify-center">
+              2
+            </span>
+            <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono">
+              AUTOMATION LAUNCH TARGET & EXECUTION MODE
+            </h2>
+          </div>
+          <span className="text-[11px] text-[var(--text-secondary)] font-mono">
+            Single-Run Execution
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-1">
+            <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+              Target Job Portal
+            </label>
+            <select
+              value={selectedPlatform}
+              onChange={(e) => setSelectedPlatform(e.target.value)}
+              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-primary)] text-xs font-bold focus:outline-none"
+            >
+              <option value="All Portals">All Portals (Naukri, Internshala, Indeed, LinkedIn)</option>
+              <option value="Naukri">Naukri.com</option>
+              <option value="Internshala">Internshala</option>
+              <option value="Indeed">Indeed</option>
+              <option value="LinkedIn">LinkedIn Jobs</option>
+              <option value="Foundit">Foundit (Monster)</option>
+              <option value="Wellfound">Wellfound (AngelList)</option>
+              <option value="Glassdoor">Glassdoor</option>
+              <option value="Cutshort">Cutshort</option>
+            </select>
+          </div>
+
+          <div className="sm:col-span-1">
+            <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+              Execution Mode
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDryRun(true)}
+                className={`px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer ${
+                  dryRun
+                    ? 'border-amber-500 bg-amber-400/20 text-amber-300 retro-shadow-sm'
+                    : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
+                }`}
+              >
+                🧪 DRY-RUN (SAFE)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDryRun(false)}
+                className={`px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer ${
+                  !dryRun
+                    ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 retro-shadow-sm'
+                    : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
+                }`}
+              >
+                ⚡ LIVE AUTO-APPLY
+              </button>
+            </div>
+          </div>
+
+          <div className="sm:col-span-1">
+            <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+              Max Applications
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={maxApplications}
+              onChange={(e) => setMaxApplications(Number(e.target.value) || 25)}
+              className="w-full px-3 py-2 border-2 border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-primary)] text-xs font-bold focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <p className="text-[11px] text-[var(--text-secondary)] italic font-mono">
+          {dryRun
+            ? '🧪 Dry-Run mode queries matching vacancies & navigates application forms without submitting.'
+            : '⚡ Live mode logs into portal accounts and submits real applications using this resume.'}
+        </p>
+      </div>
+
+      {/* 3. Upload Dropzone Card */}
       <Card>
         <CardHeader
           title="Upload or Update Candidate Resume"
@@ -505,6 +656,38 @@ export const ResumeManagerPage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      {/* Sticky Bottom Action Bar matching user screenshot */}
+      <div className="sticky bottom-4 border-2 border-[var(--border-color)] bg-[var(--bg-base)] retro-shadow p-4 flex flex-col sm:flex-row items-center justify-between gap-3 z-20">
+        <div className="text-xs text-[var(--text-secondary)] font-mono text-center sm:text-left">
+          Configured for <span className="font-bold text-[var(--text-primary)]">{botConfig?.firstname || 'Candidate'}</span> on{' '}
+          <span className="font-bold text-emerald-400">{selectedPlatform}</span> ({dryRun ? 'Dry-Run' : 'Live Mode'})
+        </div>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleSaveEnvOnly}
+            disabled={savingEnv || startingBot}
+            leftIcon={<Save className="w-3.5 h-3.5" />}
+          >
+            {savingEnv ? 'Saving...' : '💾 SAVE TO .ENV ONLY'}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            onClick={handleLaunchBot}
+            disabled={startingBot || actionLoading}
+            leftIcon={<Play className="w-4 h-4 fill-current" />}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+          >
+            {startingBot ? 'Starting Bot...' : '🚀 LAUNCH & START BOT NOW'}
+          </Button>
+        </div>
+      </div>
 
       {/* Delete Cloud Resume Confirmation Modal */}
       <ConfirmDialog
