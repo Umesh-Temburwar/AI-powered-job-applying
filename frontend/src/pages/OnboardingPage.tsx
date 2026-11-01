@@ -20,6 +20,7 @@ import {
   Target,
   MapPin,
   Bot,
+  Home,
   Loader2,
   LogOut,
   RotateCcw,
@@ -69,6 +70,11 @@ export const OnboardingPage: React.FC = () => {
 
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+
+  const handleSkipToHome = () => {
+    markOnboardingCompletedLocally();
+    navigate('/');
+  };
 
   const handleLogout = async () => {
     try {
@@ -666,13 +672,14 @@ export const OnboardingPage: React.FC = () => {
             <Badge variant="cyan" size="sm">
               Progress: {progressPercentage}%
             </Badge>
-            <Button
+                        <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/dashboard')}
-              className="text-xs text-theme-muted hover:text-theme-primary"
+              onClick={handleSkipToHome}
+              leftIcon={<Home className="w-3.5 h-3.5 text-emerald-500" />}
+              className="text-xs text-theme-muted hover:text-theme-primary font-medium"
             >
-              Skip to Dashboard
+              Skip to Home
             </Button>
             <Button
               variant="outline"
