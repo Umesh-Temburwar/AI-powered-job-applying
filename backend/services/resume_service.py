@@ -189,6 +189,34 @@ async def upload_and_parse_resume(
     from services.profile_service import invalidate_profile_cache
     invalidate_profile_cache(user_id)
 
+    # 6. Immediately train the bot screening Q&A answer bank with parsed candidate details
+    try:
+        from services.config_service import train_bot_with_candidate_details
+        edu_list = structured.get("education") or []
+        first_edu = edu_list[0] if isinstance(edu_list, list) and edu_list else (edu_list if isinstance(edu_list, dict) else {})
+        exp_list = structured.get("experience") or []
+        fn_parts = (structured.get("full_name") or "").split()
+        fname = fn_parts[0] if fn_parts else ""
+        lname = " ".join(fn_parts[1:]) if len(fn_parts) > 1 else ""
+        train_bot_with_candidate_details({
+            "user_id": user_id,
+            "firstname": fname,
+            "lastname": lname,
+            "email": structured.get("email"),
+            "phone": structured.get("phone"),
+            "location": structured.get("city") or "Pune",
+            "total_experience_years": str(len(exp_list)) if exp_list else "0",
+            "education_degree": first_edu.get("degree") or "Bachelor of Technology (B.Tech)",
+            "education_college": first_edu.get("institution") or first_edu.get("college") or "",
+            "education_passing_year": str(first_edu.get("year") or first_edu.get("passing_year") or "2025"),
+            "education_score": str(first_edu.get("score") or first_edu.get("cgpa") or ""),
+            "linkedin_url": structured.get("linkedin_url") or "",
+            "github_url": structured.get("github_url") or "",
+            "portfolio_url": structured.get("portfolio_url") or "",
+        })
+    except Exception as train_exc:
+        logger.debug("Could not auto-train bot on resume upload: %s", train_exc)
+
     parsed_profile = ProfileUpdateRequest(**structured)
     resume_item = ResumeItemResponse(
         id=resume_id,

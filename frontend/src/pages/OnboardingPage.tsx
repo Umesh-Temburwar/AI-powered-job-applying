@@ -82,6 +82,11 @@ export const OnboardingPage: React.FC = () => {
   const [ocrWarning, setOcrWarning] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  const goToStep = (stepIdx: number) => {
+    setValidationError(null);
+    setCurrentStep(stepIdx);
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
@@ -96,7 +101,9 @@ export const OnboardingPage: React.FC = () => {
   const [portfolioUrl, setPortfolioUrl] = useState('');
 
   // Education & Experience
-  const [educationList, setEducationList] = useState<EducationItem[]>([]);
+  const [educationList, setEducationList] = useState<EducationItem[]>([
+    { id: '1', degree: 'Bachelor of Technology (B.Tech)', institution: '', year: '2025', score: '' },
+  ]);
   const [isFresher, setIsFresher] = useState(true);
   const [experienceList, setExperienceList] = useState<ExperienceItem[]>([]);
 
@@ -212,12 +219,22 @@ export const OnboardingPage: React.FC = () => {
         setEducationList(
           p.education.map((e, idx) => ({
             id: String(idx + 1),
-            degree: e.degree,
-            institution: e.institution,
-            year: e.year || '',
-            score: e.score,
+            degree: e.degree || 'Bachelor of Technology (B.Tech)',
+            institution: e.institution || '',
+            year: e.year || '2025',
+            score: e.score || '',
           }))
         );
+      } else {
+        setEducationList([
+          {
+            id: '1',
+            degree: 'Bachelor of Technology (B.Tech)',
+            institution: '',
+            year: '2025',
+            score: '',
+          },
+        ]);
       }
       if (p.experience && p.experience.length > 0) {
         setExperienceList(
@@ -254,8 +271,8 @@ export const OnboardingPage: React.FC = () => {
         );
       }
 
-      showToast(`Resume parsed successfully! Extracted ${res.extracted_skills_count} skills.`, 'success');
-      setCurrentStep(1);
+      showToast(`Resume parsed successfully! Extracted ${res.extracted_skills_count || (p.skills ? p.skills.length : 0)} skills.`, 'success');
+      goToStep(1);
     } catch (err) {
       setValidationError(err instanceof Error ? err.message : 'Failed to parse resume file.');
     } finally {
@@ -370,12 +387,12 @@ export const OnboardingPage: React.FC = () => {
       }
 
       if (nextStep <= 7) {
-        setCurrentStep(nextStep);
+        goToStep(nextStep);
       }
     } catch (err) {
       console.warn('Progress step change warning:', err);
       if (currentStep + 1 <= 7) {
-        setCurrentStep(currentStep + 1);
+        goToStep(currentStep + 1);
       }
     } finally {
       setSaving(false);
@@ -565,7 +582,7 @@ export const OnboardingPage: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setValidationError(null);
-                  setCurrentStep(s.id);
+                  goToStep(s.id);
                 }}
                 className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-colors flex flex-col items-center gap-1 ${
                   s.id === currentStep
@@ -681,13 +698,13 @@ export const OnboardingPage: React.FC = () => {
             <div className="flex items-center justify-between pt-4 border-t border-theme">
               <Button
                 variant="ghost"
-                onClick={() => setCurrentStep(1)}
+                onClick={() => goToStep(1)}
               >
                 Skip & Fill Manually →
               </Button>
               <Button
                 variant="primary"
-                onClick={() => setCurrentStep(1)}
+                onClick={() => goToStep(1)}
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
                 Continue to Personal Info
@@ -769,7 +786,7 @@ export const OnboardingPage: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-theme">
-              <Button variant="ghost" onClick={() => setCurrentStep(0)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              <Button variant="ghost" onClick={() => goToStep(0)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
                 Back
               </Button>
               <Button variant="primary" onClick={handleSaveAndContinue} disabled={saving} rightIcon={<ArrowRight className="w-4 h-4" />}>
@@ -854,7 +871,7 @@ export const OnboardingPage: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-theme">
-              <Button variant="ghost" onClick={() => setCurrentStep(1)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              <Button variant="ghost" onClick={() => goToStep(1)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
                 Back
               </Button>
               <Button variant="primary" onClick={handleSaveAndContinue} disabled={saving} rightIcon={<ArrowRight className="w-4 h-4" />}>
@@ -998,7 +1015,7 @@ export const OnboardingPage: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-theme">
-              <Button variant="ghost" onClick={() => setCurrentStep(2)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              <Button variant="ghost" onClick={() => goToStep(2)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
                 Back
               </Button>
               <Button variant="primary" onClick={handleSaveAndContinue} disabled={saving} rightIcon={<ArrowRight className="w-4 h-4" />}>
@@ -1104,7 +1121,7 @@ export const OnboardingPage: React.FC = () => {
             )}
 
             <div className="flex items-center justify-between pt-4 border-t border-theme">
-              <Button variant="ghost" onClick={() => setCurrentStep(3)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              <Button variant="ghost" onClick={() => goToStep(3)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
                 Back
               </Button>
               <Button variant="primary" onClick={handleSaveAndContinue} disabled={saving} rightIcon={<ArrowRight className="w-4 h-4" />}>
@@ -1234,7 +1251,7 @@ export const OnboardingPage: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-theme">
-              <Button variant="ghost" onClick={() => setCurrentStep(4)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              <Button variant="ghost" onClick={() => goToStep(4)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
                 Back
               </Button>
               <Button variant="primary" onClick={handleSaveAndContinue} disabled={saving} rightIcon={<ArrowRight className="w-4 h-4" />}>
@@ -1421,7 +1438,7 @@ export const OnboardingPage: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-theme">
-              <Button variant="ghost" onClick={() => setCurrentStep(5)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              <Button variant="ghost" onClick={() => goToStep(5)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
                 Back
               </Button>
               <Button variant="primary" onClick={handleSaveAndContinue} disabled={saving} rightIcon={<ArrowRight className="w-4 h-4" />}>
@@ -1450,7 +1467,7 @@ export const OnboardingPage: React.FC = () => {
               <div className="p-4 rounded-xl border border-theme bg-theme-surface space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-theme-muted uppercase tracking-wider">Candidate Identity</span>
-                  <button type="button" onClick={() => setCurrentStep(1)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
+                  <button type="button" onClick={() => goToStep(1)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
                     Edit
                   </button>
                 </div>
@@ -1472,7 +1489,7 @@ export const OnboardingPage: React.FC = () => {
               <div className="p-4 rounded-xl border border-theme bg-theme-surface space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-theme-muted uppercase tracking-wider">Education</span>
-                  <button type="button" onClick={() => setCurrentStep(2)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
+                  <button type="button" onClick={() => goToStep(2)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
                     Edit
                   </button>
                 </div>
@@ -1491,7 +1508,7 @@ export const OnboardingPage: React.FC = () => {
                 <div className="p-4 rounded-xl border border-theme bg-theme-surface space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-theme-muted uppercase tracking-wider">Technical Skills ({skills.length})</span>
-                    <button type="button" onClick={() => setCurrentStep(3)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
+                    <button type="button" onClick={() => goToStep(3)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
                       Edit
                     </button>
                   </div>
@@ -1506,7 +1523,7 @@ export const OnboardingPage: React.FC = () => {
                 <div className="p-4 rounded-xl border border-theme bg-theme-surface space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-theme-muted uppercase tracking-wider">Experience Status</span>
-                    <button type="button" onClick={() => setCurrentStep(4)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
+                    <button type="button" onClick={() => goToStep(4)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
                       Edit
                     </button>
                   </div>
@@ -1523,7 +1540,7 @@ export const OnboardingPage: React.FC = () => {
               <div className="p-4 rounded-xl border border-theme bg-theme-surface space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-theme-muted uppercase tracking-wider">Target Roles & Portals</span>
-                  <button type="button" onClick={() => setCurrentStep(6)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
+                  <button type="button" onClick={() => goToStep(6)} className="text-xs text-[var(--accent)] hover:underline font-semibold">
                     Edit
                   </button>
                 </div>
@@ -1551,7 +1568,7 @@ export const OnboardingPage: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-theme">
-              <Button variant="ghost" onClick={() => setCurrentStep(6)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              <Button variant="ghost" onClick={() => goToStep(6)} leftIcon={<ArrowLeft className="w-4 h-4" />}>
                 Back
               </Button>
               <Button

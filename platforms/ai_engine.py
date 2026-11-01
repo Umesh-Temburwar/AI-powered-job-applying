@@ -60,7 +60,13 @@ class QuestionAnswerer:
         self.answer_bank = load_answer_bank()
         self.api_key = os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY") or ""
         self.personal = self.profile.get("personal", {})
-        self.education = self.profile.get("education", {})
+        raw_edu = self.profile.get("education", {})
+        if isinstance(raw_edu, list):
+            self.education = raw_edu[0] if raw_edu else {}
+        elif isinstance(raw_edu, dict):
+            self.education = raw_edu
+        else:
+            self.education = {}
         self.skills = self.profile.get("key_skills", [
             "React.js", "Node.js", "Express.js", "MongoDB", "PostgreSQL", "Supabase", "REST APIs", "Git"
         ])
@@ -146,20 +152,22 @@ class QuestionAnswerer:
             return "Yes, available full-time immediately"
 
         # Graduation / Passing Year
-        if any(term in q_clean for term in ["graduation", "passing year", "year of pass", "graduated"]):
-            return str(self.education.get("passing_year", "2025"))
+        if any(term in q_clean for term in ["graduation", "passing year", "year of pass", "graduated", "batch"]):
+            return str(self.education.get("passing_year") or self.education.get("year") or os.getenv("EDUCATION_PASSING_YEAR") or "2025")
 
         # College / University
-        if any(term in q_clean for term in ["college", "university", "institute"]):
-            return str(self.education.get("college", "MBES College of Engineering"))
+        if any(term in q_clean for term in ["college", "university", "institute", "school"]):
+            return str(self.education.get("college") or self.education.get("institution") or os.getenv("EDUCATION_COLLEGE") or "Engineering College")
 
         # CGPA / Percentage
-        if any(term in q_clean for term in ["cgpa", "percentage", "marks", "gpa"]):
-            return str(self.education.get("cgpa", "6.06"))
+        if any(term in q_clean for term in ["cgpa", "percentage", "marks", "gpa", "score"]):
+            return str(self.education.get("cgpa") or self.education.get("score") or os.getenv("EDUCATION_SCORE") or "8.0")
 
         # Degree / Stream
-        if any(term in q_clean for term in ["degree", "branch", "stream", "field of study"]):
-            return f"{self.education.get('degree', 'B.Tech')} in {self.education.get('field_of_study', 'Computer Science')}"
+        if any(term in q_clean for term in ["degree", "branch", "stream", "field of study", "qualification"]):
+            deg = self.education.get("degree") or os.getenv("EDUCATION_DEGREE") or "B.Tech"
+            fos = self.education.get("field_of_study") or "Computer Science"
+            return f"{deg} in {fos}" if "stream" in q_clean or "branch" in q_clean else deg
 
         # 3. LLM API (if configured in .env)
         if self.api_key and len(question) > 15:

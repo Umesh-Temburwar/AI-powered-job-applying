@@ -65,7 +65,13 @@ if PROFILE_PATH.exists():
         pass
 
 personal = profile_data.get("personal", {})
-education = profile_data.get("education", {})
+raw_edu = profile_data.get("education", {})
+if isinstance(raw_edu, list):
+    education = raw_edu[0] if raw_edu else {}
+elif isinstance(raw_edu, dict):
+    education = raw_edu
+else:
+    education = {}
 skills_list = profile_data.get("key_skills", [
     "React.js", "Node.js", "Express.js", "MongoDB", "PostgreSQL", "Supabase", "JavaScript", "REST APIs", "Git"
 ])
@@ -100,9 +106,9 @@ CONFIG = {
     "current_ctc":  "0",
     "expected_ctc": "450000",
     "notice_period":"0",
-    "college":      education.get("college", "MBES College of Engineering"),
-    "degree":       education.get("degree", "B.Tech Computer Science"),
-    "grad_year":    str(education.get("passing_year", "2025")),
+    "college":      education.get("college") or education.get("institution") or os.getenv("EDUCATION_COLLEGE", "Engineering College"),
+    "degree":       education.get("degree") or os.getenv("EDUCATION_DEGREE", "Bachelor of Technology (B.Tech)"),
+    "grad_year":    str(education.get("passing_year") or education.get("year") or os.getenv("EDUCATION_PASSING_YEAR", "2025")),
 
     # --- Job search ---
     "job_titles": [

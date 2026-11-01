@@ -297,50 +297,109 @@ def train_bot_with_candidate_details(config: dict[str, Any]) -> int:
 
     # Master question-answer pairs to seed/train
     qa_pairs = [
+        # Contact coordinates
+        ("Full Name", full_name, "text"),
+        ("First Name", fname or "Candidate", "text"),
+        ("Last Name", lname or "", "text"),
+        ("Your Name", full_name, "text"),
+        ("Phone Number", phone, "text"),
+        ("Mobile", phone, "text"),
+        ("Mobile Number", phone, "text"),
+        ("Contact Number", phone, "text"),
+        ("Email Address", email, "text"),
+        ("Email", email, "text"),
+        ("Current Location", location, "text"),
+        ("Current City", location, "text"),
+        ("City", location, "text"),
+        ("Location", location, "text"),
+        ("Gender", gender, "radio"),
+
+        # Availability & Notice Period
         ("Notice Period", notice, "text"),
         ("What is your official notice period?", notice, "text"),
         ("Notice period in days", "0" if "immed" in notice.lower() or "0" in notice else "30", "text"),
+        ("Notice period (in days)", "0" if "immed" in notice.lower() or "0" in notice else "30", "text"),
         ("Are you an immediate joiner?", is_immediate, "radio"),
         ("Can you join immediately?", is_immediate, "radio"),
+        ("Immediate Joiner", is_immediate, "radio"),
         ("How soon can you join?", notice, "text"),
+        ("Are you available for full-time employment?", "Yes", "radio"),
+        ("Available for full-time", "Yes", "radio"),
+        ("Availability", "Immediate", "text"),
+
+        # Experience & Career
         ("Total years of experience", tot_exp, "text"),
         ("Total Experience", tot_exp, "text"),
         ("Total Experience in years", tot_exp, "text"),
         ("How many years of experience do you have?", tot_exp, "text"),
+        ("Overall Experience", tot_exp, "text"),
         ("Relevant Experience", rel_exp, "text"),
+        ("Years of relevant experience", rel_exp, "text"),
         ("Years of experience in Full Stack Development", rel_exp, "text"),
         ("Years of experience in Web Development", rel_exp, "text"),
+        ("Years of experience in React", rel_exp, "text"),
+        ("Years of experience in Python", rel_exp, "text"),
+        ("Years of experience in Node.js", rel_exp, "text"),
+        ("Years of experience in SQL", rel_exp, "text"),
+
+        # Compensation & CTC
         ("Current CTC", cur_ctc, "text"),
         ("Current CTC (in LPA)", cur_ctc, "text"),
         ("Current Annual Salary", cur_ctc, "text"),
         ("Expected CTC", exp_ctc, "text"),
         ("Expected CTC (in LPA)", exp_ctc, "text"),
         ("Expected Annual Salary", f"{exp_ctc} Lakhs", "text"),
+
+        # Relocation & Work Mode
         ("Are you willing to relocate?", relocate, "radio"),
         ("Willing to relocate?", relocate, "radio"),
         ("Are you open to relocate?", relocate, "radio"),
         ("Work mode preference", work_mode, "radio"),
         ("Preferred work mode", work_mode, "radio"),
         ("Are you comfortable working remotely?", "Yes" if "remote" in work_mode.lower() or "any" in work_mode.lower() else "No", "radio"),
+        ("Are you comfortable working from office / hybrid?", "Yes", "radio"),
+        ("Are you comfortable working in Pune?", "Yes", "radio"),
+        ("Are you comfortable working in Bengaluru?", "Yes", "radio"),
+
+        # Education & Degrees
         ("Highest qualification", degree, "text"),
         ("Highest Degree", degree, "text"),
         ("Degree", degree, "text"),
+        ("Course / Degree", degree, "text"),
+        ("Educational Qualification", degree, "text"),
         ("College Name", college, "text"),
         ("University / College", college, "text"),
+        ("Institute Name", college, "text"),
         ("Graduation Year", pass_yr, "text"),
         ("Passing Year", pass_yr, "text"),
         ("Year of Graduation", pass_yr, "text"),
+        ("Year of Passing", pass_yr, "text"),
         ("CGPA / Percentage", score, "text"),
         ("Percentage / CGPA", score, "text"),
+        ("Marks / CGPA", score, "text"),
+        ("Score", score, "text"),
+        ("Branch", "Computer Science", "text"),
+        ("Specialization", "Computer Science", "text"),
+
+        # Online Profiles
         ("LinkedIn Profile URL", linkedin, "text"),
         ("LinkedIn", linkedin, "text"),
+        ("LinkedIn URL", linkedin, "text"),
         ("GitHub Profile URL", github, "text"),
         ("GitHub", github, "text"),
+        ("GitHub URL", github, "text"),
         ("Portfolio URL", portfolio, "text"),
         ("Personal Website", portfolio, "text"),
-        ("Gender", gender, "radio"),
-        ("Phone Number", phone, "text"),
-        ("Email Address", email, "text"),
+        ("Portfolio", portfolio, "text"),
+
+        # Standard Screening Questions
+        ("Are you authorized to work in India?", "Yes", "radio"),
+        ("Work Authorization", "Authorized to work in India", "text"),
+        ("Do you require visa sponsorship?", "No", "radio"),
+        ("Do you have experience with Git and GitHub?", "Yes", "radio"),
+        ("Do you have experience in REST APIs?", "Yes", "radio"),
+        ("Why should we hire you?", f"I am a passionate engineer with hands-on expertise in {degree} and practical full-stack project implementations. I have built production-ready applications with responsive UIs and robust backend APIs, and I am ready to contribute immediately.", "text"),
+        ("Why should you be hired for this role?", f"As a motivated developer with strong fundamentals in modern web frameworks and databases, I have completed comprehensive web applications and can deliver scalable code with high ownership.", "text"),
     ]
 
     import csv
@@ -689,8 +748,18 @@ def parse_and_save_user_resume(
         prof["naukri_headline"] = headline
     if skills:
         prof["key_skills"] = skills
+    edu_clean = {
+        "degree": edu_degree,
+        "college": edu_college,
+        "institution": edu_college,
+        "year": edu_year,
+        "passing_year": edu_year,
+        "score": edu_score,
+        "cgpa": edu_score,
+        "field_of_study": edu_first.get("field_of_study") or "Computer Science",
+    }
     if education:
-        prof["education"] = edu_first
+        prof["education"] = edu_clean
     if experience:
         prof["experience"] = experience
     if projects:
