@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 
 export interface StartTaskOptions {
   platform: PlatformName | 'All Platforms';
-  taskType?: 'job_apply' | 'profile_update' | 'screening_test';
+  taskType?: 'job_apply' | 'profile_update' | 'screening_test' | 'report';
   dryRun?: boolean;
   userConfirmedRealSubmission?: boolean;
   maxApplications?: number;
@@ -27,7 +27,7 @@ function mapBackendTaskToAutomationTask(item: BackendTaskItem): AutomationTask {
   return {
     id: item.id,
     userId: item.user_id,
-    taskType: (item.task_type as 'job_apply' | 'profile_update' | 'screening_test') || 'job_apply',
+    taskType: (item.task_type as 'job_apply' | 'profile_update' | 'screening_test' | 'report') || 'job_apply',
     platform: (item.platform as PlatformName | 'All Platforms') || 'All Platforms',
     status: item.status,
     progressPercent: item.progress,

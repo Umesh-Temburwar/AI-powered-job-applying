@@ -48,7 +48,7 @@ class TaskCreateRequest(BaseModel):
     @field_validator("task_type")
     @classmethod
     def validate_task_type(cls, v: str) -> str:
-        allowed = {"job_apply", "profile_update", "screening_test"}
+        allowed = {"job_apply", "profile_update", "screening_test", "report"}
         cleaned = v.strip().lower()
         if cleaned not in allowed:
             raise ValueError(f"Invalid task_type '{v}'. Allowed types: {', '.join(sorted(allowed))}")

@@ -127,7 +127,7 @@ export interface JobPreferences {
 export interface AutomationTask {
   id: string;
   userId: string;
-  taskType?: 'job_apply' | 'profile_update' | 'screening_test';
+  taskType?: 'job_apply' | 'profile_update' | 'screening_test' | 'report';
   platform: PlatformName | 'All Platforms';
   status: TaskStatus;
   progressPercent: number;

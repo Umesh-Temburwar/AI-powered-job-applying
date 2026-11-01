@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MapPin,
   Plus,
@@ -11,10 +12,14 @@ import {
   UploadCloud,
   FileText,
   Download,
+  Play,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { usePreferences } from '../hooks/usePreferences';
 import { useResumes } from '../hooks/useResumes';
+import { useTasks } from '../hooks/useTasks';
 import { configService } from '../services/configService';
 import { useToast } from '../context/ToastContext';
 import { playRetroSound } from '../utils/soundEffects';
@@ -54,7 +59,85 @@ const SUGGESTED_CITIES = [
   'Remote',
 ];
 
+const QUICK_COMMANDS = [
+  {
+    id: 'all',
+    label: 'Run All Platforms (Auto-Apply)',
+    cli: 'py universal_bot.py --platform all',
+    platform: 'All Platforms',
+    taskType: 'job_apply',
+    badge: 'RECOMMENDED',
+    desc: 'Runs automated job discovery & applications across Naukri, Internshala, Indeed & LinkedIn sequentially',
+  },
+  {
+    id: 'naukri',
+    label: 'Naukri.com Auto-Apply',
+    cli: 'py universal_bot.py --platform naukri',
+    platform: 'Naukri',
+    taskType: 'job_apply',
+    desc: 'Searches keywords & recommended jobs on Naukri.com',
+  },
+  {
+    id: 'internshala',
+    label: 'Internshala Auto-Apply',
+    cli: 'py universal_bot.py --platform internshala',
+    platform: 'Internshala',
+    taskType: 'job_apply',
+    desc: 'Applies to internships & fresher jobs on Internshala',
+  },
+  {
+    id: 'indeed',
+    label: 'Indeed.com Auto-Apply',
+    cli: 'py universal_bot.py --platform indeed',
+    platform: 'Indeed',
+    taskType: 'job_apply',
+    desc: 'Applies to Easily Apply vacancies on Indeed India',
+  },
+  {
+    id: 'linkedin',
+    label: 'LinkedIn Easy Apply',
+    cli: 'py universal_bot.py --platform linkedin',
+    platform: 'LinkedIn',
+    taskType: 'job_apply',
+    desc: 'Navigates and submits LinkedIn Easy Apply applications',
+  },
+  {
+    id: 'update-naukri-profile',
+    label: 'Update Naukri Profile',
+    cli: 'py universal_bot.py --update-naukri-profile',
+    platform: 'Naukri',
+    taskType: 'profile_update',
+    desc: 'Refreshes Naukri profile freshness, resume headline, and key skills',
+  },
+  {
+    id: 'update-internshala-profile',
+    label: 'Update Internshala Profile',
+    cli: 'py universal_bot.py --update-internshala-profile',
+    platform: 'Internshala',
+    taskType: 'profile_update',
+    desc: 'Syncs projects, certificates, and skills to Internshala profile',
+  },
+  {
+    id: 'update-all-profiles',
+    label: 'Update All Profiles',
+    cli: 'py universal_bot.py --update-all-profiles',
+    platform: 'All Platforms',
+    taskType: 'profile_update',
+    desc: 'Refreshes profile freshness across all job portals simultaneously',
+  },
+  {
+    id: 'report',
+    label: 'Consolidated Analytics Report',
+    cli: 'py universal_bot.py --report',
+    platform: 'All Platforms',
+    taskType: 'report',
+    desc: 'Aggregates applied jobs ledger & generates performance analytics',
+  },
+];
+
 export const ProfilePage: React.FC = () => {
+  const navigate = useNavigate();
+  const { startTask } = useTasks();
   const { profile, loading: profileLoading, updateProfile, autofillProfile } = useProfile();
   const { preferences, updatePreferences } = usePreferences();
   const {
@@ -78,6 +161,30 @@ export const ProfilePage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [autofilling, setAutofilling] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Platform Login Credentials (Naukri, Internshala, Indeed, LinkedIn)
+  const [naukriEmail, setNaukriEmail] = useState('');
+  const [naukriPassword, setNaukriPassword] = useState('');
+  const [showNaukriPassword, setShowNaukriPassword] = useState(false);
+
+  const [internshalaEmail, setInternshalaEmail] = useState('');
+  const [internshalaPassword, setInternshalaPassword] = useState('');
+  const [showInternshalaPassword, setShowInternshalaPassword] = useState(false);
+
+  const [indeedEmail, setIndeedEmail] = useState('');
+  const [indeedPassword, setIndeedPassword] = useState('');
+  const [showIndeedPassword, setShowIndeedPassword] = useState(false);
+
+  const [linkedinEmail, setLinkedinEmail] = useState('');
+  const [linkedinPassword, setLinkedinPassword] = useState('');
+  const [showLinkedinPassword, setShowLinkedinPassword] = useState(false);
+
+  // Quick Commands & Bot Launcher State
+  const [selectedCommand, setSelectedCommand] = useState('all');
+  const [dryRun, setDryRun] = useState(true);
+  const [maxApplications, setMaxApplications] = useState(50);
+  const [visibleBrowser, setVisibleBrowser] = useState(true);
+  const [startingBot, setStartingBot] = useState(false);
 
 
 
@@ -177,6 +284,15 @@ export const ProfilePage: React.FC = () => {
         if (cfg.github_url) setGithubUrl(cfg.github_url);
         if (cfg.portfolio_url) setPortfolioUrl(cfg.portfolio_url);
         if (cfg.cover_letter) setCoverLetter(cfg.cover_letter);
+        if (cfg.naukri_email) setNaukriEmail(cfg.naukri_email);
+        if (cfg.naukri_password) setNaukriPassword(cfg.naukri_password);
+        if (cfg.internshala_email) setInternshalaEmail(cfg.internshala_email);
+        if (cfg.internshala_password) setInternshalaPassword(cfg.internshala_password);
+        if (cfg.indeed_email) setIndeedEmail(cfg.indeed_email);
+        if (cfg.indeed_password) setIndeedPassword(cfg.indeed_password);
+        if (cfg.linkedin_email) setLinkedinEmail(cfg.linkedin_email);
+        if (cfg.linkedin_password) setLinkedinPassword(cfg.linkedin_password);
+        if (cfg.max_applications) setMaxApplications(Number(cfg.max_applications) || 50);
         if (cfg.keywords) {
           const kws = cfg.keywords.split(',').map((s) => s.trim()).filter(Boolean);
           if (kws.length > 0) setKeywordList(kws);
@@ -601,6 +717,45 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  // Launch Bot according to Quick Commands Cheatsheet
+  const handleLaunchBot = async () => {
+    try {
+      setStartingBot(true);
+      playRetroSound('click');
+
+      // 1. Save all profile fields and platform credentials
+      await handleSave();
+
+      // 2. Resolve matching command configuration
+      const cmd = QUICK_COMMANDS.find((c) => c.id === selectedCommand) || QUICK_COMMANDS[0];
+
+      // 3. Dispatch automation task
+      const safeKeywords = keywordList.length > 0 ? keywordList : ['Full Stack Developer'];
+      const safeLocations = locationList.length > 0 ? locationList : [currentCity || 'Pune'];
+
+      await startTask({
+        platform: cmd.platform as any,
+        taskType: cmd.taskType as any,
+        dryRun,
+        userConfirmedRealSubmission: !dryRun,
+        maxApplications: maxApplications || 50,
+        keywords: safeKeywords,
+        locations: safeLocations,
+        force: true,
+        headless: !visibleBrowser,
+      });
+
+      playRetroSound('success');
+      showToast(`🚀 Started: ${cmd.label} (${cmd.cli})! Redirecting to live Dashboard...`, 'success');
+      navigate('/dashboard');
+    } catch (err: any) {
+      playRetroSound('error');
+      showToast(err?.message || 'Failed to start bot task', 'error');
+    } finally {
+      setStartingBot(false);
+    }
+  };
+
   // Unified Save: Updates Supabase tables + Root .env & profile_data.json
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -678,6 +833,16 @@ export const ProfilePage: React.FC = () => {
         key_skills: skills,
         naukri_headline: headline.trim(),
         profile_summary: summary.trim(),
+        // Platform Credentials (.env)
+        naukri_email: naukriEmail.trim(),
+        naukri_password: naukriPassword,
+        internshala_email: internshalaEmail.trim(),
+        internshala_password: internshalaPassword,
+        indeed_email: indeedEmail.trim(),
+        indeed_password: indeedPassword,
+        linkedin_email: linkedinEmail.trim(),
+        linkedin_password: linkedinPassword,
+        max_applications: maxApplications,
       });
 
       setIsDirty(false);
@@ -998,7 +1163,240 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 2: JOB & CAREER SCREENING DETAILS */}
+      {/* SECTION 2: PLATFORM LOGIN CREDENTIALS & ACCESS KEYS (SYNCS TO .ENV) */}
+      <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 bg-black text-white text-xs font-mono font-bold flex items-center justify-center">
+              2
+            </span>
+            <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono">
+              PLATFORM LOGIN CREDENTIALS (NAUKRI, INTERNSHALA, INDEED, LINKEDIN)
+            </h2>
+          </div>
+          <span className="text-[11px] text-[var(--text-secondary)] font-mono">Auto-Login Access</span>
+        </div>
+
+        <p className="text-[11px] text-[var(--text-secondary)] font-mono">
+          Enter your login credentials for official job portals. These are saved to your local <code className="text-emerald-400 font-bold">.env</code> configuration and used by your automated browser session to log in, discover vacancies, and submit applications.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          {/* 1. Naukri.com Credentials */}
+          <div className="p-4 border-2 border-[var(--border-color)] bg-[var(--bg-base)] space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-blue-500 inline-block" />
+                <span className="text-xs font-bold font-mono text-[var(--text-primary)] uppercase">1. Naukri.com</span>
+              </div>
+              {naukriEmail && naukriPassword ? (
+                <Badge variant="success" size="sm">CONFIGURED</Badge>
+              ) : (
+                <Badge variant="warning" size="sm">LOGIN REQUIRED</Badge>
+              )}
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+                Naukri Email / Username *
+              </label>
+              <Input
+                type="email"
+                value={naukriEmail}
+                onChange={(e) => {
+                  setNaukriEmail(e.target.value);
+                  setIsDirty(true);
+                }}
+                placeholder="your_naukri_email@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+                Naukri Password *
+              </label>
+              <div className="relative">
+                <Input
+                  type={showNaukriPassword ? 'text' : 'password'}
+                  value={naukriPassword}
+                  onChange={(e) => {
+                    setNaukriPassword(e.target.value);
+                    setIsDirty(true);
+                  }}
+                  placeholder="••••••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNaukriPassword(!showNaukriPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 cursor-pointer"
+                  title={showNaukriPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showNaukriPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Internshala Credentials */}
+          <div className="p-4 border-2 border-[var(--border-color)] bg-[var(--bg-base)] space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-sky-500 inline-block" />
+                <span className="text-xs font-bold font-mono text-[var(--text-primary)] uppercase">2. Internshala.com</span>
+              </div>
+              {internshalaEmail && internshalaPassword ? (
+                <Badge variant="success" size="sm">CONFIGURED</Badge>
+              ) : (
+                <Badge variant="warning" size="sm">LOGIN REQUIRED</Badge>
+              )}
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+                Internshala Email / Username *
+              </label>
+              <Input
+                type="email"
+                value={internshalaEmail}
+                onChange={(e) => {
+                  setInternshalaEmail(e.target.value);
+                  setIsDirty(true);
+                }}
+                placeholder="your_internshala_email@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+                Internshala Password *
+              </label>
+              <div className="relative">
+                <Input
+                  type={showInternshalaPassword ? 'text' : 'password'}
+                  value={internshalaPassword}
+                  onChange={(e) => {
+                    setInternshalaPassword(e.target.value);
+                    setIsDirty(true);
+                  }}
+                  placeholder="••••••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowInternshalaPassword(!showInternshalaPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 cursor-pointer"
+                  title={showInternshalaPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showInternshalaPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Indeed Credentials */}
+          <div className="p-4 border-2 border-[var(--border-color)] bg-[var(--bg-base)] space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-indigo-500 inline-block" />
+                <span className="text-xs font-bold font-mono text-[var(--text-primary)] uppercase">3. Indeed.com</span>
+              </div>
+              {indeedEmail && indeedPassword ? (
+                <Badge variant="success" size="sm">CONFIGURED</Badge>
+              ) : (
+                <Badge variant="warning" size="sm">LOGIN REQUIRED</Badge>
+              )}
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+                Indeed Email / Username *
+              </label>
+              <Input
+                type="email"
+                value={indeedEmail}
+                onChange={(e) => {
+                  setIndeedEmail(e.target.value);
+                  setIsDirty(true);
+                }}
+                placeholder="your_indeed_email@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+                Indeed Password *
+              </label>
+              <div className="relative">
+                <Input
+                  type={showIndeedPassword ? 'text' : 'password'}
+                  value={indeedPassword}
+                  onChange={(e) => {
+                    setIndeedPassword(e.target.value);
+                    setIsDirty(true);
+                  }}
+                  placeholder="••••••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowIndeedPassword(!showIndeedPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 cursor-pointer"
+                  title={showIndeedPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showIndeedPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. LinkedIn Credentials */}
+          <div className="p-4 border-2 border-[var(--border-color)] bg-[var(--bg-base)] space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--border-color)]">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-blue-600 inline-block" />
+                <span className="text-xs font-bold font-mono text-[var(--text-primary)] uppercase">4. LinkedIn.com</span>
+              </div>
+              {linkedinEmail && linkedinPassword ? (
+                <Badge variant="success" size="sm">CONFIGURED</Badge>
+              ) : (
+                <Badge variant="warning" size="sm">LOGIN REQUIRED</Badge>
+              )}
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+                LinkedIn Email / Username *
+              </label>
+              <Input
+                type="email"
+                value={linkedinEmail}
+                onChange={(e) => {
+                  setLinkedinEmail(e.target.value);
+                  setIsDirty(true);
+                }}
+                placeholder="your_linkedin_email@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+                LinkedIn Password *
+              </label>
+              <div className="relative">
+                <Input
+                  type={showLinkedinPassword ? 'text' : 'password'}
+                  value={linkedinPassword}
+                  onChange={(e) => {
+                    setLinkedinPassword(e.target.value);
+                    setIsDirty(true);
+                  }}
+                  placeholder="••••••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLinkedinPassword(!showLinkedinPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1 cursor-pointer"
+                  title={showLinkedinPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showLinkedinPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 3: JOB & CAREER SCREENING DETAILS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -1121,7 +1519,7 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 3: ACADEMIC QUALIFICATIONS */}
+      {/* SECTION 4: ACADEMIC QUALIFICATIONS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -1216,7 +1614,7 @@ export const ProfilePage: React.FC = () => {
         )}
       </div>
 
-      {/* SECTION 4: TARGET JOB ROLES & LOCATIONS */}
+      {/* SECTION 5: TARGET JOB ROLES & LOCATIONS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -1362,7 +1760,7 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 5: TECHNICAL SKILLS */}
+      {/* SECTION 6: TECHNICAL SKILLS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -1407,7 +1805,7 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 6: WORK EXPERIENCE & PROJECTS */}
+      {/* SECTION 7: WORK EXPERIENCE & PROJECTS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -1554,7 +1952,7 @@ export const ProfilePage: React.FC = () => {
         )}
       </div>
 
-      {/* SECTION 7: PROFESSIONAL LINKS */}
+      {/* SECTION 8: PROFESSIONAL LINKS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -1599,6 +1997,177 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
+      {/* SECTION 9: 🚀 QUICK COMMANDS CHEATSHEET & AUTOMATION LAUNCHER */}
+      <div className="border-2 border-emerald-500/50 bg-[var(--bg-card)] retro-shadow p-5 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b-2 border-emerald-500/40">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 bg-emerald-600 text-white text-xs font-mono font-bold flex items-center justify-center">
+              🚀
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-[var(--text-primary)] uppercase tracking-wider font-mono">
+                QUICK COMMANDS CHEATSHEET & BOT LAUNCHER
+              </h2>
+              <p className="text-[11px] text-[var(--text-secondary)] font-mono">
+                Select your automation task from the cheatsheet below and launch the bot with 1 click.
+              </p>
+            </div>
+          </div>
+          <Badge variant="success" size="sm">COMMAND DISPATCHER</Badge>
+        </div>
+
+        {/* Command Selector Grid */}
+        <div className="space-y-2">
+          <label className="block text-[11px] font-bold uppercase font-mono text-[var(--text-primary)]">
+            Select Automation Command:
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {QUICK_COMMANDS.map((cmd) => {
+              const isSelected = selectedCommand === cmd.id;
+              return (
+                <button
+                  key={cmd.id}
+                  type="button"
+                  onClick={() => {
+                    playRetroSound('click');
+                    setSelectedCommand(cmd.id);
+                  }}
+                  className={`p-3 text-left border-2 transition-all cursor-pointer font-mono flex flex-col justify-between ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-950/30 retro-shadow-sm ring-1 ring-emerald-500'
+                      : 'border-[var(--border-color)] bg-[var(--bg-base)] hover:border-emerald-500/60'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-1.5 mb-1">
+                      <span className={`text-xs font-bold ${isSelected ? 'text-emerald-400' : 'text-[var(--text-primary)]'}`}>
+                        {cmd.label}
+                      </span>
+                      {cmd.badge && (
+                        <span className="text-[9px] px-1 py-0.5 bg-emerald-600 text-white font-bold">
+                          {cmd.badge}
+                        </span>
+                      )}
+                    </div>
+                    <code className="text-[10px] text-amber-300 block bg-black/40 px-1.5 py-0.5 border border-black/40 mb-1.5 break-all">
+                      {cmd.cli}
+                    </code>
+                    <p className="text-[10px] text-[var(--text-secondary)] leading-tight">
+                      {cmd.desc}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Execution Mode & Settings Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-[var(--border-color)]">
+          <div>
+            <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+              Execution Mode
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDryRun(true)}
+                className={`px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer ${
+                  dryRun
+                    ? 'border-amber-500 bg-amber-400/20 text-amber-300 retro-shadow-sm'
+                    : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
+                }`}
+              >
+                🧪 DRY-RUN
+              </button>
+              <button
+                type="button"
+                onClick={() => setDryRun(false)}
+                className={`px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer ${
+                  !dryRun
+                    ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 retro-shadow-sm'
+                    : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
+                }`}
+              >
+                ⚡ LIVE APPLY
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+              Max Applications (Limit)
+            </label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={maxApplications}
+              onChange={(e) => setMaxApplications(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 25)))}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
+              Browser Display Mode
+            </label>
+            <button
+              type="button"
+              onClick={() => setVisibleBrowser(!visibleBrowser)}
+              className={`w-full px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer text-center ${
+                visibleBrowser
+                  ? 'border-sky-500 bg-sky-950/30 text-sky-300 retro-shadow-sm'
+                  : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
+              }`}
+            >
+              {visibleBrowser ? '🖥️ Visible Browser Window' : '🕶️ Headless (Background)'}
+            </button>
+          </div>
+        </div>
+
+        {/* Selected Command Summary & Primary Launch Button */}
+        <div className="p-4 border-2 border-emerald-500/40 bg-emerald-950/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-xs font-mono space-y-1 text-center sm:text-left">
+            <div>
+              <span className="text-[var(--text-secondary)]">Selected Command: </span>
+              <span className="font-bold text-emerald-400">
+                {QUICK_COMMANDS.find((c) => c.id === selectedCommand)?.label}
+              </span>{' '}
+              <span className="text-amber-300 text-[11px]">
+                ({dryRun ? 'Dry-Run Simulation' : 'Live Mode'})
+              </span>
+            </div>
+            <code className="text-[11px] text-amber-200 block">
+              {QUICK_COMMANDS.find((c) => c.id === selectedCommand)?.cli}
+            </code>
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={handleSave}
+              disabled={saving || startingBot}
+              leftIcon={<Save className="w-4 h-4" />}
+            >
+              {saving ? 'Saving...' : 'Save All Details'}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={handleLaunchBot}
+              disabled={startingBot || saving}
+              leftIcon={<Play className="w-4 h-4 fill-current" />}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider px-6 py-2.5 retro-shadow"
+            >
+              {startingBot ? 'Starting Bot...' : '🚀 Start / Launch Bot'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* STICKY BOTTOM SAVE ACTION BAR */}
       <div className="fixed bottom-0 left-0 right-0 border-t-2 border-[var(--border-color)] bg-[var(--bg-card)] p-3 px-6 z-30 retro-shadow">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
@@ -1619,14 +2188,24 @@ export const ProfilePage: React.FC = () => {
           <div className="flex items-center gap-3">
             <Button
               type="button"
-              variant="primary"
+              variant="outline"
               size="sm"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || startingBot}
               leftIcon={<Save className="w-4 h-4" />}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
             >
-              {saving ? 'Saving Changes...' : '💾 SAVE PROFILE & .ENV'}
+              {saving ? 'Saving Changes...' : '💾 Save All (.env)'}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleLaunchBot}
+              disabled={startingBot || saving}
+              leftIcon={<Play className="w-3.5 h-3.5 fill-current" />}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+            >
+              {startingBot ? 'Launching Bot...' : '🚀 Start / Launch Bot'}
             </Button>
           </div>
         </div>

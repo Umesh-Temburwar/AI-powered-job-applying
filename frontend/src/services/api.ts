@@ -308,7 +308,7 @@ export interface TaskActionResponse {
 
 export interface TaskCreatePayload {
   platform: string;
-  task_type?: 'job_apply' | 'profile_update' | 'screening_test';
+  task_type?: 'job_apply' | 'profile_update' | 'screening_test' | 'report';
   dry_run?: boolean;
   user_confirmed_real_submission?: boolean;
   max_applications?: number;
