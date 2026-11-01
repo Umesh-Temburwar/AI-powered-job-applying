@@ -475,7 +475,11 @@ async def run_platform_automation_task(
             bot_args = ["--platform", target_plat, "--max-apps", str(max_apps_total)]
             if dry_run:
                 bot_args.append("--dry-run")
-            if payload.get("headless"):
+            
+            # Detect cloud / low-memory headless container (Render, Linux without DISPLAY)
+            is_cloud = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or sys.platform != "win32" or not os.getenv("DISPLAY"))
+            is_headless = bool(payload.get("headless") or is_cloud or os.getenv("HEADLESS", "").lower() in ("true", "1", "yes"))
+            if is_headless:
                 bot_args.append("--headless")
 
         sub_env = os.environ.copy()
@@ -483,6 +487,9 @@ async def run_platform_automation_task(
         sub_env["PYTHONIOENCODING"] = "utf-8"
         if dry_run:
             sub_env["DRY_RUN"] = "1"
+        if is_headless:
+            sub_env["HEADLESS"] = "1"
+            sub_env["BROWSER"] = "chrome"
         if keywords:
             sub_env["KEYWORDS"] = ", ".join(keywords)
         if locations:

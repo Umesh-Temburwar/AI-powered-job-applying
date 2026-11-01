@@ -100,11 +100,26 @@ def find_edge_binary():
     return None
 
 
+def is_headless_environment() -> bool:
+    """Return True if running in a headless container or cloud environment (e.g. Render, Linux without X11)."""
+    if os.getenv("HEADLESS", "").lower() in ("true", "1", "yes"):
+        return True
+    if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("VERCEL"):
+        return True
+    if sys.platform != "win32" and not os.getenv("DISPLAY"):
+        return True
+    return False
+
+
 def launch_single_browser(browser_name, headless=False, user_data_dir=None):
     """Initialize a WebDriver instance for the specified browser."""
     b = browser_name.lower().strip()
+    if is_headless_environment():
+        headless = True
 
     if b == 'edge':
+        if sys.platform != "win32" and not find_edge_binary():
+            raise FileNotFoundError("Microsoft Edge is not installed on this Linux/cloud environment.")
         options = webdriver.EdgeOptions()
         options.add_argument("--start-maximized")
         options.add_argument("--disable-notifications")
@@ -133,12 +148,16 @@ def launch_single_browser(browser_name, headless=False, user_data_dir=None):
         options.add_argument("--start-maximized")
         options.add_argument("--disable-notifications")
         options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
         if user_data_dir:
             options.add_argument(f"--user-data-dir={user_data_dir}")
         if headless:
             options.add_argument("--headless=new")
+            options.add_argument("--window-size=1920,1080")
         chrome_bin = find_chrome_binary()
         if chrome_bin:
             options.binary_location = chrome_bin
@@ -193,11 +212,17 @@ def create_driver(target=None, headless=False, user_data_dir=None):
     Auto-detects the system default browser first, then gracefully falls back
     to any other available browser (Edge, Chrome, Brave, Firefox).
     """
+    if is_headless_environment():
+        headless = True
+
     target = (target or os.getenv('BROWSER', 'auto') or 'auto').lower()
     default_browser = get_default_browser()
 
     order = []
-    if target == 'auto':
+    # Cloud / Linux safety: Never default to Edge on Linux where Edge is absent
+    if sys.platform != "win32" or is_headless_environment():
+        order = ['chrome', 'firefox']
+    elif target == 'auto':
         if default_browser:
             order.append(default_browser)
         for b in ['edge', 'chrome', 'brave', 'firefox']:

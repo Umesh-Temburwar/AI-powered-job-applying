@@ -141,13 +141,33 @@ def find_edge_binary():
     return None
 
 
+def is_headless_environment() -> bool:
+    """Return True if running in a headless container or cloud environment (e.g. Render, Linux without X11)."""
+    if os.getenv("HEADLESS", "").lower() in ("true", "1", "yes"):
+        return True
+    if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("VERCEL"):
+        return True
+    if sys.platform != "win32" and not os.getenv("DISPLAY"):
+        return True
+    return False
+
+
 def _launch_single_browser(browser_name):
     b = browser_name.lower().strip()
+    is_headless = is_headless_environment()
+
     if b == 'edge':
+        if sys.platform != "win32" and not find_edge_binary():
+            raise FileNotFoundError("Microsoft Edge is not installed on this Linux/cloud environment.")
         options = webdriver.EdgeOptions()
         options.add_argument("--start-maximized")
         options.add_argument("--disable-notifications")
         options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        if is_headless:
+            options.add_argument("--headless=new")
+            options.add_argument("--window-size=1920,1080")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
         edge_bin = find_edge_binary()
@@ -166,6 +186,12 @@ def _launch_single_browser(browser_name):
         options.add_argument("--start-maximized")
         options.add_argument("--disable-notifications")
         options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        if is_headless:
+            options.add_argument("--headless=new")
+            options.add_argument("--window-size=1920,1080")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
         chrome_bin = find_chrome_binary()
@@ -216,7 +242,9 @@ def create_browser_driver(target=None):
         logger.info(f"Detected default browser: {default_browser.upper()}")
 
     order = []
-    if target == 'auto':
+    if sys.platform != "win32" or is_headless_environment():
+        order = ['chrome', 'firefox']
+    elif target == 'auto':
         if default_browser:
             order.append(default_browser)
         for b in ['edge', 'chrome', 'brave', 'firefox']:
