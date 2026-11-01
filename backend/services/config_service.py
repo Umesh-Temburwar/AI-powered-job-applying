@@ -208,6 +208,13 @@ PROJECTS = """
 
 def update_root_env_file(key_values: dict[str, str]) -> None:
     """Safely update or insert key-values in project root .env preserving comments and formatting."""
+    # Sanitize inputs to prevent multi-line pollution
+    cleaned_key_values = {}
+    for k, v in key_values.items():
+        k_clean = str(k).strip().upper()
+        v_clean = str(v).replace("\r", " ").replace("\n", " ").strip() if v is not None else ""
+        cleaned_key_values[k_clean] = v_clean
+
     lines: list[str] = []
     if os.path.exists(ROOT_ENV_PATH):
         with open(ROOT_ENV_PATH, "r", encoding="utf-8") as f:
@@ -224,30 +231,33 @@ def update_root_env_file(key_values: dict[str, str]) -> None:
         if stripped and not stripped.startswith("#") and "=" in stripped:
             k, _ = stripped.split("=", 1)
             k = k.strip().upper()
-            if k in key_values:
+            if k in cleaned_key_values:
                 keys_found.add(k)
-                new_val = key_values[k]
+                new_val = cleaned_key_values[k]
                 new_lines.append(f"{k}={new_val}\n")
                 continue
+        # Drop stray lines that are not comments and don't have =
+        if stripped and not stripped.startswith("#") and "=" not in stripped:
+            continue
         new_lines.append(line)
 
     # Append any remaining keys that weren't in the file
-    missing_keys = [k for k in key_values if k not in keys_found]
+    missing_keys = [k for k in cleaned_key_values if k not in keys_found]
     if missing_keys:
         if new_lines and not new_lines[-1].endswith("\n"):
             new_lines.append("\n")
         new_lines.append("\n# --- Added by Universal Bot Setup ---\n")
         for k in missing_keys:
-            new_lines.append(f"{k}={key_values[k]}\n")
+            new_lines.append(f"{k}={cleaned_key_values[k]}\n")
 
     with open(ROOT_ENV_PATH, "w", encoding="utf-8") as f:
         f.writelines(new_lines)
 
     # Dynamically inject into running os.environ
-    for k, v in key_values.items():
+    for k, v in cleaned_key_values.items():
         os.environ[k] = str(v)
 
-    logger.info("Updated root .env with %d variables", len(key_values))
+    logger.info("Updated root .env with %d variables", len(cleaned_key_values))
 
 
 
@@ -978,12 +988,48 @@ PROJECTS = """
         "CUTSHORT_PASSWORD": "",
         "RESUME_PATH": "",
         "RESUME_NAME": "",
+        "TOTAL_EXPERIENCE_YEARS": "",
+        "RELEVANT_EXPERIENCE_YEARS": "",
+        "CURRENT_CTC": "",
+        "EXPECTED_CTC": "",
+        "NOTICE_PERIOD": "",
+        "WORK_MODE": "",
+        "WILLING_TO_RELOCATE": "",
+        "GENDER": "",
+        "EDUCATION_DEGREE": "",
+        "EDUCATION_COLLEGE": "",
+        "EDUCATION_PASSING_YEAR": "",
+        "EDUCATION_SCORE": "",
+        "LINKEDIN_URL": "",
+        "GITHUB_URL": "",
+        "PORTFOLIO_URL": "",
         "TELEGRAM_BOT_TOKEN": "",
         "TELEGRAM_CHAT_ID": "",
         "DISCORD_WEBHOOK_URL": "",
         "GEMINI_API_KEY": "",
     }
     update_root_env_file(env_wipes)
+
+    # Clean out repeated added comments and trailing orphan lines from .env
+    if os.path.exists(ROOT_ENV_PATH):
+        try:
+            with open(ROOT_ENV_PATH, "r", encoding="utf-8") as f:
+                cur_lines = f.readlines()
+            cleaned_lines = []
+            prev_was_header = False
+            for ln in cur_lines:
+                st = ln.strip()
+                if st == "# --- Added by Universal Bot Setup ---":
+                    if prev_was_header:
+                        continue
+                    prev_was_header = True
+                else:
+                    prev_was_header = False
+                cleaned_lines.append(ln)
+            with open(ROOT_ENV_PATH, "w", encoding="utf-8") as f:
+                f.writelines(cleaned_lines)
+        except Exception:
+            pass
 
     # 8. Clear all backend in-memory caches
     try:
