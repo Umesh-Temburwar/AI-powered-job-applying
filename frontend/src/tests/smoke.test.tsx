@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { LandingPage } from '../pages/LandingPage';
 import { LoginPage } from '../pages/LoginPage';
@@ -29,26 +29,28 @@ describe('Phase 2 Frontend Smoke & Architecture Tests', () => {
 
   it('Landing Page: renders branding, CTA buttons, and supported platforms from the repository', () => {
     render(
-      <BrowserRouter>
-        <LandingPage />
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <LandingPage />
+        </BrowserRouter>
+      </AuthProvider>
     );
 
     // Hero title check
     expect(
-      screen.getByRole('heading', { name: /Automate Job Applications Across/i })
+      screen.getByRole('heading', { name: /AUTONOMOUS JOB APPLY ENGINE/i })
     ).toBeInTheDocument();
 
     // CTA buttons check
-    expect(screen.getAllByRole('button', { name: /Get Started/i })[0]).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Explore Live Demo Dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /START AUTOMATION ENGINE/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /SIGN IN/i }).length).toBeGreaterThanOrEqual(1);
 
     // Supported platforms check (from repo)
     expect(screen.getByText('Naukri.com')).toBeInTheDocument();
     expect(screen.getByText('Internshala.com')).toBeInTheDocument();
     expect(screen.getByText('Indeed.com')).toBeInTheDocument();
     expect(screen.getByText('LinkedIn.com')).toBeInTheDocument();
-    expect(screen.getByText('9-Portal Engine')).toBeInTheDocument();
+    expect(screen.getByText(/9-Portal/i)).toBeInTheDocument();
   });
 
   it('Login Page: renders email/password form with Supabase auth status', async () => {
@@ -66,7 +68,9 @@ describe('Phase 2 Frontend Smoke & Architecture Tests', () => {
 
     expect(screen.getByLabelText('Email Address')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sign In to Dashboard/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Sign In to Dashboard/i })).toBeInTheDocument();
+    });
   });
 
   it('Security: Client bundle never exposes backend SUPABASE_SERVICE_ROLE_KEY', () => {

@@ -163,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (loginErr) {
       setError(loginErr.message);
-      throw loginErr;
+      throw new Error(loginErr.message || 'Login failed');
     }
 
     if (data.session) {

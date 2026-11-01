@@ -59,7 +59,7 @@ describe('Email + GitHub Auth Complete Suite', () => {
       </AuthProvider>
     );
 
-    const submitBtn = screen.getByRole('button', { name: /Sign In to Dashboard/i });
+    const submitBtn = await screen.findByRole('button', { name: /Sign In to Dashboard/i });
     await waitFor(() => expect(submitBtn).not.toBeDisabled());
 
     fireEvent.change(screen.getByLabelText(/Email Address/i), {
@@ -69,7 +69,8 @@ describe('Email + GitHub Auth Complete Suite', () => {
       target: { value: 'WrongPassword123!' },
     });
 
-    fireEvent.click(submitBtn);
+    const form = submitBtn.closest('form')!;
+    fireEvent.submit(form);
 
     await waitFor(() => {
       expect(screen.getByText('Invalid login credentials')).toBeInTheDocument();
@@ -88,7 +89,7 @@ describe('Email + GitHub Auth Complete Suite', () => {
       </AuthProvider>
     );
 
-    const githubBtn = screen.getByRole('button', { name: /Continue with GitHub/i });
+    const githubBtn = await screen.findByRole('button', { name: /(Continue|Register) with GitHub/i });
     expect(githubBtn).toBeInTheDocument();
     await waitFor(() => expect(githubBtn).not.toBeDisabled());
 
@@ -118,7 +119,7 @@ describe('Email + GitHub Auth Complete Suite', () => {
       </AuthProvider>
     );
 
-    const githubBtn = screen.getByRole('button', { name: /Continue with GitHub/i });
+    const githubBtn = await screen.findByRole('button', { name: /(Continue|Register) with GitHub/i });
     expect(githubBtn).toBeInTheDocument();
     await waitFor(() => expect(githubBtn).not.toBeDisabled());
 

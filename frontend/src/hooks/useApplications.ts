@@ -93,15 +93,23 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
   const [loading, setLoading] = useState<boolean>(!cachedApplicationsData);
   const [error, setError] = useState<string | null>(null);
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const fetchApplications = useCallback(async () => {
     const activeToken = (await getTokenRef.current?.()) || token;
     // Active token optional; backend defaults to candidate profile if omitted
 
     try {
-      if (!cachedApplicationsData) {
+      if (!cachedApplicationsData && isMountedRef.current) {
         setLoading(true);
       }
-      setError(null);
+      if (isMountedRef.current) setError(null);
       const res = await getApplicationsApi(activeToken || undefined, {
         ...filters,
         page,
@@ -115,17 +123,23 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
         totalPages: res.total_pages,
         timestamp: Date.now(),
       };
-      setApplications(mapped);
-      setTotal(res.total);
-      setTotalPages(res.total_pages);
+      if (isMountedRef.current && typeof window !== 'undefined') {
+        setApplications(mapped);
+        setTotal(res.total);
+        setTotalPages(res.total_pages);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch applications');
-      if (!cachedApplicationsData) {
-        setApplications([]);
-        setTotal(0);
+      if (isMountedRef.current && typeof window !== 'undefined') {
+        setError(err instanceof Error ? err.message : 'Failed to fetch applications');
+        if (!cachedApplicationsData) {
+          setApplications([]);
+          setTotal(0);
+        }
       }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && typeof window !== 'undefined') {
+        setLoading(false);
+      }
     }
   }, [token, filters, page, pageSize, currentCacheKey]);
 

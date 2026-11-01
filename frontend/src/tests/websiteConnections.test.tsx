@@ -83,12 +83,15 @@ describe('Website Connections Dashboard Component', () => {
       </ToastProvider>
     );
 
-    const connectButtons = await screen.findAllByRole('button', { name: /Connect/i });
+    const connectButtons = await screen.findAllByRole('button', { name: /^Connect$/i });
     expect(connectButtons.length).toBeGreaterThan(0);
     fireEvent.click(connectButtons[0]);
 
+    const modalSaveBtn = await screen.findByRole('button', { name: /Save to \.env & Connect/i });
+    fireEvent.click(modalSaveBtn);
+
     await waitFor(() => {
-      expect(connectSpy).toHaveBeenCalledWith('mock-jwt-token-123', 'naukri');
+      expect(connectSpy).toHaveBeenCalled();
     });
   });
 

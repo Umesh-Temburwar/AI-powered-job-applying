@@ -33,7 +33,7 @@ export const LoginPage: React.FC = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : (err as any)?.message || 'Login failed');
     }
   };
 
@@ -117,6 +117,7 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="umeshtemburwar2002@gmail.com"
                 autoComplete="email"
+                aria-label="Email Address"
                 required
                 className={`w-full px-3.5 py-2.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#0B0E14] text-white focus:border-emerald-500' : 'border-[#18181B] bg-white text-[#18181B] focus:border-emerald-700'} font-mono text-[13px] outline-none transition-colors`}
               />
@@ -140,6 +141,7 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 autoComplete="current-password"
+                aria-label="Password"
                 required
                 className={`w-full px-3.5 py-2.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#0B0E14] text-white focus:border-emerald-500' : 'border-[#18181B] bg-white text-[#18181B] focus:border-emerald-700'} font-mono text-[13px] outline-none transition-colors`}
               />
