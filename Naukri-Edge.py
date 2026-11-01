@@ -15,6 +15,7 @@ Requirements:
 """
 
 import os
+import sys
 import time
 import logging
 import pandas as pd
@@ -54,12 +55,13 @@ NAUKRI_EMAIL = os.getenv('NAUKRI_EMAIL', '')
 NAUKRI_PASSWORD = os.getenv('NAUKRI_PASSWORD', '')
 
 # --- Personal Details ---
-FIRSTNAME = os.getenv('FIRSTNAME', '')
-LASTNAME = os.getenv('LASTNAME', '')
+FIRSTNAME = os.getenv('FIRSTNAME', '').strip() or os.getenv('CANDIDATE_NAME', 'Umesh Temburwar').split()[0]
+LASTNAME = os.getenv('LASTNAME', '').strip() or (os.getenv('CANDIDATE_NAME', 'Umesh Temburwar').split()[-1] if len(os.getenv('CANDIDATE_NAME', 'Umesh Temburwar').split()) > 1 else 'Candidate')
 
 # --- Job Search ---
-KEYWORDS = [kw.strip() for kw in os.getenv('KEYWORDS', '').split(',') if kw.strip()]
-LOCATION = os.getenv('LOCATION', '').strip()
+_raw_kw = os.getenv('KEYWORDS', '').strip()
+KEYWORDS = [kw.strip() for kw in _raw_kw.split(',') if kw.strip()] if _raw_kw else ['Frontend Developer', 'Backend Developer', 'Full Stack Developer', 'React Developer', 'Python Developer']
+LOCATION = os.getenv('LOCATION', '').strip() or 'pune, Remote'
 
 # --- Limits ---
 MAX_APPLICATIONS = int(os.getenv('MAX_APPLICATIONS', '50'))
@@ -84,20 +86,19 @@ logger = logging.getLogger(__name__)
 def validate_config():
     """Check that required configuration values are set."""
     errors = []
-    if not NAUKRI_EMAIL:
-        errors.append("NAUKRI_EMAIL is not set in .env")
-    if not NAUKRI_PASSWORD:
-        errors.append("NAUKRI_PASSWORD is not set in .env")
-    if not KEYWORDS:
-        errors.append("KEYWORDS is not set in .env (comma-separated job roles)")
-    if not FIRSTNAME:
-        errors.append("FIRSTNAME is not set in .env")
-    if not LASTNAME:
-        errors.append("LASTNAME is not set in .env")
+    is_dry_run = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes") or "--dry-run" in sys.argv
+    if not is_dry_run:
+        if not NAUKRI_EMAIL:
+            errors.append("NAUKRI_EMAIL is not set in .env")
+        if not NAUKRI_PASSWORD:
+            errors.append("NAUKRI_PASSWORD is not set in .env")
+    else:
+        if not NAUKRI_EMAIL or not NAUKRI_PASSWORD:
+            logger.info("[DRY RUN] Naukri credentials not configured; proceeding to job search in guest exploration mode.")
     if errors:
         for e in errors:
             logger.error(e)
-        logger.error("Please copy .env.example to .env and fill in your details.")
+        logger.error("Please configure your Naukri credentials or run in --dry-run mode.")
         return False
     return True
 
@@ -164,10 +165,6 @@ def find_edge_binary():
             return p
     return None
 
-
-def _launch_single_browser(browser_name):
-    """Attempt to initialize a WebDriver instance for the specified browser."""
-    b = browser_name.lower().strip()
 
 def is_headless_environment() -> bool:
     """Return True if running in a headless container or cloud environment (e.g. Render, Linux without X11)."""
@@ -311,6 +308,10 @@ create_edge_driver = create_browser_driver
 
 def login_naukri(driver):
     """Log in to Naukri.com."""
+    if not NAUKRI_EMAIL or not NAUKRI_PASSWORD:
+        logger.info("[INFO] Skipping Naukri login (running in guest search / dry-run mode).")
+        return
+
     logger.info("Logging in to Naukri.com...")
     driver.get('https://login.naukri.com/')
     time.sleep(3)
@@ -604,6 +605,15 @@ def apply_to_jobs(driver, job_links):
             "location": location or (LOCATION or "Pune, India"),
             "salary": salary or "Not disclosed",
         }
+
+        # --- Dry Run Safe Exploration Mode ---
+        is_dry_run = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes") or "--dry-run" in sys.argv
+        if is_dry_run:
+            applied += 1
+            applied_list['passed'].append(record_item)
+            logger.info(f"  ✓ [DRY RUN] Position verified & simulation applied! [{record_item['title']} @ {record_item['company']}] Total: {applied}")
+            time.sleep(1.5)
+            continue
 
         # --- Click the "Apply" button ---
         if click_apply_button(driver, link):

@@ -147,10 +147,14 @@ def build_search_urls(keywords, location=""):
 def apply_on_internshala(driver, max_apps=25):
     email = os.getenv("INTERNSHALA_EMAIL", "").strip()
     password = os.getenv("INTERNSHALA_PASSWORD", "").strip()
+    dry_run = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes")
 
     if not email or not password:
-        logger.error("INTERNSHALA_EMAIL or INTERNSHALA_PASSWORD not set in .env")
-        return 0, 0
+        if not dry_run:
+            logger.error("INTERNSHALA_EMAIL or INTERNSHALA_PASSWORD not set in .env")
+            return 0, 0
+        else:
+            logger.info("[DRY RUN] Internshala credentials not configured; running in safe exploration mode.")
 
     profile = load_profile()
     answers = load_answers()
@@ -160,7 +164,10 @@ def apply_on_internshala(driver, max_apps=25):
     search_urls = build_search_urls(keywords, location)
     logger.info(f"Generated {len(search_urls)} search categories for Internshala.")
 
-    login_internshala(driver, email, password)
+    if email and password:
+        login_internshala(driver, email, password)
+    else:
+        logger.info("[INFO] Proceeding to Internshala job search without login.")
 
     applied_count = 0
     failed_count = 0
@@ -214,6 +221,15 @@ def apply_on_internshala(driver, max_apps=25):
                 loc_text = loc_elem[0].text.strip() if loc_elem else "India / Remote"
                 sal_elem = driver.find_elements(By.CSS_SELECTOR, ".stipend, .salary, [class*='salary'], [class*='stipend']")
                 sal_text = sal_elem[0].text.strip() if sal_elem else "Competitive"
+
+                # Safe Dry-Run Simulation
+                if dry_run:
+                    logger.info(f"[DRY RUN] Position verified on Internshala: '{role_text}' @ {comp_text} ({applied_count + 1}/{max_apps})")
+                    applied_count += 1
+                    record_application(platform="Internshala", job_title=role_text, company=comp_text, location=loc_text, salary=sal_text, url=link, status="DRY_RUN_OK")
+                    records.append({"platform": "Internshala", "url": link, "status": "Simulated", "time": str(datetime.now())})
+                    time.sleep(1.5)
+                    continue
 
                 # Find Apply Now button
                 apply_selectors = [

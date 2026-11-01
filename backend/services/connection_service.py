@@ -569,18 +569,20 @@ class ConnectionService:
             if not email and prev_rec and is_valid_credential(prev_rec.get("account_email")):
                 email = prev_rec.get("account_email")
 
+            prev_has_creds = bool(prev_rec and (
+                prev_rec.get("metadata", {}).get("has_credentials")
+                or prev_rec.get("status") == "connected"
+            ))
+            has_creds = bool((email and pwd) or (prev_has_creds and email))
+
             if portal.status == "unsupported":
                 status = "unsupported"
                 email = None
                 last_ver = None
                 err_msg = f"{portal.name} is currently unsupported."
-            elif email and pwd:
+            elif has_creds:
                 status = "connected"
-                last_ver = datetime.now(timezone.utc).isoformat()
-                err_msg = None
-            elif prev_rec and prev_rec.get("status") == "connected" and prev_rec.get("metadata", {}).get("has_credentials") and email:
-                status = "connected"
-                last_ver = prev_rec.get("last_verified") or datetime.now(timezone.utc).isoformat()
+                last_ver = (prev_rec and prev_rec.get("last_verified")) or datetime.now(timezone.utc).isoformat()
                 err_msg = None
             elif has_cookies and email:
                 status = "connected"
@@ -612,7 +614,7 @@ class ConnectionService:
                 account_email=email,
                 last_verified=last_ver,
                 error_message=err_msg,
-                metadata={"session_dir": session_dir, "has_credentials": bool(email and pwd)},
+                metadata={"session_dir": session_dir, "has_credentials": has_creds},
             )
             self._upsert_connection(user_id, portal.id, item)
             results.append(item)

@@ -20,6 +20,7 @@ Page: https://www.naukri.com/mnjuser/recommendedjobs
 """
 
 import os
+import sys
 import time
 import csv
 import difflib
@@ -236,10 +237,6 @@ def find_edge_binary():
     return None
 
 
-def _launch_single_browser(browser_name):
-    """Attempt to initialize a WebDriver instance for the specified browser."""
-    b = browser_name.lower().strip()
-
 def is_headless_environment() -> bool:
     """Return True if running in a headless container or cloud environment (e.g. Render, Linux without X11)."""
     if os.getenv("HEADLESS", "").lower() in ("true", "1", "yes"):
@@ -382,6 +379,10 @@ create_edge_driver = create_browser_driver
 
 def login_naukri(driver):
     """Log in to Naukri.com."""
+    if not NAUKRI_EMAIL or not NAUKRI_PASSWORD:
+        logger.info("[INFO] Skipping Naukri login (running in guest / dry-run mode).")
+        return
+
     logger.info("Logging in to Naukri.com...")
     driver.get('https://login.naukri.com/')
     time.sleep(3)
@@ -974,9 +975,13 @@ def main():
     logger.info("Naukri Recommended Jobs Bot")
     logger.info("=" * 50)
 
+    is_dry_run = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes") or "--dry-run" in sys.argv
     if not NAUKRI_EMAIL or not NAUKRI_PASSWORD:
-        logger.error("Set NAUKRI_EMAIL and NAUKRI_PASSWORD in .env")
-        return
+        if not is_dry_run:
+            logger.error("Set NAUKRI_EMAIL and NAUKRI_PASSWORD in .env")
+            return
+        else:
+            logger.info("[DRY RUN] Credentials not set; proceeding in simulation exploration mode.")
 
     selected_tabs = select_tabs()
     logger.info(f"Applying to tabs: {', '.join(t['label'] for t in selected_tabs)}")

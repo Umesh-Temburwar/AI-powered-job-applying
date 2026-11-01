@@ -415,7 +415,15 @@ async def run_platform_automation_task(
     # ─────────────────────────────────────────────────────────────
     supabase = get_supabase_client()
     connected_platforms: list[str] = []
-    if supabase:
+    is_uuid = False
+    try:
+        import uuid
+        uuid.UUID(str(user_id))
+        is_uuid = True
+    except (ValueError, AttributeError, TypeError):
+        is_uuid = False
+
+    if supabase and is_uuid:
         try:
             conn_res = (
                 supabase.table("platform_connections")
@@ -477,7 +485,7 @@ async def run_platform_automation_task(
                 bot_args.append("--dry-run")
             
             # Detect cloud / low-memory headless container (Render, Linux without DISPLAY)
-            is_cloud = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or sys.platform != "win32" or not os.getenv("DISPLAY"))
+            is_cloud = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or (sys.platform != "win32" and not os.getenv("DISPLAY")))
             is_headless = bool(payload.get("headless") or is_cloud or os.getenv("HEADLESS", "").lower() in ("true", "1", "yes"))
             if is_headless:
                 bot_args.append("--headless")
@@ -496,6 +504,29 @@ async def run_platform_automation_task(
             sub_env["LOCATION"] = ", ".join(locations)
         sub_env["MAX_APPLICATIONS"] = str(max_apps_total)
         sub_env["CANDIDATE_USER_ID"] = str(user_id)
+        names = (profile.full_name or "Umesh Temburwar").strip().split()
+        sub_env["FIRSTNAME"] = names[0] if names else "Umesh"
+        sub_env["LASTNAME"] = " ".join(names[1:]) if len(names) > 1 else (names[0] if names else "Candidate")
+        sub_env["CANDIDATE_NAME"] = (profile.full_name or "Umesh Temburwar").strip()
+        if profile.email:
+            sub_env["EMAIL"] = profile.email
+        if profile.phone:
+            sub_env["PHONE"] = profile.phone
+
+        # Sync portal credentials from connection_service / .env if available
+        try:
+            from services.connection_service import _read_env_credentials
+            env_creds = _read_env_credentials()
+            for p_name in ["naukri", "internshala", "indeed", "linkedin"]:
+                c_data = env_creds.get(p_name, {})
+                c_email = c_data.get("email") or ""
+                c_pwd = c_data.get("password") or ""
+                if c_email and f"{p_name.upper()}_EMAIL" not in sub_env:
+                    sub_env[f"{p_name.upper()}_EMAIL"] = c_email
+                if c_pwd and f"{p_name.upper()}_PASSWORD" not in sub_env:
+                    sub_env[f"{p_name.upper()}_PASSWORD"] = c_pwd
+        except Exception as cred_err:
+            logger.debug("Credentials injection note: %s", cred_err)
 
         update_task_state(
             status_val="running",
