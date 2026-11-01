@@ -12,6 +12,7 @@ from api.connections import router as connections_router
 from api.admin import router as admin_router
 from api.training import router as training_router
 from api.config import router as config_router
+from api.resume_analysis import router as resume_analysis_router
 
 api_v1_router = APIRouter()
 
@@ -28,3 +29,4 @@ api_v1_router.include_router(connections_router)
 api_v1_router.include_router(admin_router)
 api_v1_router.include_router(training_router)
 api_v1_router.include_router(config_router)
+api_v1_router.include_router(resume_analysis_router)

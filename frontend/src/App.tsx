@@ -18,6 +18,7 @@ import { GuidePage } from './pages/GuidePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ResumeManagerPage } from './pages/ResumeManagerPage';
+import { ResumeAnalyzerPage } from './pages/ResumeAnalyzerPage';
 import { PreferencesPage } from './pages/PreferencesPage';
 import { AutomationPage } from './pages/AutomationPage';
 import { ApplicationsPage } from './pages/ApplicationsPage';
@@ -65,6 +66,7 @@ export function App() {
                 <Route path="/guide" element={<GuidePage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/resumes" element={<ResumeManagerPage />} />
+                <Route path="/resume-analyzer" element={<ResumeAnalyzerPage />} />
                 <Route path="/preferences" element={<PreferencesPage />} />
                 <Route path="/automation" element={<AutomationPage />} />
                 <Route path="/applications" element={<ApplicationsPage />} />

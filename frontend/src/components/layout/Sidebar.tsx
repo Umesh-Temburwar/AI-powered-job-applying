@@ -19,6 +19,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
     { label: 'Overview', path: '/dashboard' },
     { label: 'Applications', path: '/applications' },
     { label: 'Profile & Resume', path: '/profile' },
+    { label: 'Resume Analyzer', path: '/resume-analyzer' },
     { label: 'Settings', path: '/settings' },
     ...(user?.isAdmin ? [{ label: 'Admin Panel', path: '/admin' }] : []),
     { label: 'Automation Guide', path: '/guide' },

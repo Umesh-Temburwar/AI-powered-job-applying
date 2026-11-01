@@ -69,9 +69,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # 5. Mount versioned API routes under /api/v1 prefix
     app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX)
 
-    # 6. Mount tasks router under /api prefix for /api/tasks standard endpoints
+    # 6. Mount direct task and resume routes under /api prefix for standard endpoints
     from api.tasks import router as direct_tasks_router
+    from api.resume_analysis import router as direct_resume_router
     app.include_router(direct_tasks_router, prefix="/api")
+    app.include_router(direct_resume_router, prefix="/api")
 
     return app
 

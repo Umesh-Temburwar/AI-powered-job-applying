@@ -57,12 +57,16 @@ def validate_resume_file(file_bytes: bytes, file_name: str, content_type: str | 
     clean_name = file_name.lower().strip()
     is_pdf = clean_name.endswith(".pdf")
     is_docx = clean_name.endswith(".docx")
+    is_txt = clean_name.endswith(".txt")
 
-    if not is_pdf and not is_docx:
+    if not is_pdf and not is_docx and not is_txt:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Unsupported file format. Only standard PDF (.pdf) and Word (.docx) documents are permitted.",
+            detail="Unsupported file format. Only standard PDF (.pdf), Word (.docx), and Text (.txt) documents are permitted.",
         )
+
+    if is_txt:
+        return "text/plain"
 
     # Magic bytes check
     if is_pdf:
@@ -100,7 +104,7 @@ async def upload_and_parse_resume(
     client = _get_supabase_client() if not user_id.startswith("usr_") else None
 
     # Determine storage path: {user_id}/{uuid}.{ext}
-    ext = ".docx" if "word" in verified_mime or file_name.lower().endswith(".docx") else ".pdf"
+    ext = ".txt" if verified_mime == "text/plain" or file_name.lower().endswith(".txt") else (".docx" if "word" in verified_mime or file_name.lower().endswith(".docx") else ".pdf")
     storage_path = f"{user_id}/{resume_id}{ext}"
 
     # 1. Parse resume text & extract structured fields

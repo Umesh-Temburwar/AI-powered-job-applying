@@ -245,11 +245,21 @@ def extract_file_links(file_bytes: bytes, file_name: str, mime_type: str) -> lis
         except Exception as exc:
             logger.debug("Could not extract DOCX hyperlinks: %s", exc)
 
+    elif clean_name.endswith(".txt") or "text/plain" in mime_type:
+        try:
+            txt_content = file_bytes.decode("utf-8", errors="ignore")
+            for url in re.findall(r'https?://[^\s]+', txt_content):
+                clean_url = url.rstrip('.,;)|\'"')
+                if clean_url not in links:
+                    links.append(clean_url)
+        except Exception as exc:
+            logger.debug("Could not extract TXT links: %s", exc)
+
     return links
 
 
 def extract_raw_text(file_bytes: bytes, file_name: str, mime_type: str) -> tuple[str, bool]:
-    """Extract raw text from PDF or DOCX file bytes using layout-aware extraction.
+    """Extract raw text from PDF, DOCX, or TXT file bytes using PyMuPDF and layout-aware extraction.
     
     Returns:
         (extracted_text, ocr_needed_flag)
@@ -258,51 +268,109 @@ def extract_raw_text(file_bytes: bytes, file_name: str, mime_type: str) -> tuple
     raw_text = ""
     ocr_needed = False
 
-    # 1. PDF extraction via pypdf with layout mode priority
-    if clean_name.endswith(".pdf") or "pdf" in mime_type:
+    # 1. Plain Text (.txt)
+    if clean_name.endswith(".txt") or "text/plain" in mime_type:
+        try:
+            raw_text = file_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            try:
+                raw_text = file_bytes.decode("latin-1")
+            except Exception:
+                raw_text = file_bytes.decode("utf-8", errors="replace")
+        if len(raw_text.strip()) < 30:
+            ocr_needed = True
+
+    # 2. PDF extraction via PyMuPDF (fitz) with pypdf layout fallback
+    elif clean_name.endswith(".pdf") or "pdf" in mime_type:
+        # Check encrypted signature early
         try:
             import pypdf
-            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-            if reader.is_encrypted:
+            pdf_check = pypdf.PdfReader(io.BytesIO(file_bytes))
+            if pdf_check.is_encrypted:
                 raise ValueError("Encrypted PDF cannot be read. Please upload an unencrypted document.")
-            
-            layout_pages = []
-            standard_pages = []
-            for i, page in enumerate(reader.pages):
-                try:
-                    # Attempt layout mode extraction for clean columnar text
-                    lt = ""
+        except ValueError:
+            raise
+        except Exception:
+            pass
+
+        # Try high-performance PyMuPDF first
+        try:
+            import pymupdf as fitz
+            doc = fitz.open(stream=file_bytes, filetype="pdf")
+            pages_mupdf = []
+            for page in doc:
+                pt = page.get_text("text") or ""
+                if pt.strip():
+                    pages_mupdf.append(pt)
+            doc.close()
+            if pages_mupdf:
+                mupdf_combined = "\n\n".join(pages_mupdf).strip()
+                if len(mupdf_combined) > 50:
+                    raw_text = mupdf_combined
+        except Exception as mupdf_exc:
+            logger.debug("PyMuPDF primary extraction note: %s", mupdf_exc)
+
+        # Fallback to pypdf layout extraction mode if PyMuPDF was empty
+        if not raw_text or len(raw_text) < 50:
+            try:
+                import pypdf
+                reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                layout_pages = []
+                standard_pages = []
+                for i, page in enumerate(reader.pages):
                     try:
-                        lt = page.extract_text(extraction_mode="layout") or ""
-                    except Exception:
                         lt = ""
-                    if lt.strip():
-                        layout_pages.append(lt)
+                        try:
+                            lt = page.extract_text(extraction_mode="layout") or ""
+                        except Exception:
+                            lt = ""
+                        if lt.strip():
+                            layout_pages.append(lt)
 
-                    st = page.extract_text() or ""
-                    if st.strip():
-                        standard_pages.append(st)
-                except Exception as page_exc:
-                    logger.warning("Error reading PDF page %d: %s", i, page_exc)
+                        st = page.extract_text() or ""
+                        if st.strip():
+                            standard_pages.append(st)
+                    except Exception as page_exc:
+                        logger.warning("Error reading PDF page %d: %s", i, page_exc)
 
-            layout_full = "\n\n".join(layout_pages).strip()
-            standard_full = "\n\n".join(standard_pages).strip()
-            
-            # Prefer layout mode if it extracted reasonable content, otherwise fallback to standard
-            if len(layout_full) >= len(standard_full) * 0.8 and len(layout_full) > 30:
-                raw_text = layout_full
-            else:
-                raw_text = standard_full
+                layout_full = "\n\n".join(layout_pages).strip()
+                standard_full = "\n\n".join(standard_pages).strip()
+                
+                if len(layout_full) >= len(standard_full) * 0.8 and len(layout_full) > 30:
+                    raw_text = layout_full
+                else:
+                    raw_text = standard_full
+            except ValueError:
+                raise
+            except Exception as exc:
+                logger.error("Failed to parse PDF %s: %s", file_name, exc)
+                raise ValueError(f"Could not read PDF file: {exc}")
+
+        # Optical Character Recognition (OCR) for scanned PDFs if text is sparse
+        if len(raw_text) < 50:
+            try:
+                import pymupdf as fitz
+                import pytesseract
+                from PIL import Image
+
+                doc = fitz.open(stream=file_bytes, filetype="pdf")
+                ocr_pages = []
+                for p in doc[:3]:
+                    pix = p.get_pixmap(dpi=150)
+                    img = Image.open(io.BytesIO(pix.tobytes("png")))
+                    txt = pytesseract.image_to_string(img)
+                    if txt.strip():
+                        ocr_pages.append(txt.strip())
+                doc.close()
+                if ocr_pages:
+                    raw_text = "\n\n".join(ocr_pages).strip()
+            except Exception as ocr_err:
+                logger.debug("OCR extraction note: %s", ocr_err)
 
             if len(raw_text) < 50:
                 ocr_needed = True
-        except ValueError:
-            raise
-        except Exception as exc:
-            logger.error("Failed to parse PDF %s: %s", file_name, exc)
-            raise ValueError(f"Could not read PDF file: {exc}")
 
-    # 2. DOCX extraction via python-docx
+    # 3. DOCX extraction via python-docx
     elif clean_name.endswith(".docx") or "officedocument" in mime_type:
         try:
             import docx
