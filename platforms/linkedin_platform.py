@@ -20,9 +20,9 @@ LINKEDIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "linkedin
 CONFIG_PATH = os.path.join(LINKEDIN_DIR, "config.yaml")
 
 
-def sync_linkedin_config():
+def sync_linkedin_config(max_apps: int = 25):
     """Generate or update config.yaml for LinkedIn bot using .env settings."""
-    email = os.getenv("LINKEDIN_EMAIL", "").strip()
+    email = os.getenv("LINKEDIN_EMAIL", "").strip() or os.getenv("EMAIL", "").strip()
     password = os.getenv("LINKEDIN_PASSWORD", "").strip()
     phone = os.getenv("PHONE", "+918856087984")
     keywords = [kw.strip() for kw in os.getenv("KEYWORDS", "Full Stack Developer, Software Engineer").split(",") if kw.strip()]
@@ -55,7 +55,7 @@ def sync_linkedin_config():
         "positions": keywords[:4],
         "locations": [location, "Remote"],
         "salary": 450000,
-        "rate": 25,
+        "rate": max_apps,
         "uploads": {
             "Resume": resume_pdf
         },
@@ -75,13 +75,25 @@ def sync_linkedin_config():
         return False
 
 
-def run_linkedin():
+def run_linkedin(max_apps: int = 25):
     """Execute the LinkedIn Easy Apply Bot."""
     logger.info("=" * 50)
     logger.info("Launching LinkedIn Easy Apply Bot...")
     logger.info("=" * 50)
 
-    if not sync_linkedin_config():
+    is_dry_run = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes")
+    email = os.getenv("LINKEDIN_EMAIL", "").strip() or os.getenv("EMAIL", "").strip()
+    password = os.getenv("LINKEDIN_PASSWORD", "").strip()
+
+    if not email or not password:
+        if is_dry_run:
+            logger.info("[DRY RUN] LinkedIn credentials not configured; simulation completed.")
+            return 0, 0
+        else:
+            logger.warning("LINKEDIN_EMAIL or LINKEDIN_PASSWORD not set in .env. Skipping LinkedIn live run.")
+            return 0, 0
+
+    if not sync_linkedin_config(max_apps=max_apps):
         return 0, 0
 
     script_path = os.path.join(LINKEDIN_DIR, "easyapplybot.py")

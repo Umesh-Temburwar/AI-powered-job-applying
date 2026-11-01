@@ -303,6 +303,65 @@ def show_consolidated_report():
         logger.info(f"Supabase Database Synchronized: {db_stats['total_db_apps']} verified applications live on cloud")
 
 
+def sync_candidate_details_to_env():
+    """Load profile_data.json and sync candidate identity, contact info, and preferences into os.environ."""
+    import json
+    p_path = os.path.join(os.path.dirname(__file__), "data", "profile_data.json")
+    if not os.path.exists(p_path):
+        p_path = os.path.join(os.path.dirname(__file__), "profile_data.json")
+    
+    profile = {}
+    if os.path.exists(p_path):
+        try:
+            with open(p_path, "r", encoding="utf-8") as f:
+                profile = json.load(f)
+        except Exception as e:
+            logger.debug(f"profile_data.json note: {e}")
+
+    personal = profile.get("personal", {})
+    full_name = personal.get("name") or "Umesh Temburwar"
+    first_name = personal.get("firstname") or (full_name.split()[0] if full_name else "Umesh")
+    last_name = personal.get("lastname") or (full_name.split()[-1] if len(full_name.split()) > 1 else "Temburwar")
+    email = personal.get("email") or "umeshtemburwar2002@gmail.com"
+    phone = personal.get("phone") or "+91 8856087984"
+
+    if not os.getenv("CANDIDATE_NAME"):
+        os.environ["CANDIDATE_NAME"] = full_name
+    if not os.getenv("FIRSTNAME"):
+        os.environ["FIRSTNAME"] = first_name
+    if not os.getenv("LASTNAME"):
+        os.environ["LASTNAME"] = last_name
+    if not os.getenv("EMAIL"):
+        os.environ["EMAIL"] = email
+    if not os.getenv("PHONE"):
+        os.environ["PHONE"] = phone
+
+    if not os.getenv("KEYWORDS"):
+        skills = profile.get("key_skills")
+        if skills and isinstance(skills, list):
+            os.environ["KEYWORDS"] = ", ".join(skills)
+        elif profile.get("naukri_headline"):
+            os.environ["KEYWORDS"] = profile.get("naukri_headline")
+        else:
+            os.environ["KEYWORDS"] = "Frontend Developer, Backend Developer, Full Stack Developer, React Developer, Python Developer"
+
+    if not os.getenv("LOCATION"):
+        loc = personal.get("current_location") or "Pune, Remote"
+        os.environ["LOCATION"] = loc
+
+    if not os.getenv("RESUME_PATH"):
+        resumes_dir = os.path.join(os.path.dirname(__file__), "data", "resumes")
+        if os.path.exists(resumes_dir):
+            for fname in os.listdir(resumes_dir):
+                if fname.lower().endswith(".pdf"):
+                    os.environ["RESUME_PATH"] = os.path.join(resumes_dir, fname)
+                    break
+
+    for p_key in ["NAUKRI", "INTERNSHALA", "INDEED", "LINKEDIN"]:
+        if not os.getenv(f"{p_key}_EMAIL"):
+            os.environ[f"{p_key}_EMAIL"] = email
+
+
 def run_all_platforms(max_apps: int = 25):
     """Sequentially run all 4 platforms."""
     logger.info("=" * 60)
@@ -312,7 +371,7 @@ def run_all_platforms(max_apps: int = 25):
     # 1. Naukri
     logger.info(">>> STEP 1/4: Running Naukri Auto-Apply...")
     try:
-        run_naukri_search()
+        run_naukri_search(max_apps=max_apps)
     except Exception as e:
         logger.error(f"Naukri run failed: {e}")
 
@@ -333,7 +392,7 @@ def run_all_platforms(max_apps: int = 25):
     # 4. LinkedIn
     logger.info(">>> STEP 4/4: Running LinkedIn Easy Apply...")
     try:
-        run_linkedin()
+        run_linkedin(max_apps=max_apps)
     except Exception as e:
         logger.error(f"LinkedIn run failed: {e}")
 
@@ -488,11 +547,26 @@ def interactive_menu():
 
 
 def main():
+    sync_candidate_details_to_env()
+
     parser = argparse.ArgumentParser(description="Universal Job Auto Apply Bot - All-in-One Edition")
     parser.add_argument(
-        "--platform",
+        "--platform", "-p",
         choices=["all", "naukri", "internshala", "indeed", "linkedin", "portals"],
         help="Select specific platform to execute"
+    )
+    parser.add_argument(
+        "--keywords", "-k",
+        type=str,
+        default=None,
+        help="Target job titles / roles (comma-separated, e.g. 'React Developer, Python Developer')"
+    )
+    parser.add_argument(
+        "--location", "--locations", "-l",
+        type=str,
+        dest="location",
+        default=None,
+        help="Target job locations (comma-separated, e.g. 'Pune, Remote')"
     )
     parser.add_argument("--update-naukri-profile", action="store_true", help="Run Naukri Profile Auto-Updater")
     parser.add_argument("--update-internshala-profile", action="store_true", help="Run Internshala Resume Auto-Updater")
@@ -500,10 +574,18 @@ def main():
     parser.add_argument("--report", action="store_true", help="Display consolidated application report")
     parser.add_argument("--gui", "--dashboard", "--web", action="store_true", dest="dashboard", help="Launch Modern Web UI Dashboard")
     parser.add_argument("--dry-run", action="store_true", help="Run without final application submission")
-    parser.add_argument("--max-apps", type=int, default=25, help="Application limit per platform")
+    parser.add_argument("--live", action="store_true", help="Submit live applications to employers")
+    parser.add_argument("--max-apps", "-m", type=int, default=25, help="Application limit per platform")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
 
     args = parser.parse_args()
+
+    if args.keywords:
+        os.environ["KEYWORDS"] = args.keywords
+    if args.location:
+        os.environ["LOCATION"] = args.location
+    if args.max_apps:
+        os.environ["MAX_APPLICATIONS"] = str(args.max_apps)
 
     if args.dashboard:
         launch_dashboard()
@@ -526,22 +608,27 @@ def main():
         run_internshala_profile_updater()
         return
 
-    if args.dry_run:
+    if args.live:
+        os.environ["DRY_RUN"] = "0"
+        os.environ["USER_CONFIRMED_REAL_SUBMISSION"] = "1"
+        logger.info("[MODE] LIVE SUBMISSION ACTIVE: Real job applications will be submitted to employers.")
+    elif args.dry_run or os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes"):
         os.environ["DRY_RUN"] = "1"
         logger.info("[MODE] DRY-RUN SIMULATION ACTIVE: Applications will be discovered and validated without live submission.")
+
     if args.headless:
         os.environ["HEADLESS"] = "1"
 
     if args.platform == "all":
         run_all_platforms(max_apps=args.max_apps)
     elif args.platform == "naukri":
-        run_naukri_search()
+        run_naukri_search(max_apps=args.max_apps)
     elif args.platform == "internshala":
         run_internshala(max_apps=args.max_apps)
     elif args.platform == "indeed":
         run_indeed(max_apps=args.max_apps)
     elif args.platform == "linkedin":
-        run_linkedin()
+        run_linkedin(max_apps=args.max_apps)
     elif args.platform == "portals":
         run_jobbot_engine()
     else:

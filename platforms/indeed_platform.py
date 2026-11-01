@@ -32,22 +32,41 @@ RESULTS_CSV = "indeed_applied.csv"
 
 
 def load_profile():
-    if os.path.exists("profile_data.json"):
-        with open("profile_data.json", "r", encoding="utf-8") as f:
-            return json.load(f)
+    paths = [
+        os.path.join(os.path.dirname(__file__), "..", "data", "profile_data.json"),
+        os.path.join("data", "profile_data.json"),
+        "profile_data.json",
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
     return {}
 
 
 def load_answers():
     answers = {}
-    if os.path.exists("application_answers.csv"):
-        with open("application_answers.csv", "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                q = (row.get('question_text') or '').strip().lower()
-                a = (row.get('answer') or '').strip()
-                if q and a:
-                    answers[q] = a
+    paths = [
+        os.path.join(os.path.dirname(__file__), "..", "data", "application_answers.csv"),
+        os.path.join("data", "application_answers.csv"),
+        "application_answers.csv",
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        q = (row.get('question_text') or '').strip().lower()
+                        a = (row.get('answer') or '').strip()
+                        if q and a:
+                            answers[q] = a
+                break
+            except Exception:
+                pass
     return answers
 
 

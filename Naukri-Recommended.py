@@ -56,6 +56,21 @@ except ImportError:
 # ------------------------------------------------------------
 load_dotenv()
 
+# --- Auto-load Candidate Details from profile_data.json ---
+try:
+    import json
+    _p_path = os.path.join(os.path.dirname(__file__), "data", "profile_data.json")
+    if not os.path.exists(_p_path):
+        _p_path = os.path.join(os.path.dirname(__file__), "profile_data.json")
+    if os.path.exists(_p_path):
+        with open(_p_path, "r", encoding="utf-8") as _f:
+            _p_data = json.load(_f)
+            _p_pers = _p_data.get("personal", {})
+            if not os.getenv("NAUKRI_EMAIL") and _p_pers.get("email"):
+                os.environ["NAUKRI_EMAIL"] = _p_pers.get("email")
+except Exception:
+    pass
+
 NAUKRI_EMAIL = os.getenv('NAUKRI_EMAIL', '')
 NAUKRI_PASSWORD = os.getenv('NAUKRI_PASSWORD', '')
 BROWSER_CHOICE = os.getenv('BROWSER', 'auto').strip().lower()
