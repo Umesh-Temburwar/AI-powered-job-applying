@@ -68,7 +68,8 @@ def main():
     print("   • Database: Supabase Cloud (Live Tasks, CRM, Multi-Portal Auth)")
     print("=" * 75)
 
-    py_exe = sys.executable
+    venv_py = os.path.join(ROOT_DIR, ".venv", "Scripts", "python.exe")
+    py_exe = venv_py if os.path.exists(venv_py) else sys.executable
 
     # 1. Start FastAPI Backend Server
     backend_env = os.environ.copy()
@@ -123,9 +124,9 @@ def main():
     processes.append(frontend_proc)
 
     # 3. Launch Default Browser
-    print(f"\n[3/3] Opening Dashboard in browser: http://localhost:{FRONTEND_PORT}/dashboard")
+    print(f"\n[3/3] Opening Web App in browser: http://localhost:{FRONTEND_PORT}/applications")
     time.sleep(1.5)
-    webbrowser.open(f"http://localhost:{FRONTEND_PORT}/dashboard")
+    webbrowser.open(f"http://localhost:{FRONTEND_PORT}/applications")
 
     print("\n" + "=" * 75)
     print("✨ Both Frontend & Backend are actively running!")
