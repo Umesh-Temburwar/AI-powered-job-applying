@@ -60,12 +60,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
             end={item.path === '/'}
             onClick={onCloseMobile}
             className={({ isActive }) =>
-              `block px-6 py-2.5 font-mono text-[13px] font-medium transition-colors duration-150 ${
-                isActive
-                  ? theme === 'dark'
-                    ? 'text-[#10B981] font-bold border-l-4 border-[#10B981] bg-[#141A26]'
-                    : 'text-[#15803D] font-bold border-l-4 border-[#15803D] bg-[#F5F3EC]'
-                  : 'opacity-75 hover:opacity-100 border-l-4 border-transparent'
+              `block px-6 py-2.5 font-mono text-[13px] font-medium transition-colors duration-150 ${isActive
+                ? theme === 'dark'
+                  ? 'text-[#10B981] font-bold border-l-4 border-[#10B981] bg-[#141A26]'
+                  : 'text-[#15803D] font-bold border-l-4 border-[#15803D] bg-[#F5F3EC]'
+                : 'opacity-75 hover:opacity-100 border-l-4 border-transparent'
               }`
             }
           >

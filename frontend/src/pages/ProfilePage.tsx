@@ -991,7 +991,7 @@ export const ProfilePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[var(--border-color)]">
         <div>
           <h1 className="text-xl font-bold text-[var(--text-primary)] font-mono">
-            Candidate Profile & Bot Automation Data
+            Candidate Profile & Ai Automation Data
           </h1>
           <p className="text-xs text-[var(--text-secondary)] mt-0.5">
             Configure application screening answers, contact info, and job targeting. Syncs directly to Supabase & bot .env.
@@ -2266,7 +2266,7 @@ export const ProfilePage: React.FC = () => {
               disabled={saving || startingBot}
               leftIcon={<Save className="w-4 h-4" />}
             >
-              {saving ? 'Saving...' : 'Save All (.env)'}
+              {saving ? 'Saving...' : 'Save All'}
             </Button>
             <Button
               type="button"

@@ -175,7 +175,7 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'retro-grid-dark bg-[#0B0E14] text-[#F4F4F5]' : 'retro-grid-light bg-[#F5F3EC] text-[#09090B]'} font-sans flex flex-col transition-colors duration-150`}>
-      
+
       {/* Retro Top Marquee / Hardware Status Strip */}
       <div className={`h-8 border-b-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#111520] text-[#10B981]' : 'border-[#18181B] bg-[#18181B] text-[#F5F3EC]'} px-4 flex items-center justify-between text-[11px] font-mono select-none overflow-hidden`}>
         <div className="flex items-center gap-3">
@@ -203,7 +203,7 @@ export const LandingPage: React.FC = () => {
       {/* Retro Precision Navigation Header */}
       <header className={`sticky top-0 z-50 h-16 border-b-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#111520]/95' : 'border-[#18181B] bg-[#FFFFFF]/95'} backdrop-blur-md px-6`}>
         <div className="max-w-6xl mx-auto h-full flex items-center justify-between">
-          
+
           {/* Logo Badge */}
           <div className="flex items-center gap-3">
             <div className={`w-9 h-9 border-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14]' : 'border-[#18181B] bg-[#15803D] text-white'} flex items-center justify-center font-mono font-black text-sm retro-shadow-sm`}>
@@ -274,15 +274,14 @@ export const LandingPage: React.FC = () => {
             <button
               type="button"
               onClick={handleSoundToggle}
-              className={`p-2 border-2 ${
-                soundOn
-                  ? theme === 'dark'
-                    ? 'border-[#10B981] bg-[#141A26] text-[#10B981]'
-                    : 'border-[#18181B] bg-emerald-50 text-emerald-800'
-                  : theme === 'dark'
+              className={`p-2 border-2 ${soundOn
+                ? theme === 'dark'
+                  ? 'border-[#10B981] bg-[#141A26] text-[#10B981]'
+                  : 'border-[#18181B] bg-emerald-50 text-emerald-800'
+                : theme === 'dark'
                   ? 'border-[#2E384D] bg-[#141A26] text-zinc-500'
                   : 'border-[#18181B] bg-zinc-100 text-zinc-500'
-              } retro-shadow-sm transition-all cursor-pointer`}
+                } retro-shadow-sm transition-all cursor-pointer`}
               title={`Sound Effects: ${soundOn ? 'ACTIVE (Click to mute)' : 'MUTED (Click to activate)'}`}
               aria-label="Toggle audio effects"
               data-sound="toggle"
@@ -306,9 +305,8 @@ export const LandingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleLoginTrigger}
-                className={`font-mono text-[12px] font-bold uppercase px-3 py-1.5 border-2 ${
-                  theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-[#10B981]' : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#F5F3EC]'
-                } retro-shadow-sm cursor-pointer`}
+                className={`font-mono text-[12px] font-bold uppercase px-3 py-1.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-[#10B981]' : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#F5F3EC]'
+                  } retro-shadow-sm cursor-pointer`}
                 data-sound="slide"
               >
                 SIGN IN →
@@ -322,11 +320,10 @@ export const LandingPage: React.FC = () => {
             <button
               type="button"
               onClick={handleDashboardTrigger}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 font-mono text-[12px] font-bold uppercase border-2 ${
-                theme === 'dark'
-                  ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
-                  : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
-              } retro-shadow transition-all cursor-pointer`}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 font-mono text-[12px] font-bold uppercase border-2 ${theme === 'dark'
+                ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
+                } retro-shadow transition-all cursor-pointer`}
               data-sound="nav"
             >
               DASHBOARD
@@ -342,7 +339,7 @@ export const LandingPage: React.FC = () => {
         {/* Hero Section: Split Grid with Photo -> Login Slide In-Place */}
         <section className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
+
             {/* Left 7 Columns: Core Value Proposition & Specs */}
             <div className="lg:col-span-7 space-y-4">
               {/* System Status Tag */}
@@ -372,11 +369,10 @@ export const LandingPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleDashboardTrigger}
-                  className={`inline-flex items-center gap-2 px-5 py-2.5 font-mono text-[13px] font-bold uppercase border-2 ${
-                    theme === 'dark'
-                      ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
-                      : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
-                  } retro-shadow transition-all cursor-pointer`}
+                  className={`inline-flex items-center gap-2 px-5 py-2.5 font-mono text-[13px] font-bold uppercase border-2 ${theme === 'dark'
+                    ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                    : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
+                    } retro-shadow transition-all cursor-pointer`}
                   data-sound="button"
                 >
                   <Terminal className="w-4 h-4" />
@@ -388,11 +384,10 @@ export const LandingPage: React.FC = () => {
                   href="https://umeshtemburwar.vercel.app/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 font-mono text-[13px] font-bold uppercase border-2 ${
-                    theme === 'dark'
-                      ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-[#10B981]'
-                      : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#EFECE3]'
-                  } retro-shadow transition-all`}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 font-mono text-[13px] font-bold uppercase border-2 ${theme === 'dark'
+                    ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-[#10B981]'
+                    : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#EFECE3]'
+                    } retro-shadow transition-all`}
                 >
                   <Globe className="w-4 h-4 text-emerald-600" />
                   VIEW UMESH'S PORTFOLIO ↗
@@ -400,9 +395,8 @@ export const LandingPage: React.FC = () => {
 
                 <a
                   href="#guide"
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 font-mono text-[12px] uppercase font-bold hover:underline ${
-                    theme === 'dark' ? 'text-[#10B981]' : 'text-[#15803D]'
-                  }`}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 font-mono text-[12px] uppercase font-bold hover:underline ${theme === 'dark' ? 'text-[#10B981]' : 'text-[#15803D]'
+                    }`}
                 >
                   <BookOpen className="w-4 h-4" />
                   [HOW_TO_USE_GUIDE]
@@ -412,14 +406,12 @@ export const LandingPage: React.FC = () => {
 
             {/* Right 5 Columns: Interactive In-Place Card (Photo First -> Slide in Login) */}
             <div id="hero-auth-card" className="lg:col-span-5 w-full max-w-md mx-auto scroll-mt-24">
-              <div className={`border-2 ${
-                theme === 'dark' ? 'border-[#10B981] bg-[#111520]' : 'border-[#18181B] bg-white'
-              } retro-shadow-lg overflow-hidden transition-all duration-300 font-mono`}>
-                
+              <div className={`border-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#111520]' : 'border-[#18181B] bg-white'
+                } retro-shadow-lg overflow-hidden transition-all duration-300 font-mono`}>
+
                 {/* Titlebar */}
-                <div className={`h-10 border-b-2 ${
-                  theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-emerald-400' : 'border-[#18181B] bg-[#18181B] text-[#F5F3EC]'
-                } px-3 flex items-center justify-between font-bold text-[11px] select-none`}>
+                <div className={`h-10 border-b-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-emerald-400' : 'border-[#18181B] bg-[#18181B] text-[#F5F3EC]'
+                  } px-3 flex items-center justify-between font-bold text-[11px] select-none`}>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 bg-red-500 inline-block border border-black/40" />
                     <span className="w-2 h-2 bg-amber-400 inline-block border border-black/40" />
@@ -448,9 +440,8 @@ export const LandingPage: React.FC = () => {
                         </div>
 
                         {/* Umesh's Photo Frame */}
-                        <div className={`relative border-2 ${
-                          theme === 'dark' ? 'border-[#10B981] bg-[#0B0E14]' : 'border-[#18181B] bg-[#F5F3EC]'
-                        } p-1.5 retro-shadow-sm w-[180px] mx-auto`}>
+                        <div className={`relative border-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#0B0E14]' : 'border-[#18181B] bg-[#F5F3EC]'
+                          } p-1.5 retro-shadow-sm w-[180px] mx-auto`}>
                           <img
                             src="/umesh.jpg"
                             alt="Umesh Temburwar"
@@ -484,11 +475,10 @@ export const LandingPage: React.FC = () => {
                         {user ? (
                           <Link
                             to="/applications"
-                            className={`w-full py-2.5 px-3 border-2 font-black uppercase text-[12px] ${
-                              theme === 'dark'
-                                ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
-                                : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
-                            } retro-shadow transition-all cursor-pointer flex items-center justify-center gap-2`}
+                            className={`w-full py-2.5 px-3 border-2 font-black uppercase text-[12px] ${theme === 'dark'
+                              ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                              : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
+                              } retro-shadow transition-all cursor-pointer flex items-center justify-center gap-2`}
                             data-sound="nav"
                           >
                             <span>ENTER ACTIVE DASHBOARD</span>
@@ -501,11 +491,10 @@ export const LandingPage: React.FC = () => {
                               playRetroSound('slide');
                               setHeroAuthState('login');
                             }}
-                            className={`w-full py-2.5 px-3 border-2 font-black uppercase text-[12px] ${
-                              theme === 'dark'
-                                ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
-                                : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
-                            } retro-shadow transition-all cursor-pointer flex items-center justify-center gap-2`}
+                            className={`w-full py-2.5 px-3 border-2 font-black uppercase text-[12px] ${theme === 'dark'
+                              ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                              : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
+                              } retro-shadow transition-all cursor-pointer flex items-center justify-center gap-2`}
                             data-sound="slide"
                           >
                             <span>SIGN IN TO DASHBOARD</span>
@@ -549,9 +538,8 @@ export const LandingPage: React.FC = () => {
                         </p>
 
                         {/* Admin Notice (Zero Autofill Button) */}
-                        <div className={`mt-3 p-2 border ${
-                          theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-emerald-300' : 'border-[#18181B] bg-[#F5F3EC] text-[#15803D]'
-                        } text-[11px] flex items-center gap-1.5`}>
+                        <div className={`mt-3 p-2 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-emerald-300' : 'border-[#18181B] bg-[#F5F3EC] text-[#15803D]'
+                          } text-[11px] flex items-center gap-1.5`}>
                           <KeyRound className="w-3.5 h-3.5 shrink-0" />
                           <span>Admin: <strong className="underline">umeshtemburwar2002@gmail.com</strong></span>
                         </div>
@@ -576,11 +564,10 @@ export const LandingPage: React.FC = () => {
                               value={loginEmail}
                               onChange={(e) => setLoginEmail(e.target.value)}
                               placeholder="umeshtemburwar2002@gmail.com"
-                              className={`w-full h-9 px-2.5 border-2 text-[12px] ${
-                                theme === 'dark'
-                                  ? 'border-[#2E384D] bg-[#0E121B] text-white focus:border-[#10B981]'
-                                  : 'border-[#18181B] bg-[#FFFFFF] text-black focus:border-[#15803D]'
-                              } outline-none transition-colors font-mono`}
+                              className={`w-full h-9 px-2.5 border-2 text-[12px] ${theme === 'dark'
+                                ? 'border-[#2E384D] bg-[#0E121B] text-white focus:border-[#10B981]'
+                                : 'border-[#18181B] bg-[#FFFFFF] text-black focus:border-[#15803D]'
+                                } outline-none transition-colors font-mono`}
                             />
                           </div>
 
@@ -594,22 +581,20 @@ export const LandingPage: React.FC = () => {
                               value={loginPassword}
                               onChange={(e) => setLoginPassword(e.target.value)}
                               placeholder="••••••••"
-                              className={`w-full h-9 px-2.5 border-2 text-[12px] ${
-                                theme === 'dark'
-                                  ? 'border-[#2E384D] bg-[#0E121B] text-white focus:border-[#10B981]'
-                                  : 'border-[#18181B] bg-[#FFFFFF] text-black focus:border-[#15803D]'
-                              } outline-none transition-colors font-mono`}
+                              className={`w-full h-9 px-2.5 border-2 text-[12px] ${theme === 'dark'
+                                ? 'border-[#2E384D] bg-[#0E121B] text-white focus:border-[#10B981]'
+                                : 'border-[#18181B] bg-[#FFFFFF] text-black focus:border-[#15803D]'
+                                } outline-none transition-colors font-mono`}
                             />
                           </div>
 
                           <button
                             type="submit"
                             disabled={isLoggingIn}
-                            className={`w-full py-2.5 border-2 font-black uppercase text-[12px] ${
-                              theme === 'dark'
-                                ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
-                                : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
-                            } retro-shadow transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5`}
+                            className={`w-full py-2.5 border-2 font-black uppercase text-[12px] ${theme === 'dark'
+                              ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                              : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
+                              } retro-shadow transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5`}
                             data-sound="success"
                           >
                             {isLoggingIn ? (
@@ -644,9 +629,8 @@ export const LandingPage: React.FC = () => {
                 </div>
 
                 {/* Footer Strip */}
-                <div className={`px-4 py-2 border-t-2 ${
-                  theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-[#F5F3EC]'
-                } text-[10px] flex items-center justify-between font-mono`}>
+                <div className={`px-4 py-2 border-t-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-[#F5F3EC]'
+                  } text-[10px] flex items-center justify-between font-mono`}>
                   <span className="font-bold">ENGINEER: UMESH TEMBURWAR</span>
                   <a
                     href="https://umeshtemburwar.vercel.app/"
@@ -698,7 +682,7 @@ export const LandingPage: React.FC = () => {
         */}
         <section id="architect" className="scroll-mt-20">
           <div className={`border-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#111520]' : 'border-[#18181B] bg-white'} retro-shadow-lg`}>
-            
+
             {/* Retro Window Titlebar */}
             <div className={`h-9 border-b-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#141A26] text-[#10B981]' : 'border-[#18181B] bg-[#18181B] text-[#F5F3EC]'} px-4 flex items-center justify-between font-mono text-[12px] font-bold select-none`}>
               <div className="flex items-center gap-2">
@@ -713,7 +697,7 @@ export const LandingPage: React.FC = () => {
             {/* Creator Content Body */}
             <div className="p-6 sm:p-8">
               <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8">
-                
+
                 {/* Photo & Hardware Box */}
                 <div className="flex flex-col items-center shrink-0 w-full sm:w-[250px]">
                   <div className={`relative border-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#0B0E14]' : 'border-[#18181B] bg-[#F5F3EC]'} p-2 retro-shadow`}>
@@ -838,11 +822,10 @@ export const LandingPage: React.FC = () => {
                       href="https://umeshtemburwar.vercel.app/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`inline-flex items-center gap-1.5 px-4 py-2 border-2 ${
-                        theme === 'dark'
-                          ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14]'
-                          : 'border-[#18181B] bg-[#15803D] text-white'
-                      } font-bold uppercase retro-shadow transition-all`}
+                      className={`inline-flex items-center gap-1.5 px-4 py-2 border-2 ${theme === 'dark'
+                        ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14]'
+                        : 'border-[#18181B] bg-[#15803D] text-white'
+                        } font-bold uppercase retro-shadow transition-all`}
                     >
                       <Globe className="w-4 h-4" />
                       VISIT PORTFOLIO [umeshtemburwar.vercel.app] ↗
@@ -852,9 +835,8 @@ export const LandingPage: React.FC = () => {
                       href="https://github.com/Umesh-Temburwar"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 ${
-                        theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
-                      } font-bold retro-shadow transition-all`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
+                        } font-bold retro-shadow transition-all`}
                     >
                       <Code2 className="w-4 h-4 text-emerald-600" />
                       GITHUB
@@ -864,9 +846,8 @@ export const LandingPage: React.FC = () => {
                       href="https://www.linkedin.com/in/umesh-temburwar-673555373/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 ${
-                        theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
-                      } font-bold retro-shadow transition-all`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
+                        } font-bold retro-shadow transition-all`}
                     >
                       <ExternalLink className="w-4 h-4 text-emerald-600" />
                       LINKEDIN
@@ -874,9 +855,8 @@ export const LandingPage: React.FC = () => {
 
                     <a
                       href="mailto:umeshtemburwar2002@gmail.com"
-                      className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 ${
-                        theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
-                      } font-bold retro-shadow transition-all`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
+                        } font-bold retro-shadow transition-all`}
                     >
                       <Mail className="w-4 h-4 text-emerald-600" />
                       EMAIL
@@ -907,33 +887,30 @@ export const LandingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab('terminal')}
-                className={`px-3 py-1 font-bold uppercase transition-colors cursor-pointer ${
-                  activeTab === 'terminal'
-                    ? theme === 'dark' ? 'bg-[#10B981] text-[#0B0E14]' : 'bg-[#18181B] text-white'
-                    : 'text-[#71717A] hover:text-current'
-                }`}
+                className={`px-3 py-1 font-bold uppercase transition-colors cursor-pointer ${activeTab === 'terminal'
+                  ? theme === 'dark' ? 'bg-[#10B981] text-[#0B0E14]' : 'bg-[#18181B] text-white'
+                  : 'text-[#71717A] hover:text-current'
+                  }`}
               >
                 [01_TERMINAL]
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('applications')}
-                className={`px-3 py-1 font-bold uppercase transition-colors cursor-pointer ${
-                  activeTab === 'applications'
-                    ? theme === 'dark' ? 'bg-[#10B981] text-[#0B0E14]' : 'bg-[#18181B] text-white'
-                    : 'text-[#71717A] hover:text-current'
-                }`}
+                className={`px-3 py-1 font-bold uppercase transition-colors cursor-pointer ${activeTab === 'applications'
+                  ? theme === 'dark' ? 'bg-[#10B981] text-[#0B0E14]' : 'bg-[#18181B] text-white'
+                  : 'text-[#71717A] hover:text-current'
+                  }`}
               >
                 [02_LEDGER_7COL]
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('portals')}
-                className={`px-3 py-1 font-bold uppercase transition-colors cursor-pointer ${
-                  activeTab === 'portals'
-                    ? theme === 'dark' ? 'bg-[#10B981] text-[#0B0E14]' : 'bg-[#18181B] text-white'
-                    : 'text-[#71717A] hover:text-current'
-                }`}
+                className={`px-3 py-1 font-bold uppercase transition-colors cursor-pointer ${activeTab === 'portals'
+                  ? theme === 'dark' ? 'bg-[#10B981] text-[#0B0E14]' : 'bg-[#18181B] text-white'
+                  : 'text-[#71717A] hover:text-current'
+                  }`}
               >
                 [03_PORTAL_DRIVERS]
               </button>
@@ -1087,11 +1064,10 @@ export const LandingPage: React.FC = () => {
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2 font-mono text-[13px]">
             <Link
               to="/applications"
-              className={`px-6 py-2.5 font-bold uppercase border-2 ${
-                theme === 'dark'
-                  ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14]'
-                  : 'border-[#18181B] bg-[#15803D] text-white'
-              } retro-shadow transition-all`}
+              className={`px-6 py-2.5 font-bold uppercase border-2 ${theme === 'dark'
+                ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14]'
+                : 'border-[#18181B] bg-[#15803D] text-white'
+                } retro-shadow transition-all`}
             >
               LAUNCH DASHBOARD NOW ↗
             </Link>
@@ -1099,9 +1075,8 @@ export const LandingPage: React.FC = () => {
               href="https://umeshtemburwar.vercel.app/"
               target="_blank"
               rel="noopener noreferrer"
-              className={`px-5 py-2.5 font-bold uppercase border-2 ${
-                theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
-              } retro-shadow transition-all`}
+              className={`px-5 py-2.5 font-bold uppercase border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
+                } retro-shadow transition-all`}
             >
               VISIT UMESH'S PORTFOLIO ↗
             </a>
@@ -1130,9 +1105,8 @@ export const LandingPage: React.FC = () => {
 
             <Link
               to="/guide"
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 font-mono text-[12px] font-bold uppercase border-2 ${
-                theme === 'dark' ? 'border-[#10B981] bg-[#141A26] text-[#10B981]' : 'border-[#18181B] bg-[#F5F3EC] text-[#15803D]'
-              } retro-shadow-sm hover:underline`}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 font-mono text-[12px] font-bold uppercase border-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#141A26] text-[#10B981]' : 'border-[#18181B] bg-[#F5F3EC] text-[#15803D]'
+                } retro-shadow-sm hover:underline`}
             >
               [FULL_GUIDE_DOCS ↗]
             </Link>
@@ -1245,7 +1219,7 @@ export const LandingPage: React.FC = () => {
         </div>
       </footer>
 
-    
-            </div>
+
+    </div>
   );
 };

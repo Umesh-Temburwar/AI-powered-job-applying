@@ -50,7 +50,7 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'retro-grid-dark bg-[#0B0E14] text-[#F4F4F5]' : 'retro-grid-light bg-[#F5F3EC] text-[#09090B]'} flex flex-col items-center justify-center p-4 font-sans transition-colors duration-150`}>
-      
+
       {/* Return to home link */}
       <div className="w-full max-w-md mb-4 flex items-center justify-between font-mono text-[12px]">
         <Link
@@ -73,7 +73,7 @@ export const LoginPage: React.FC = () => {
 
       {/* Main Retro Auth Window */}
       <div className={`w-full max-w-md border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#111520]' : 'border-[#18181B] bg-white'} retro-shadow-lg`}>
-        
+
         {/* Retro Window Titlebar */}
         <div className={`h-9 border-b-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-emerald-400' : 'border-[#18181B] bg-[#18181B] text-[#F5F3EC]'} px-4 flex items-center justify-between font-mono text-[12px] font-bold select-none`}>
           <div className="flex items-center gap-2">
@@ -156,11 +156,10 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full py-2.5 font-mono text-[13px] font-bold uppercase border-2 ${
-                theme === 'dark'
-                  ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
-                  : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
-              } retro-shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50`}
+              className={`w-full py-2.5 font-mono text-[13px] font-bold uppercase border-2 ${theme === 'dark'
+                ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
+                } retro-shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50`}
             >
               {isLoading ? 'VERIFYING CREDENTIALS...' : 'SIGN IN TO DASHBOARD'}
               <ArrowRight className="w-4 h-4" />
@@ -170,9 +169,8 @@ export const LoginPage: React.FC = () => {
               type="button"
               onClick={handleGithubLogin}
               disabled={isLoading || isGithubLoading}
-              className={`w-full py-2 font-mono text-[12px] font-bold uppercase border-2 ${
-                theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-emerald-500' : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#F5F3EC]'
-              } retro-shadow-sm transition-all cursor-pointer`}
+              className={`w-full py-2 font-mono text-[12px] font-bold uppercase border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-emerald-500' : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#F5F3EC]'
+                } retro-shadow-sm transition-all cursor-pointer`}
             >
               {isGithubLoading ? 'CONNECTING GITHUB...' : 'CONTINUE WITH GITHUB'}
             </button>
