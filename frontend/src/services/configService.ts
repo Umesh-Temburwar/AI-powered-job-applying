@@ -20,6 +20,9 @@ export interface BotEnvConfig {
   notice_period?: string;
   work_mode?: string;
   willing_to_relocate?: string;
+  work_authorization?: string;
+  is_fresher?: boolean;
+  selected_platforms?: string[];
   education_degree?: string;
   education_college?: string;
   education_passing_year?: string;

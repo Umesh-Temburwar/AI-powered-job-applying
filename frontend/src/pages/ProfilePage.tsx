@@ -34,7 +34,7 @@ import {
   ProgressBar,
   ConfirmDialog,
 } from '../components/ui';
-import type { EducationItem, ExperienceItem, ProjectItem, CertificationItem } from '../types';
+import type { EducationItem, ExperienceItem, ProjectItem, CertificationItem, PlatformName } from '../types';
 
 const SUGGESTED_ROLES = [
   'Full Stack Developer',
@@ -139,7 +139,7 @@ export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { startTask } = useTasks();
   const { profile, loading: profileLoading, updateProfile, autofillProfile } = useProfile();
-  const { preferences, updatePreferences } = usePreferences();
+  const { preferences, updatePreferences, suggestRoles } = usePreferences();
   const {
     resumes,
     uploadResume: uploadSbResume,
@@ -211,6 +211,10 @@ export const ProfilePage: React.FC = () => {
   const [workMode, setWorkMode] = useState('Remote / Hybrid');
   const [willingToRelocate, setWillingToRelocate] = useState('Yes');
   const [coverLetter, setCoverLetter] = useState('');
+  const [workAuthorization, setWorkAuthorization] = useState('Authorized to work in India');
+  const [isFresher, setIsFresher] = useState(false);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformName[]>(['Naukri', 'Internshala', 'Indeed', 'LinkedIn']);
+  const [suggestingRoles, setSuggestingRoles] = useState(false);
 
   // 3. Primary Academic Qualifications (Screening Sync)
   const [educationDegree, setEducationDegree] = useState('');
@@ -280,6 +284,17 @@ export const ProfilePage: React.FC = () => {
         if (cfg.notice_period) setNoticePeriod(cfg.notice_period);
         if (cfg.work_mode) setWorkMode(cfg.work_mode);
         if (cfg.willing_to_relocate) setWillingToRelocate(cfg.willing_to_relocate);
+        if (cfg.work_authorization) setWorkAuthorization(cfg.work_authorization);
+        if (typeof cfg.is_fresher === 'boolean') {
+          setIsFresher(cfg.is_fresher);
+          if (cfg.is_fresher) {
+            setTotalExperience('0');
+            setRelevantExperience('0');
+          }
+        }
+        if (cfg.selected_platforms && Array.isArray(cfg.selected_platforms)) {
+          setSelectedPlatforms(cfg.selected_platforms as PlatformName[]);
+        }
         if (cfg.education_degree) setEducationDegree(cfg.education_degree);
         if (cfg.education_college) setEducationCollege(cfg.education_college);
         if (cfg.education_passing_year) setEducationPassingYear(cfg.education_passing_year);
@@ -348,6 +363,18 @@ export const ProfilePage: React.FC = () => {
       if (profile.experience && profile.experience.length > 0) setExperience(profile.experience);
       if (profile.projects && profile.projects.length > 0) setProjects(profile.projects);
       if (profile.certifications && profile.certifications.length > 0) setCertifications(profile.certifications);
+      if (profile.additionalInfo) {
+        if (profile.additionalInfo.work_authorization) {
+          setWorkAuthorization(profile.additionalInfo.work_authorization);
+        }
+        if (typeof profile.additionalInfo.is_fresher === 'boolean') {
+          setIsFresher(profile.additionalInfo.is_fresher);
+          if (profile.additionalInfo.is_fresher) {
+            setTotalExperience('0');
+            setRelevantExperience('0');
+          }
+        }
+      }
       if (profile.linkedinUrl && !linkedinUrl) setLinkedinUrl(profile.linkedinUrl);
       if (profile.githubUrl && !githubUrl) setGithubUrl(profile.githubUrl);
       if (profile.portfolioUrl && !portfolioUrl) setPortfolioUrl(profile.portfolioUrl);
@@ -363,8 +390,43 @@ export const ProfilePage: React.FC = () => {
       if (preferences.targetLocations && preferences.targetLocations.length > 0 && locationList.length === 0) {
         setLocationList(preferences.targetLocations);
       }
+      if (preferences.selectedPlatforms && preferences.selectedPlatforms.length > 0) {
+        setSelectedPlatforms(preferences.selectedPlatforms);
+      }
     }
   }, [preferences]);
+
+  const handleFresherToggle = (checked: boolean) => {
+    setIsFresher(checked);
+    setIsDirty(true);
+    if (checked) {
+      setTotalExperience('0');
+      setRelevantExperience('0');
+    } else if (totalExperience === '0') {
+      setTotalExperience('1');
+      setRelevantExperience('1');
+    }
+  };
+
+  const handleSuggestRoles = async () => {
+    try {
+      setSuggestingRoles(true);
+      playRetroSound('click');
+      const recs = await suggestRoles(skills);
+      if (recs && recs.length > 0) {
+        setKeywordList((prev) => Array.from(new Set([...prev, ...recs])));
+        setIsDirty(true);
+        playRetroSound('success');
+        showToast(`✨ Added ${recs.length} AI suggested role keywords from your skills!`, 'success');
+      } else {
+        showToast('Add more technical skills to receive AI role recommendations.', 'info');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to suggest roles', 'error');
+    } finally {
+      setSuggestingRoles(false);
+    }
+  };
 
   // Tag chip add / remove helpers
   const handleAddKeyword = (val?: string) => {
@@ -666,6 +728,9 @@ export const ProfilePage: React.FC = () => {
       setNoticePeriod('Immediate (0 Days)');
       setWorkMode('Remote / Hybrid');
       setWillingToRelocate('Yes');
+      setWorkAuthorization('Authorized to work in India');
+      setIsFresher(false);
+      setSelectedPlatforms(['Naukri', 'Internshala', 'Indeed', 'LinkedIn']);
       setCoverLetter('');
       setEducationDegree('');
       setEducationCollege('');
@@ -962,10 +1027,10 @@ export const ProfilePage: React.FC = () => {
           projects,
           certifications,
           additionalInfo: {
-            is_fresher: totalExperience === '0' || totalExperience.includes('Fresher'),
+            is_fresher: isFresher,
             notice_period_days: parseInt(noticePeriod, 10) || 15,
             willing_to_relocate: willingToRelocate === 'Yes',
-            work_authorization: 'Authorized to work in India',
+            work_authorization: workAuthorization,
           },
         });
       } catch (sbErr) {
@@ -977,6 +1042,8 @@ export const ProfilePage: React.FC = () => {
         await updatePreferences({
           targetTitles: safeKeywords,
           targetLocations: safeLocations,
+          selectedPlatforms,
+          dailyApplicationLimit: maxApplications,
         });
       } catch (prefErr) {
         console.warn('Preferences update warning:', prefErr);
@@ -996,6 +1063,9 @@ export const ProfilePage: React.FC = () => {
         notice_period: noticePeriod,
         work_mode: workMode,
         willing_to_relocate: willingToRelocate,
+        work_authorization: workAuthorization,
+        is_fresher: isFresher,
+        selected_platforms: selectedPlatforms,
         education_degree: educationDegree,
         education_college: educationCollege.trim(),
         education_passing_year: educationPassingYear,
@@ -1592,12 +1662,34 @@ export const ProfilePage: React.FC = () => {
           <span className="text-[11px] text-[var(--text-secondary)] font-mono">Used in Auto-Form Filling</span>
         </div>
 
+        {/* Fresher Mode Toggle Banner */}
+        <div className="p-3.5 border-2 border-[var(--border-color)] bg-[var(--bg-base)] flex items-start gap-3">
+          <input
+            type="checkbox"
+            id="fresherToggle"
+            checked={isFresher}
+            onChange={(e) => handleFresherToggle(e.target.checked)}
+            className="w-4 h-4 mt-0.5 accent-emerald-500 rounded cursor-pointer"
+          />
+          <div className="flex-1">
+            <label htmlFor="fresherToggle" className="text-xs font-bold text-[var(--text-primary)] font-mono cursor-pointer flex items-center gap-2">
+              I am a Fresher / Looking for Entry-Level Roles
+              {isFresher && <Badge variant="success" size="sm">FRESHER MODE ACTIVE</Badge>}
+            </label>
+            <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+              Enabling Fresher mode configures job screening questions for 0 years experience and highlights academic projects instead.
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <Select
             label="Total Experience"
             value={totalExperience}
             onChange={(e) => {
-              setTotalExperience(e.target.value);
+              const val = e.target.value;
+              setTotalExperience(val);
+              setIsFresher(val === '0');
               setIsDirty(true);
             }}
             options={[
@@ -1644,7 +1736,7 @@ export const ProfilePage: React.FC = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-1">
           <Select
             label="Notice Period"
             value={noticePeriod}
@@ -1684,6 +1776,16 @@ export const ProfilePage: React.FC = () => {
               { value: 'Yes', label: 'Yes, Open to Relocation' },
               { value: 'No', label: 'No, Prefer Current City' },
             ]}
+          />
+          <Input
+            label="Work Authorization"
+            value={workAuthorization}
+            onChange={(e) => {
+              setWorkAuthorization(e.target.value);
+              setIsDirty(true);
+            }}
+            placeholder="e.g. Authorized to work in India"
+            helperText="Legal employment status for portal screening"
           />
         </div>
 
@@ -1812,9 +1914,20 @@ export const ProfilePage: React.FC = () => {
 
         {/* Roles Chips */}
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-[var(--text-primary)] font-mono uppercase">
-            Job Search Roles / Keywords (KEYWORDS) *
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-[var(--text-primary)] font-mono uppercase">
+              Job Search Roles / Keywords (KEYWORDS) * ({keywordList.length})
+            </label>
+            <button
+              type="button"
+              onClick={handleSuggestRoles}
+              disabled={suggestingRoles}
+              className="text-xs text-[var(--accent)] hover:underline inline-flex items-center gap-1 font-semibold cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              {suggestingRoles ? 'Suggesting...' : '✨ Suggest Roles From Skills'}
+            </button>
+          </div>
           <div className="flex flex-wrap gap-1.5 min-h-9 p-3 border-2 border-[var(--border-color)] bg-[var(--bg-base)]">
             {keywordList.map((kw) => (
               <span
@@ -1940,6 +2053,32 @@ export const ProfilePage: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* Target Job Platforms */}
+        <div className="space-y-2 pt-3 border-t border-[var(--border-color)]">
+          <label className="block text-xs font-bold text-[var(--text-primary)] font-mono uppercase">
+            Target Job Platforms for Automation ({selectedPlatforms.length})
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 border-2 border-[var(--border-color)] bg-[var(--bg-base)]">
+            {(['Naukri', 'Internshala', 'Indeed', 'LinkedIn'] as PlatformName[]).map((p) => (
+              <label key={p} className="flex items-center gap-2 text-xs font-mono font-medium text-[var(--text-primary)] cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={selectedPlatforms.includes(p)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setSelectedPlatforms((prev) =>
+                      checked ? [...prev, p] : prev.filter((item) => item !== p)
+                    );
+                    setIsDirty(true);
+                  }}
+                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                />
+                <span>{p}</span>
+              </label>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* SECTION 6: TECHNICAL SKILLS */}
@@ -2027,7 +2166,17 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* Experience Items */}
-        {experience.length > 0 ? (
+        {isFresher ? (
+          <div className="p-3.5 border-2 border-dashed border-emerald-500/40 bg-emerald-950/15 space-y-1">
+            <div className="flex items-center gap-2">
+              <Badge variant="success" size="sm">FRESHER CANDIDATE</Badge>
+              <span className="text-xs font-bold text-emerald-400 font-mono">0 Years Corporate Experience</span>
+            </div>
+            <p className="text-[11px] text-[var(--text-secondary)]">
+              Bot screening engines will submit answers as a Fresher and emphasize your technical projects and skill proficiency.
+            </p>
+          </div>
+        ) : experience.length > 0 ? (
           <div className="space-y-3">
             <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase font-mono">
               Employment History ({experience.length})
@@ -2054,17 +2203,25 @@ export const ProfilePage: React.FC = () => {
             ))}
           </div>
         ) : (
-          <p className="text-xs text-[var(--text-secondary)] italic">
-            No corporate experience documented (Tagged as Fresher).
-          </p>
+          <div className="p-3.5 border-2 border-dashed border-[var(--border-color)] bg-[var(--bg-base)] text-xs text-[var(--text-secondary)] flex items-center justify-between">
+            <span>No corporate employment roles documented.</span>
+            <Button size="sm" variant="outline" onClick={() => setExpModalOpen(true)} leftIcon={<Plus className="w-3 h-3" />}>
+              Add Experience
+            </Button>
+          </div>
         )}
 
         {/* Projects Items */}
-        {projects.length > 0 && (
-          <div className="space-y-3 pt-3 border-t border-[var(--border-color)]">
+        <div className="space-y-3 pt-3 border-t border-[var(--border-color)]">
+          <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase font-mono">
               Technical Projects ({projects.length})
             </span>
+            <Button size="sm" variant="outline" onClick={() => setProjectModalOpen(true)} leftIcon={<Plus className="w-3 h-3" />}>
+              Add Project
+            </Button>
+          </div>
+          {projects.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {projects.map((proj) => (
                 <div
@@ -2095,15 +2252,24 @@ export const ProfilePage: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="p-3 border-2 border-dashed border-[var(--border-color)] bg-[var(--bg-base)] text-xs text-[var(--text-secondary)] text-center">
+              No technical projects documented yet. Click + Add Project to showcase your portfolio.
+            </div>
+          )}
+        </div>
 
         {/* Certifications Items */}
-        {certifications.length > 0 && (
-          <div className="space-y-3 pt-3 border-t border-[var(--border-color)]">
+        <div className="space-y-3 pt-3 border-t border-[var(--border-color)]">
+          <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase font-mono">
               Credentials & Certifications ({certifications.length})
             </span>
+            <Button size="sm" variant="outline" onClick={() => setCertModalOpen(true)} leftIcon={<Award className="w-3 h-3" />}>
+              Add Credential
+            </Button>
+          </div>
+          {certifications.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {certifications.map((c) => (
                 <div
@@ -2130,8 +2296,12 @@ export const ProfilePage: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="p-3 border-2 border-dashed border-[var(--border-color)] bg-[var(--bg-base)] text-xs text-[var(--text-secondary)] text-center">
+              No credentials documented yet. Click + Add Credential to document AWS, Microsoft, or Google certifications.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* SECTION 8: PROFESSIONAL LINKS */}

@@ -178,6 +178,9 @@ def get_full_configuration() -> dict[str, Any]:
         "notice_period": env.get("NOTICE_PERIOD") or personal.get("notice_period", "Immediate (0 Days)"),
         "work_mode": env.get("WORK_MODE") or personal.get("work_mode", "Remote / Hybrid"),
         "willing_to_relocate": env.get("WILLING_TO_RELOCATE") or personal.get("willing_to_relocate", "Yes"),
+        "work_authorization": env.get("WORK_AUTHORIZATION") or personal.get("work_authorization", "Authorized to work in India"),
+        "is_fresher": env.get("IS_FRESHER", "").lower() in ("true", "1", "yes") or personal.get("is_fresher", False),
+        "selected_platforms": prof.get("selected_platforms") or ["Naukri", "Internshala", "Indeed", "LinkedIn"],
         # Highest Education Details
         "education_degree": env.get("EDUCATION_DEGREE") or edu.get("degree", "Bachelor of Technology (B.Tech)"),
         "education_college": env.get("EDUCATION_COLLEGE") or edu.get("institution") or edu.get("college", ""),
@@ -600,6 +603,8 @@ def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = Non
         "NOTICE_PERIOD": notice,
         "WORK_MODE": work_mode,
         "WILLING_TO_RELOCATE": relocate,
+        "WORK_AUTHORIZATION": str(config.get("work_authorization") or "Authorized to work in India").strip(),
+        "IS_FRESHER": "true" if config.get("is_fresher") or str(config.get("total_experience_years")) in ("0", "Fresher (0 Years)") else "false",
         "GENDER": gender,
         "EDUCATION_DEGREE": degree,
         "EDUCATION_COLLEGE": college,
@@ -686,6 +691,8 @@ def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = Non
         "work_mode": work_mode or prof_json["personal"].get("work_mode", "Remote / Hybrid"),
         "willing_to_relocate": relocate or prof_json["personal"].get("willing_to_relocate", "Yes"),
         "gender": gender or prof_json["personal"].get("gender", "Male"),
+        "work_authorization": str(config.get("work_authorization") or prof_json["personal"].get("work_authorization", "Authorized to work in India")),
+        "is_fresher": bool(config.get("is_fresher", prof_json["personal"].get("is_fresher", False))),
         "linkedin_url": linkedin or prof_json["personal"].get("linkedin_url", ""),
         "github_url": github or prof_json["personal"].get("github_url", ""),
         "portfolio_url": portfolio or prof_json["personal"].get("portfolio_url", ""),
@@ -705,6 +712,8 @@ def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = Non
         "score": score or edu_obj.get("score", ""),
     })
     prof_json["education"] = edu_obj
+    if "selected_platforms" in config and isinstance(config["selected_platforms"], list):
+        prof_json["selected_platforms"] = config["selected_platforms"]
     if cover_letter:
         prof_json["cover_letter"] = cover_letter
 
