@@ -14,6 +14,7 @@ from services.resume_service import (
     list_user_resumes,
     set_primary_resume,
     upload_and_parse_resume,
+    stream_user_resume_file,
 )
 
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
@@ -97,3 +98,17 @@ async def get_download_url(
 ) -> ResumeDownloadResponse:
     """Return short-lived signed access URL."""
     return await get_resume_download_url(user_id=current_user.id, resume_id=resume_id)
+
+
+
+@router.get(
+    "/{resume_id}/file",
+    summary="Stream resume file inline",
+    description="Serve candidate resume file inline by ID for viewing.",
+)
+async def stream_resume_file_endpoint(
+    resume_id: str,
+    current_user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+):
+    """Return resume file content with inline disposition for PDF viewing."""
+    return await stream_user_resume_file(user_id=current_user.id, resume_id=resume_id)

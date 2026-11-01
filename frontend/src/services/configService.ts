@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, getBaseApiUrl } from './api';
 import { supabase } from '../lib/supabaseClient';
 
 export interface BotEnvConfig {
@@ -138,6 +138,21 @@ export const configService = {
       method: 'POST',
       headers,
     });
+  },
+
+  getResumeFileUrl(): string {
+    const base = getBaseApiUrl();
+    return `${base}/api/v1/config/resume/file`;
+  },
+
+  async getResumeBlob(url?: string): Promise<Blob> {
+    const headers = await getAuthHeader();
+    const target = url || this.getResumeFileUrl();
+    const res = await fetch(target, { headers });
+    if (!res.ok) {
+      throw new Error(`Failed to load resume document (${res.status} ${res.statusText})`);
+    }
+    return res.blob();
   },
 };
 

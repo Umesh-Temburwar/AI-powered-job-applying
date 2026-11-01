@@ -14,6 +14,7 @@ import {
   Play,
   Eye,
   EyeOff,
+  ExternalLink,
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { usePreferences } from '../hooks/usePreferences';
@@ -154,6 +155,10 @@ export const ProfilePage: React.FC = () => {
   const [dragOver, setDragOver] = useState(false);
   const [deleteResumeModalOpen, setDeleteResumeModalOpen] = useState(false);
   const [deletingResume, setDeletingResume] = useState(false);
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfFileName, setPdfFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [botConfigLoading, setBotConfigLoading] = useState(true);
@@ -777,14 +782,66 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleDownloadResume = async (resumeId: string) => {
+  const handleViewResume = async () => {
+    if (!activeResume) return;
     try {
-      const url = await getDownloadUrl(resumeId);
-      if (url) {
-        window.open(url, '_blank');
-      } else {
-        showToast('Download URL could not be generated', 'error');
+      setPdfLoading(true);
+      setPdfModalOpen(true);
+      setPdfFileName(activeResume.fileName);
+      playRetroSound('click');
+
+      let downloadUrl: string | undefined = undefined;
+      if (activeSbResume?.id) {
+        try {
+          const sbUrl = await getDownloadUrl(activeSbResume.id);
+          if (sbUrl) downloadUrl = sbUrl;
+        } catch {
+          // fallback to local endpoint
+        }
       }
+
+      const blob = await configService.getResumeBlob(downloadUrl);
+      const objUrl = URL.createObjectURL(blob);
+      setPdfBlobUrl(objUrl);
+    } catch (err: any) {
+      showToast(err?.message || 'Could not load resume document for preview', 'error');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleClosePdfModal = () => {
+    setPdfModalOpen(false);
+    if (pdfBlobUrl) {
+      URL.revokeObjectURL(pdfBlobUrl);
+      setPdfBlobUrl(null);
+    }
+  };
+
+  const handleDownloadActiveResume = async () => {
+    if (!activeResume) return;
+    try {
+      playRetroSound('click');
+      let targetUrl: string | null = null;
+      if (activeSbResume?.id) {
+        try {
+          targetUrl = await getDownloadUrl(activeSbResume.id);
+        } catch {
+          // fallback
+        }
+      }
+      if (!targetUrl) {
+        targetUrl = configService.getResumeFileUrl();
+      }
+
+      const a = document.createElement('a');
+      a.href = targetUrl;
+      a.download = activeResume.fileName;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast(`Downloading "${activeResume.fileName}"...`, 'info');
     } catch (err: any) {
       showToast(err?.message || 'Failed to download resume', 'error');
     }
@@ -1048,6 +1105,18 @@ export const ProfilePage: React.FC = () => {
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleViewResume}
+                  leftIcon={<Eye className="w-3.5 h-3.5" />}
+                  className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold retro-shadow-sm"
+                  title="View / Preview uploaded PDF resume"
+                >
+                  View PDF
+                </Button>
+
+                <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleAutofillFromResume}
@@ -1059,19 +1128,17 @@ export const ProfilePage: React.FC = () => {
                   {autofilling ? 'Autofilling...' : 'Autofill Fields'}
                 </Button>
 
-                {activeResume.id && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadResume(activeResume.id!)}
-                    leftIcon={<Download className="w-3.5 h-3.5" />}
-                    className="text-xs border-[var(--border-color)]"
-                    title="Download attached resume"
-                  >
-                    Download
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadActiveResume}
+                  leftIcon={<Download className="w-3.5 h-3.5" />}
+                  className="text-xs border-[var(--border-color)]"
+                  title="Download attached resume"
+                >
+                  Download
+                </Button>
 
                 <Button
                   type="button"
@@ -2445,6 +2512,90 @@ export const ProfilePage: React.FC = () => {
       </Modal>
 
       
+      {/* View PDF / Document Preview Modal */}
+      <Modal
+        isOpen={pdfModalOpen}
+        onClose={handleClosePdfModal}
+        maxWidth="4xl"
+        title={
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4 text-emerald-400" />
+            <span className="truncate max-w-md">Resume Document Viewer: {pdfFileName}</span>
+          </div>
+        }
+        footer={
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-2">
+            <span className="text-[11px] text-[var(--text-secondary)] font-mono">
+              💡 Use browser toolbar inside preview to zoom, print, or navigate pages.
+            </span>
+            <div className="flex items-center gap-2">
+              {pdfBlobUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(pdfBlobUrl, '_blank')}
+                  leftIcon={<ExternalLink className="w-3.5 h-3.5" />}
+                >
+                  Open in New Tab
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleClosePdfModal}
+              >
+                Close Viewer
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-3 font-mono">
+          {pdfLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 space-y-3">
+              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-[var(--text-secondary)]">Loading resume PDF preview...</p>
+            </div>
+          ) : pdfBlobUrl ? (
+            pdfFileName.toLowerCase().endsWith('.docx') ? (
+              <div className="p-8 text-center border-2 border-dashed border-[var(--border-color)] bg-[var(--bg-card)] space-y-4">
+                <FileText className="w-12 h-12 text-blue-400 mx-auto" />
+                <div>
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] uppercase">Microsoft Word Document (.docx)</h4>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-md mx-auto">
+                    Web browsers cannot render .docx files inline like PDFs. You can download the document to view it in Word or Google Docs.
+                  </p>
+                </div>
+                <div className="flex justify-center gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleDownloadActiveResume}
+                    leftIcon={<Download className="w-4 h-4" />}
+                  >
+                    Download .docx File
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full h-[72vh] min-h-[520px] bg-zinc-800 rounded-xs overflow-hidden border-2 border-[var(--border-color)]">
+                <iframe
+                  src={`${pdfBlobUrl}#toolbar=1`}
+                  className="w-full h-full border-0 bg-white"
+                  title="Resume PDF Viewer"
+                />
+              </div>
+            )
+          ) : (
+            <div className="p-8 text-center text-xs text-[var(--text-secondary)]">
+              Could not display document preview. Click download to view the file locally.
+            </div>
+          )}
+        </div>
+      </Modal>
+
       {/* Delete Resume Confirmation Dialog */}
       <ConfirmDialog
         isOpen={deleteResumeModalOpen}

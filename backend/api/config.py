@@ -13,6 +13,7 @@ from services.config_service import (
     save_user_configuration,
     delete_user_resume_file,
     reset_all_candidate_data,
+    get_active_resume_file_response,
 )
 from services.resume_service import validate_resume_file
 
@@ -93,6 +94,26 @@ async def upload_resume_and_autofill(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Failed to process and extract details from resume: {exc}",
+        )
+
+@router.get(
+    "/resume/file",
+    summary="View active candidate resume file",
+    description="Stream the active candidate resume file (PDF, DOCX, TXT) inline for in-browser PDF viewing.",
+)
+async def get_active_resume_file(
+    user: Annotated[AuthenticatedUser, Depends(get_optional_user)],
+):
+    """Serve active candidate resume file inline with PDF/document viewing headers."""
+    try:
+        return get_active_resume_file_response(user_id=user.id if user else None)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Error retrieving active resume file: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load resume file: {exc}",
         )
 
 @router.delete(

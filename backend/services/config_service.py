@@ -57,9 +57,92 @@ def get_latest_resume_info() -> tuple[Optional[str], Optional[str]]:
     """Return (resume_filename, resume_filepath) from data/resumes/ if found."""
     if os.path.exists(RESUMES_DIR):
         for f in os.listdir(RESUMES_DIR):
-            if f.lower().endswith((".pdf", ".docx")):
+            if f.lower().endswith((".pdf", ".docx", ".txt")):
                 return f, os.path.join(RESUMES_DIR, f)
+    # Check .env RESUME_PATH fallback
+    env = get_current_env_dict()
+    env_path = env.get("RESUME_PATH")
+    if env_path and os.path.exists(env_path):
+        return os.path.basename(env_path), env_path
     return None, None
+
+
+def get_active_resume_file_response(user_id: Optional[str] = None):
+    """Serve active candidate resume file with inline disposition for in-browser PDF viewing."""
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse, Response, RedirectResponse
+
+    # 1. Local disk in data/resumes/ or .env RESUME_PATH
+    r_name, r_path = get_latest_resume_info()
+    if r_path and os.path.exists(r_path):
+        clean_name = r_name or os.path.basename(r_path)
+        ext = clean_name.lower()
+        if ext.endswith(".pdf"):
+            media_type = "application/pdf"
+        elif ext.endswith(".docx"):
+            media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        elif ext.endswith(".txt"):
+            media_type = "text/plain"
+        else:
+            media_type = "application/octet-stream"
+
+        return FileResponse(
+            path=r_path,
+            media_type=media_type,
+            filename=clean_name,
+            headers={
+                "Content-Disposition": f'inline; filename="{clean_name}"',
+                "Cache-Control": "public, max-age=3600",
+            },
+        )
+
+    # 2. Supabase storage lookup
+    client = get_supabase_client()
+    if client:
+        try:
+            query = client.table("resumes").select("storage_path, file_name, mime_type")
+            if user_id and not user_id.startswith("usr_"):
+                query = query.eq("user_id", user_id)
+            res = query.eq("is_default", True).limit(1).execute()
+            if not res.data:
+                res = query.order("created_at", desc=True).limit(1).execute()
+            if res.data:
+                storage_path = res.data[0]["storage_path"]
+                file_name = res.data[0]["file_name"]
+                mime_type = res.data[0].get("mime_type") or "application/pdf"
+                try:
+                    file_bytes = client.storage.from_("resumes").download(storage_path)
+                    return Response(
+                        content=file_bytes,
+                        media_type=mime_type,
+                        headers={
+                            "Content-Disposition": f'inline; filename="{file_name}"',
+                            "Cache-Control": "public, max-age=3600",
+                        },
+                    )
+                except Exception:
+                    signed = client.storage.from_("resumes").create_signed_url(storage_path, 3600)
+                    signed_url = signed.get("signedUrl") or signed.get("signedURL")
+                    if signed_url:
+                        return RedirectResponse(url=signed_url)
+        except Exception as sup_err:
+            logger.debug("Could not retrieve resume from Supabase: %s", sup_err)
+
+    # 3. Check in-memory store for tests
+    try:
+        from services.resume_service import _MEMORY_RESUMES
+        for r in _MEMORY_RESUMES.values():
+            if not user_id or r.get("user_id") == user_id:
+                file_bytes = r.get("file_bytes", b"%PDF-1.4 test dummy resume")
+                return Response(
+                    content=file_bytes,
+                    media_type=r.get("mime_type") or "application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="{r["file_name"]}"'},
+                )
+    except Exception:
+        pass
+
+    raise HTTPException(status_code=404, detail="No active resume file found. Please upload a resume first.")
 
 
 def get_full_configuration() -> dict[str, Any]:

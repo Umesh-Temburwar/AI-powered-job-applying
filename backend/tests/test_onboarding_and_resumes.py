@@ -317,3 +317,27 @@ def test_preferences_suggestions_from_skills(test_client: TestClient):
     data = res.json()
     assert "Frontend Developer" in data["suggested_titles"]
     assert "React" in data["suggested_keywords"]
+
+
+def test_view_resume_inline_endpoints(test_client: TestClient):
+    """Verify resume file can be streamed inline for in-browser PDF viewing."""
+    headers = {"Authorization": "Bearer test-token-viewer"}
+    pdf_content = _make_dummy_pdf()
+
+    files = {"file": ("my_resume.pdf", pdf_content, "application/pdf")}
+    upload_res = test_client.post("/api/v1/resumes/upload", headers=headers, files=files)
+    assert upload_res.status_code == 201
+    resume_id = upload_res.json()["resume"]["id"]
+
+    # 1. Stream by resume_id
+    file_res = test_client.get(f"/api/v1/resumes/{resume_id}/file", headers=headers)
+    assert file_res.status_code == 200
+    assert "inline" in file_res.headers.get("content-disposition", "")
+    assert "application/pdf" in file_res.headers.get("content-type", "")
+    assert len(file_res.content) > 0
+
+    # 2. Stream active config resume
+    cfg_file_res = test_client.get("/api/v1/config/resume/file", headers=headers)
+    assert cfg_file_res.status_code == 200
+    assert "inline" in cfg_file_res.headers.get("content-disposition", "")
+    assert "application/pdf" in cfg_file_res.headers.get("content-type", "")

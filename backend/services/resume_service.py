@@ -149,6 +149,7 @@ async def upload_and_parse_resume(
         "ocr_needed": ocr_needed,
         "created_at": now_iso,
         "updated_at": now_iso,
+        "file_bytes": file_bytes,
     }
 
     if client:
@@ -362,5 +363,43 @@ async def get_resume_download_url(user_id: str, resume_id: str) -> ResumeDownloa
                 download_url=f"/api/v1/resumes/{resume_id}/file",
                 expires_in_seconds=900,
                 file_name=_MEMORY_RESUMES[resume_id]["file_name"],
+            )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
+
+
+
+async def stream_user_resume_file(user_id: str, resume_id: str):
+    """Retrieve and stream resume file inline for viewing."""
+    from fastapi.responses import Response, RedirectResponse
+
+    client = _get_supabase_client() if not user_id.startswith("usr_") else None
+    if client:
+        res = client.table("resumes").select("storage_path, file_name, mime_type").eq("id", resume_id).eq("user_id", user_id).limit(1).execute()
+        if not res.data:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found or access denied.")
+        storage_path = res.data[0]["storage_path"]
+        file_name = res.data[0]["file_name"]
+        mime_type = res.data[0].get("mime_type") or "application/pdf"
+        try:
+            file_bytes = client.storage.from_("resumes").download(storage_path)
+            return Response(
+                content=file_bytes,
+                media_type=mime_type,
+                headers={"Content-Disposition": f'inline; filename="{file_name}"'},
+            )
+        except Exception:
+            signed = client.storage.from_("resumes").create_signed_url(storage_path, 3600)
+            url = signed.get("signedUrl") or signed.get("signedURL")
+            if url:
+                return RedirectResponse(url=url)
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not retrieve resume file from storage.")
+    else:
+        if resume_id in _MEMORY_RESUMES and _MEMORY_RESUMES[resume_id]["user_id"] == user_id:
+            record = _MEMORY_RESUMES[resume_id]
+            file_bytes = record.get("file_bytes", b"%PDF-1.4 dummy resume")
+            return Response(
+                content=file_bytes,
+                media_type=record.get("mime_type") or "application/pdf",
+                headers={"Content-Disposition": f'inline; filename="{record["file_name"]}"'},
             )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found.")
