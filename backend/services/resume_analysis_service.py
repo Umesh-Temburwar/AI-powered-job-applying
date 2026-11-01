@@ -497,3 +497,4 @@ async def delete_user_resume_analysis(user_id: str, analysis_id: str) -> bool:
             del _MEMORY_ANALYSES[analysis_id]
             return True
         return False
+

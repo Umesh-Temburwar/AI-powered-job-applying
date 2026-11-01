@@ -22,6 +22,7 @@ import {
   Bot,
   Loader2,
   LogOut,
+  RotateCcw,
   X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +31,7 @@ import { useResumes } from '../hooks/useResumes';
 import { usePreferences } from '../hooks/usePreferences';
 import { markOnboardingCompletedLocally } from '../hooks/useOnboardingStatus';
 import { configService } from '../services/configService';
+import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../context/ToastContext';
 import {
   Card,
@@ -41,7 +43,8 @@ import {
   Checkbox,
   Select,
   ProgressBar,
-  Skeleton,
+ Skeleton,
+  ConfirmDialog,
 } from '../components/ui';
 import type { EducationItem, ExperienceItem, ProjectItem, CertificationItem, PlatformName } from '../types';
 
@@ -58,11 +61,14 @@ const STEPS = [
 
 export const OnboardingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
-  const { profile, loading: profileLoading, updateProfile } = useProfile();
-  const { uploadResume } = useResumes();
+  const { user, logout } = useAuth();
+  const { profile, loading: profileLoading, updateProfile, refreshProfile } = useProfile();
+  const { uploadResume, refreshResumes } = useResumes();
   const { preferences, updatePreferences, suggestRoles } = usePreferences();
   const { showToast } = useToast();
+
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -71,6 +77,115 @@ export const OnboardingPage: React.FC = () => {
       navigate('/login', { replace: true });
     } catch {
       navigate('/login', { replace: true });
+    }
+  };
+
+  const handleResetDataConfirmed = async () => {
+    setIsResetting(true);
+    try {
+      // 1. Wipe all candidate data from backend (Supabase tables, SQLite DB, local resumes, and in-memory caches)
+      await configService.resetCandidateData();
+
+      // 2. Extra direct client-side Supabase wipe if session exists
+      if (user?.id) {
+        try {
+          await Promise.allSettled([
+            supabase.from('applications').delete().eq('user_id', user.id),
+            supabase.from('automation_tasks').delete().eq('user_id', user.id),
+            supabase.from('platform_connections').delete().eq('user_id', user.id),
+            supabase.from('job_preferences').delete().eq('user_id', user.id),
+            supabase.from('resumes').delete().eq('user_id', user.id),
+            supabase.from('application_answers').delete().eq('user_id', user.id),
+            supabase.from('resume_analyses').delete().eq('user_id', user.id),
+          ]);
+          await supabase.from('profiles').update({
+            full_name: 'Candidate',
+            phone: null,
+            city: null,
+            headline: null,
+            skills: [],
+            summary: null,
+            is_onboarded: false,
+            onboarding_step: 0,
+            onboarded_at: null,
+            education: [],
+            experience: [],
+            projects: [],
+            certifications: [],
+            additional_info: {},
+            linkedin_url: null,
+            github_url: null,
+            portfolio_url: null,
+          }).eq('id', user.id);
+        } catch (sbErr) {
+          console.warn('Frontend Supabase direct wipe:', sbErr);
+        }
+      }
+
+      // 3. Clear all stored client caches
+      const keysToRemove = [
+        'onboarding_completed',
+        'candidate_preferences',
+        'bot_config',
+        'naukri_filters',
+        'cached_profile',
+        'active_task',
+        'last_automation_run',
+        'job_search_filters',
+      ];
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+      sessionStorage.clear();
+
+      // 4. Reset local form state
+      setFullName('');
+      setEmail(user?.email || '');
+      setPhone('');
+      setCity('');
+      setHeadline('');
+      setSummary('');
+      setLinkedinUrl('');
+      setGithubUrl('');
+      setPortfolioUrl('');
+      setEducationList([
+        { id: '1', degree: 'Bachelor of Technology (B.Tech)', institution: '', year: '2025', score: '' },
+      ]);
+      setIsFresher(true);
+      setExperienceList([]);
+      setSkills([]);
+      setSkillInput('');
+      setProjectsList([]);
+      setCertificationsList([]);
+      setNoticePeriodDays(15);
+      setWillingToRelocate(true);
+      setWorkAuthorization('Authorized to work in India');
+      setExpectedSalaryLakhs(undefined);
+      setTargetTitles([]);
+      setTargetTitleInput('');
+      setTargetLocations([]);
+      setTargetLocationInput('');
+      setSelectedPlatforms(['Naukri', 'Internshala']);
+      setDailyLimit(25);
+      setUploadedResumeName(null);
+      setOcrWarning(null);
+      setValidationError(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setCurrentStep(0);
+
+      try {
+        await Promise.allSettled([refreshProfile(), refreshResumes()]);
+      } catch (rErr) {
+        console.warn('Refresh error after reset:', rErr);
+      }
+
+      showToast('All candidate onboarding data has been reset successfully.', 'success');
+      setResetConfirmOpen(false);
+    } catch (err: any) {
+      console.error('Reset candidate data error:', err);
+      showToast(err?.message || 'Failed to reset candidate data', 'error');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -558,6 +673,15 @@ export const OnboardingPage: React.FC = () => {
               className="text-xs text-theme-muted hover:text-theme-primary"
             >
               Skip to Dashboard
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setResetConfirmOpen(true)}
+              leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+              className="text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 border-amber-500/40 font-bold"
+            >
+              Reset Data
             </Button>
             <Button
               variant="outline"
@@ -1583,6 +1707,17 @@ export const OnboardingPage: React.FC = () => {
             </div>
           </Card>
         )}
+        {/* Reset Candidate Data Confirmation */}
+        <ConfirmDialog
+          isOpen={resetConfirmOpen}
+          onClose={() => !isResetting && setResetConfirmOpen(false)}
+          onConfirm={handleResetDataConfirmed}
+          title="Reset Candidate Onboarding Data"
+          description="Are you sure you want to permanently reset all candidate onboarding data? This will clear all uploaded resumes, extracted profile info, skills, education, and job preferences. This action cannot be undone."
+          confirmLabel={isResetting ? "Resetting All Data..." : "Reset Data"}
+          isDestructive
+          isLoading={isResetting}
+        />
       </div>
     </div>
   );

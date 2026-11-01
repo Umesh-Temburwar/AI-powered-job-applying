@@ -216,3 +216,4 @@ def test_resume_analysis_api_endpoints_workflow(test_client: TestClient):
     res_del = test_client.delete(f"/api/resume/{analysis_id}", headers=headers)
     assert res_del.status_code == 200
     assert res_del.json()["status"] == "success"
+

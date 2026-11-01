@@ -54,3 +54,4 @@ CREATE POLICY "resume_analyses_delete_own" ON public.resume_analyses
 -- 5. GRANT PERMISSIONS TO AUTHENTICATED AND SERVICE ROLE
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.resume_analyses TO authenticated;
 GRANT ALL ON public.resume_analyses TO service_role;
+

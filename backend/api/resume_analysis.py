@@ -189,3 +189,4 @@ async def delete_analysis_endpoint(
             detail="Analysis record not found or access denied.",
         )
     return {"status": "success", "message": "Resume analysis deleted successfully."}
+

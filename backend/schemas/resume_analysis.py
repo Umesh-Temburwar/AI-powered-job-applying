@@ -61,3 +61,4 @@ class ResumeAnalysisResponse(BaseModel):
 class ResumeAnalysisListResponse(BaseModel):
     analyses: List[ResumeAnalysisResponse]
     total: int
+
