@@ -622,12 +622,12 @@ export const OnboardingPage: React.FC = () => {
       }
 
       showToast('🎉 Onboarding completed successfully! Welcome to your dashboard.', 'success');
-      navigate('/dashboard', { replace: true });
+      navigate('/applications', { replace: true });
     } catch (err) {
       console.error('Error completing onboarding, forcing local completion:', err);
       markOnboardingCompletedLocally();
       showToast('🎉 Onboarding completed! Welcome to your dashboard.', 'success');
-      navigate('/dashboard', { replace: true });
+      navigate('/applications', { replace: true });
     } finally {
       setSaving(false);
     }

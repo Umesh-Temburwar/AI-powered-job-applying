@@ -431,6 +431,17 @@ export const DashboardPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              playRetroSound('click');
+              setIsLaunchModalOpen(true);
+            }}
+            aria-label="Launch Task"
+          >
+            Launch Task
+          </Button>
           <button
             type="button"
             onClick={() => {

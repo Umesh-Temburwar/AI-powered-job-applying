@@ -21,7 +21,7 @@ export const NotFoundPage: React.FC = () => {
       </p>
 
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Link to="/dashboard">
+        <Link to="/applications">
           <Button variant="primary" leftIcon={<Home className="w-4 h-4" />}>
             Go to Dashboard
           </Button>

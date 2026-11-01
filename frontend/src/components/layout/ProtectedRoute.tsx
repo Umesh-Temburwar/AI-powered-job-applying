@@ -57,7 +57,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Restrict admin routes to authorized administrators only
   if (requireAdmin && user && !user.isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/applications" replace />;
   }
 
   const localCompleted = typeof window !== 'undefined' && localStorage.getItem('onboarding_completed') === 'true';

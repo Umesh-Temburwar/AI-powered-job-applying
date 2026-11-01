@@ -59,7 +59,7 @@ export const AuthCallbackPage: React.FC = () => {
   useEffect(() => {
     if (state === 'verified' || state === 'already_verified') {
       const timer = setTimeout(() => {
-        navigate('/dashboard', { replace: true });
+        navigate('/applications', { replace: true });
       }, 1500);
       return () => clearTimeout(timer);
     }
@@ -302,7 +302,7 @@ export const AuthCallbackPage: React.FC = () => {
                 <Button
                   variant="primary"
                   className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold shadow-lg shadow-cyan-500/20"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/applications')}
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                 >
                   Continue to dashboard
@@ -330,7 +330,7 @@ export const AuthCallbackPage: React.FC = () => {
                 <Button
                   variant="primary"
                   className="w-full"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/applications')}
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                 >
                   Continue to dashboard

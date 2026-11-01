@@ -42,7 +42,7 @@ export const VerifyEmailPage: React.FC = () => {
   // If user is already authenticated (or confirms in another tab), redirect to dashboard
   useEffect(() => {
     if (user) {
-      navigate('/dashboard', { replace: true });
+      navigate('/applications', { replace: true });
     }
   }, [user, navigate]);
 

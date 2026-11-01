@@ -45,7 +45,7 @@ export const LandingPage: React.FC = () => {
   // Called when user clicks "Sign In" or "Dashboard" on home page
   const handleLoginTrigger = () => {
     if (user) {
-      navigate('/dashboard');
+      navigate('/applications');
       return;
     }
     playRetroSound('slide');
@@ -59,7 +59,7 @@ export const LandingPage: React.FC = () => {
 
   const handleDashboardTrigger = (e?: React.MouseEvent) => {
     if (user) {
-      navigate('/dashboard');
+      navigate('/applications');
       return;
     }
     if (e) e.preventDefault();
@@ -78,7 +78,7 @@ export const LandingPage: React.FC = () => {
       setIsLoggingIn(true);
       await login(loginEmail, loginPassword);
       playRetroSound('success');
-      navigate('/dashboard');
+      navigate('/applications');
     } catch (err) {
       playRetroSound('error');
       setLoginError(err instanceof Error ? err.message : 'Invalid credentials.');
@@ -483,7 +483,7 @@ export const LandingPage: React.FC = () => {
                       <div className="pt-2">
                         {user ? (
                           <Link
-                            to="/dashboard"
+                            to="/applications"
                             className={`w-full py-2.5 px-3 border-2 font-black uppercase text-[12px] ${
                               theme === 'dark'
                                 ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
@@ -1062,7 +1062,7 @@ export const LandingPage: React.FC = () => {
 
                 <div className="shrink-0 font-mono text-[12px]">
                   <Link
-                    to="/dashboard"
+                    to="/applications"
                     className={`inline-flex items-center gap-1 font-bold underline ${theme === 'dark' ? 'text-[#10B981]' : 'text-[#15803D]'}`}
                   >
                     CONFIG_ADAPTER ↗
@@ -1086,7 +1086,7 @@ export const LandingPage: React.FC = () => {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2 font-mono text-[13px]">
             <Link
-              to="/dashboard"
+              to="/applications"
               className={`px-6 py-2.5 font-bold uppercase border-2 ${
                 theme === 'dark'
                   ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14]'

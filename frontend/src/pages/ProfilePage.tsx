@@ -746,8 +746,8 @@ export const ProfilePage: React.FC = () => {
       });
 
       playRetroSound('success');
-      showToast(`🚀 Started: ${cmd.label} (${cmd.cli})! Redirecting to live Dashboard...`, 'success');
-      navigate('/dashboard');
+      showToast(`🚀 Started: ${cmd.label} (${cmd.cli})! Redirecting to Applications...`, 'success');
+      navigate('/applications');
     } catch (err: any) {
       playRetroSound('error');
       showToast(err?.message || 'Failed to start bot task', 'error');

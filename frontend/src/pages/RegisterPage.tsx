@@ -20,7 +20,7 @@ export const RegisterPage: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard', { replace: true });
+      navigate('/applications', { replace: true });
     }
   }, [user, navigate]);
 
@@ -67,7 +67,7 @@ export const RegisterPage: React.FC = () => {
         setCooldownExpiry(60);
         navigate('/verify-email', { state: { email: cleanEmail } });
       } else {
-        navigate('/dashboard');
+        navigate('/applications');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

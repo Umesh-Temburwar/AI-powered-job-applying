@@ -12,9 +12,16 @@ import {
   MapPin,
   AlertCircle,
   Info,
+  RotateCw,
+  CheckCircle2,
+  Clock,
+  Terminal,
+  Sparkles,
 } from 'lucide-react';
 import { useApplications } from '../hooks/useApplications';
+import { useTasks } from '../hooks/useTasks';
 import { useToast } from '../context/ToastContext';
+import { playRetroSound } from '../utils/soundEffects';
 import {
   Card,
   CardHeader,
@@ -43,11 +50,75 @@ export const ApplicationsPage: React.FC = () => {
     exportCsv,
   } = useApplications({ page: 1, pageSize: 8 });
 
+  const {
+    currentTask,
+    actionLoading: taskActionLoading,
+    error: taskError,
+    cancelTask,
+    retryTask,
+  } = useTasks();
+
   const { showToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState(filters.query || '');
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [dismissedTaskId, setDismissedTaskId] = useState<string | null>(null);
+  const [showLogs, setShowLogs] = useState<boolean>(false);
+
+  const isTaskActive = currentTask?.status === 'running' || currentTask?.status === 'queued';
+  const showTaskBanner = Boolean(
+    currentTask &&
+    currentTask.status !== 'idle' &&
+    (isTaskActive || dismissedTaskId !== currentTask.id)
+  );
+
+  const getTaskBannerTitle = (task: typeof currentTask) => {
+    if (!task) return '';
+    const mode = task.dryRun ? 'Dry-run' : 'Live';
+    switch (task.status) {
+      case 'queued':
+        return `Queued: ${task.platform} (${mode}) — Waiting for worker`;
+      case 'running':
+        return `Running: ${task.platform} (${mode}) — ${task.progressPercent || 0}%`;
+      case 'completed':
+        return `Completed: ${task.platform} (${mode})`;
+      case 'failed':
+        return `Failed: ${task.platform} (${mode})`;
+      case 'cancelled':
+        return `Cancelled: ${task.platform}`;
+      default:
+        return `${task.status.toUpperCase()}: ${task.platform} (${mode})`;
+    }
+  };
+
+  const PIPELINE_STAGES = [
+    { id: 1, name: '1. Profile Check', threshold: 10, desc: 'Verifying candidate resume & criteria' },
+    { id: 2, name: '2. Browser Engine', threshold: 25, desc: 'Stealth automation browser launch' },
+    { id: 3, name: '3. Portal Auth', threshold: 45, desc: 'Candidate session verification & login' },
+    { id: 4, name: '4. Job Screening', threshold: 70, desc: 'Scanning & matching vacancies' },
+    { id: 5, name: '5. Apply & Sync', threshold: 100, desc: 'Submitting application & syncing ledger' },
+  ];
+
+  const handleCancelTask = async (taskId: string) => {
+    try {
+      playRetroSound('click');
+      await cancelTask(taskId);
+      showToast('Bot task cancelled by user', 'info');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to cancel task', 'error');
+    }
+  };
+
+  const handleRetryTask = async (taskId: string) => {
+    try {
+      playRetroSound('click');
+      await retryTask(taskId);
+      showToast('Retrying bot automation task...', 'info');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to retry task', 'error');
+    }
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,8 +166,237 @@ export const ApplicationsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Page Header with Worker Status and Launch Bot */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border-color)]">
+        <div>
+          <h1 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+            Applications Ledger & Live Automation
+          </h1>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            Real-time multi-platform bot execution, active process monitor, and Supabase CRM ledger.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-none border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-mono">
+            {isTaskActive ? (
+              <>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-emerald-500 font-bold uppercase">BOT RUNNING</span>
+              </>
+            ) : currentTask?.status === 'failed' ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                <span className="text-red-400 font-bold uppercase">BOT FAILED</span>
+              </>
+            ) : currentTask?.status === 'cancelled' ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-zinc-500 shrink-0" />
+                <span className="text-zinc-400 font-bold uppercase">BOT CANCELLED</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-500/60 shrink-0" />
+                <span className="text-[var(--text-secondary)] font-bold uppercase">WORKER IDLE</span>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              playRetroSound('click');
+              navigate('/profile');
+            }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-none bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider retro-shadow transition-all cursor-pointer"
+            title="Configure profile credentials, target roles, and launch bot"
+          >
+            <Sparkles className="w-3.5 h-3.5 fill-current" />
+            <span>🚀 Start / Launch Bot</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Task Error Banner if Worker Disconnected */}
+      {taskError && (
+        <div className="p-3 rounded-none border border-amber-600/70 bg-amber-950/20 text-amber-300 text-xs font-mono">
+          {taskError.trim().startsWith('<') ? 'Automation worker is reconnecting. Please wait a moment.' : taskError}
+        </div>
+      )}
+
+      {/* Bot Execution Status & Live Process Monitor */}
+      {showTaskBanner && currentTask && (
+        <div
+          className={`p-4 rounded-none border-2 ${
+            currentTask.status === 'failed'
+              ? 'border-red-600/70 bg-red-950/20'
+              : currentTask.status === 'running'
+              ? 'border-emerald-600/70 bg-emerald-950/20'
+              : currentTask.status === 'queued'
+              ? 'border-amber-600/70 bg-amber-950/20'
+              : 'border-[var(--border-color)] bg-[var(--bg-card)]'
+          } transition-all space-y-3`}
+        >
+          {/* Banner Top Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[14px] font-bold text-[var(--text-primary)]">
+                  {getTaskBannerTitle(currentTask)}
+                </span>
+                <span className="text-[11px] font-mono text-[var(--text-secondary)] bg-[var(--bg-card-hover)] px-2 py-0.5 rounded-none border border-[var(--border-color)]">
+                  ID: {currentTask.id.slice(0, 8)}
+                </span>
+                {isTaskActive && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5">
+                    <RotateCw className="w-3 h-3 animate-spin" /> LIVE
+                  </span>
+                )}
+              </div>
+              <div className="text-[13px] text-[var(--text-secondary)] mt-1 font-mono">
+                {currentTask.currentStepMessage || `Progress: ${currentTask.progressPercent || 0}%`}
+              </div>
+              {currentTask.status === 'failed' && currentTask.errorDetails && (
+                <div className="text-[12px] text-red-400 mt-1.5 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Reason: {currentTask.errorDetails}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {isTaskActive && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleCancelTask(currentTask.id)}
+                  disabled={taskActionLoading}
+                >
+                  {taskActionLoading ? 'Cancelling...' : 'Cancel Task'}
+                </Button>
+              )}
+              {currentTask.status === 'failed' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleRetryTask(currentTask.id)}
+                  disabled={taskActionLoading}
+                >
+                  {taskActionLoading ? 'Retrying...' : 'Retry Task'}
+                </Button>
+              )}
+              {!isTaskActive && (
+                <button
+                  type="button"
+                  onClick={() => setDismissedTaskId(currentTask.id)}
+                  className="px-2.5 py-1 text-[11px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-color)] bg-[var(--bg-card-hover)] transition-colors cursor-pointer"
+                  title="Dismiss notification"
+                >
+                  Dismiss
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Progress Bar (when active or has progress) */}
+          {(isTaskActive || (currentTask.progressPercent || 0) > 0) && (
+            <div className="pt-1">
+              <div className="flex items-center justify-between text-xs font-mono text-[var(--text-secondary)] mb-1">
+                <span>Automation Execution Progress</span>
+                <span className="font-bold text-[var(--text-primary)]">{currentTask.progressPercent || 0}%</span>
+              </div>
+              <div className="w-full h-2 bg-slate-900 border border-[var(--border-color)] overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    currentTask.status === 'failed'
+                      ? 'bg-red-500'
+                      : currentTask.status === 'cancelled'
+                      ? 'bg-zinc-500'
+                      : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(5, currentTask.progressPercent || 0))}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step-by-Step Execution Pipeline Process */}
+          {isTaskActive && (
+            <div className="pt-2 border-t border-[var(--border-color)]/60">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-secondary)] mb-2 flex items-center justify-between">
+                <span>Active Process Pipeline Stages</span>
+                <button
+                  type="button"
+                  onClick={() => setShowLogs(!showLogs)}
+                  className="text-emerald-400 hover:text-emerald-300 underline lowercase font-sans text-xs cursor-pointer"
+                >
+                  {showLogs ? 'Hide terminal logs' : 'View live terminal logs'}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {PIPELINE_STAGES.map((stage) => {
+                  const percent = currentTask.progressPercent || 0;
+                  const isDone = percent >= stage.threshold;
+                  const isCurrent = !isDone && (stage.id === 1 || percent >= PIPELINE_STAGES[stage.id - 2].threshold);
+
+                  return (
+                    <div
+                      key={stage.id}
+                      className={`p-2 border text-xs font-mono transition-all ${
+                        isDone
+                          ? 'border-emerald-600/50 bg-emerald-950/20 text-emerald-300'
+                          : isCurrent
+                          ? 'border-cyan-500 bg-cyan-950/30 text-cyan-200 ring-1 ring-cyan-500/40'
+                          : 'border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-bold">
+                        {isDone ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        ) : isCurrent ? (
+                          <RotateCw className="w-3.5 h-3.5 text-cyan-400 animate-spin shrink-0" />
+                        ) : (
+                          <Clock className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                        )}
+                        <span className="truncate">{stage.name}</span>
+                      </div>
+                      <p className="text-[10px] opacity-75 mt-0.5 truncate">{stage.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Collapsible Live Process Logs */}
+              {showLogs && (
+                <div className="mt-3 p-3 bg-black/80 border border-slate-700 font-mono text-[11px] text-emerald-400 rounded-none max-h-48 overflow-y-auto space-y-1">
+                  <div className="flex items-center justify-between pb-1 mb-1 border-b border-slate-800 text-slate-400 text-[10px]">
+                    <span className="flex items-center gap-1">
+                      <Terminal className="w-3 h-3" /> Live Automation Log Stream
+                    </span>
+                    <span>Task ID: {currentTask.id.slice(0, 8)}</span>
+                  </div>
+                  {currentTask.logs && currentTask.logs.length > 0 ? (
+                    currentTask.logs.map((log) => (
+                      <div key={log.id} className="flex items-start gap-2">
+                        <span className="text-slate-500 shrink-0">[{log.timestamp}]</span>
+                        <span className={log.level === 'error' ? 'text-red-400' : log.level === 'success' ? 'text-emerald-300' : 'text-slate-300'}>
+                          {log.message}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-slate-400 italic">No detailed log entries yet. Waiting for worker output...</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Sample Data Disclaimer */}
-      <div className="p-3.5 rounded-xl border border-sky-500/30 bg-sky-950/40 text-sky-200 text-xs flex items-center justify-between">
+      <div className="p-3.5 rounded-none border border-sky-500/30 bg-sky-950/40 text-sky-200 text-xs flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Info className="w-4 h-4 text-sky-400 shrink-0" />
           <span>
@@ -109,7 +409,7 @@ export const ApplicationsPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs">
+        <div className="p-4 rounded-none bg-red-950/40 border border-red-500/40 text-red-300 text-xs">
           {error}
         </div>
       )}
@@ -203,8 +503,8 @@ export const ApplicationsPage: React.FC = () => {
                 icon={<Briefcase className="w-6 h-6" />}
                 title="You haven't recorded any job applications yet"
                 description="When your background automation tasks apply to jobs or you record applications, they will appear in this tracker."
-                actionLabel="Configure Job Preferences"
-                onAction={() => navigate('/preferences')}
+                actionLabel="Configure Candidate Profile & Start Bot"
+                onAction={() => navigate('/profile')}
               />
             ) : (
               <EmptyState

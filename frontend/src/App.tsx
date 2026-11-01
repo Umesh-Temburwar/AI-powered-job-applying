@@ -13,7 +13,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 
-import { DashboardPage } from './pages/DashboardPage';
+
 import { GuidePage } from './pages/GuidePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -62,7 +62,7 @@ export function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/dashboard" element={<Navigate to="/applications" replace />} />
                 <Route path="/guide" element={<GuidePage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/resumes" element={<ResumeManagerPage />} />

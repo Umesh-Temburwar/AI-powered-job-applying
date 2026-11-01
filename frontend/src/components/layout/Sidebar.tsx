@@ -16,7 +16,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
 
   const navItems = [
     { label: 'Home Page', path: '/', isHome: true },
-    { label: 'Overview', path: '/dashboard' },
+
     { label: 'Applications', path: '/applications' },
     { label: 'Profile & Resume', path: '/profile' },
     { label: 'Resume Analyzer', path: '/resume-analyzer' },
@@ -35,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
       {/* Product Name */}
       <div className={`h-14 px-6 flex items-center justify-between border-b-2 ${theme === 'dark' ? 'border-[#2E384D]' : 'border-[#18181B]'}`}>
         <RouterNavLink
-          to="/dashboard"
+          to="/applications"
           onClick={onCloseMobile}
           className="font-mono font-bold text-[14px] tracking-tight hover:text-emerald-600 transition-colors duration-150 flex items-center gap-2"
         >

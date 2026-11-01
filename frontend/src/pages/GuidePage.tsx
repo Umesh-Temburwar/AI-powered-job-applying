@@ -74,7 +74,7 @@ export const GuidePage: React.FC = () => {
 
           <div className="flex items-center gap-2 font-mono text-[12px]">
             <Link
-              to="/dashboard"
+              to="/applications"
               className={`px-4 py-2 font-bold uppercase border-2 ${
                 theme === 'dark'
                   ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14]'
@@ -417,7 +417,7 @@ export const GuidePage: React.FC = () => {
               >
                 ← Back: Step 5
               </button>
-              <Link to="/dashboard" className="font-bold underline text-emerald-600">
+              <Link to="/applications" className="font-bold underline text-emerald-600">
                 Ready! Open Dashboard & Start Run →
               </Link>
             </div>

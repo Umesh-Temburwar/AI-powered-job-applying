@@ -142,7 +142,7 @@ export const SettingsPage: React.FC = () => {
 
       // 4. Force full page refresh to /dashboard as a 100% fresh user
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = '/applications';
       }, 500);
     } catch (err: any) {
       console.error('Reset candidate data error:', err);
