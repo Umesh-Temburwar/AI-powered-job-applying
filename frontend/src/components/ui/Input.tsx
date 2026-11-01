@@ -13,41 +13,41 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || (label ? label.toLowerCase().replace(/[^a-z0-9]+/g, '-') : undefined);
 
     return (
-      <div className="w-full">
+      <div className="w-full font-mono">
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-medium text-[#111111] mb-1.5"
+            className="block text-xs font-bold text-[var(--text-primary)] uppercase mb-1.5"
           >
             {label}
           </label>
         )}
         <div className="relative flex items-center">
           {leftIcon && (
-            <div className="absolute left-3 flex items-center pointer-events-none text-[#6B6B6B]">
+            <div className="absolute left-3 flex items-center pointer-events-none text-[var(--text-secondary)]">
               {leftIcon}
             </div>
           )}
           <input
             id={inputId}
             ref={ref}
-            className={`w-full h-9 bg-white text-[#111111] border rounded-[6px] px-3 text-sm transition-colors duration-150 placeholder:text-[#888888] focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent disabled:bg-[#FAFAFA] disabled:opacity-60 disabled:cursor-not-allowed ${
+            className={`w-full h-9 bg-[var(--bg-input)] text-[var(--text-primary)] border-2 rounded-none px-3 text-sm transition-colors duration-150 placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-color-focus)] disabled:opacity-60 disabled:cursor-not-allowed ${
               leftIcon ? 'pl-9' : ''
             } ${rightIcon ? 'pr-9' : ''} ${
-              error ? 'border-[#B91C1C] focus:ring-[#B91C1C]' : 'border-[#E5E5E5]'
+              error ? 'border-[var(--color-danger)]' : 'border-[var(--border-color)]'
             } ${className}`}
             {...props}
           />
           {rightIcon && (
-            <div className="absolute right-3 flex items-center text-[#6B6B6B]">
+            <div className="absolute right-3 flex items-center text-[var(--text-secondary)]">
               {rightIcon}
             </div>
           )}
         </div>
         {error ? (
-          <p className="mt-1 text-xs text-[#B91C1C]">{error}</p>
+          <p className="mt-1 text-xs text-[var(--color-danger)]">{error}</p>
         ) : helperText ? (
-          <p className="mt-1 text-xs text-[#6B6B6B]">{helperText}</p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">{helperText}</p>
         ) : null}
       </div>
     );

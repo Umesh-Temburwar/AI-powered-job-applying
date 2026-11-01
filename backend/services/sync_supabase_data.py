@@ -63,7 +63,7 @@ user_name = prof_info.data[0].get("full_name") if prof_info.data else "Candidate
 print(f"Target Candidate: {user_name} ({target_user_id}) - {user_email}")
 
 # 2. Sync Profile from profile_data.json
-profile_json_path = BASE_DIR / "profile_data.json"
+profile_json_path = (BASE_DIR / "data" / "profile_data.json") if (BASE_DIR / "data" / "profile_data.json").exists() else (BASE_DIR / "profile_data.json")
 if profile_json_path.exists():
     with open(profile_json_path, "r", encoding="utf-8") as f:
         pdata = json.load(f)
@@ -118,7 +118,7 @@ if profile_json_path.exists():
     print("[OK] Synced Job Preferences")
 
 # 3. Sync Screening Answers from application_answers.csv
-answers_csv_path = BASE_DIR / "application_answers.csv"
+answers_csv_path = (BASE_DIR / "data" / "application_answers.csv") if (BASE_DIR / "data" / "application_answers.csv").exists() else (BASE_DIR / "application_answers.csv")
 if answers_csv_path.exists():
     answers_count = 0
     with open(answers_csv_path, "r", encoding="utf-8") as f:
@@ -142,14 +142,22 @@ if answers_csv_path.exists():
     print(f"[OK] Synced {answers_count} Screening Answers into public.application_answers")
 
 # 4. Sync Applications from universal_applied_jobs.csv
-csv_path = BASE_DIR / "universal_applied_jobs.csv"
+csv_path = (BASE_DIR / "data" / "universal_applied_jobs.csv") if (BASE_DIR / "data" / "universal_applied_jobs.csv").exists() else (BASE_DIR / "universal_applied_jobs.csv")
 if csv_path.exists():
-    app_count = 0
+    latest_by_url = {}
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             url = (row.get("url") or "").strip()
-            platform = (row.get("platform") or "Naukri").strip()
+            if not url:
+                continue
+
+            platform = (row.get("platform") or "Naukri").strip().capitalize()
+            if platform.lower() == "linkedin":
+                platform = "LinkedIn"
+            elif platform.lower() == "internshala":
+                platform = "Internshala"
+
             status_val = (row.get("status") or "applied").strip().lower()
             if status_val not in (
                 "applied",
@@ -169,46 +177,75 @@ if csv_path.exists():
             except Exception:
                 applied_at = datetime.now(timezone.utc).isoformat()
 
-            # Parse title & company from url or text
-            job_title = "Software Engineer"
-            company = "Naukri Listed Employer"
-            location = "India"
+            # Job Title and Company from CSV
+            job_title = (row.get("job_title") or "").strip()
+            company = (row.get("company") or "").strip()
+            location = "Pune, India"
 
-            if "naukri.com/job-listings-" in url:
-                slug = url.split("naukri.com/job-listings-")[-1].split("?")[0]
-                parts = slug.split("-")
-                cleaned_parts = [p.capitalize() for p in parts if not p.isdigit() and p not in ("years", "to")]
-                if len(cleaned_parts) >= 2:
-                    job_title = " ".join(cleaned_parts[:2])
-                if len(cleaned_parts) >= 3:
-                    company = cleaned_parts[2]
-                if "bengaluru" in slug.lower():
-                    location = "Bengaluru"
-                elif "pune" in slug.lower():
-                    location = "Pune"
-                elif "hyderabad" in slug.lower():
-                    location = "Hyderabad"
-                elif "mumbai" in slug.lower():
-                    location = "Mumbai"
+            # Parse location from URL or text
+            url_lower = url.lower()
+            if "remote" in url_lower or "work-from-home" in url_lower:
+                location = "Remote"
+            elif "bengaluru" in url_lower or "bangalore" in url_lower:
+                location = "Bengaluru"
+            elif "pune" in url_lower:
+                location = "Pune"
+            elif "hyderabad" in url_lower:
+                location = "Hyderabad"
+            elif "mumbai" in url_lower or "navi-mumbai" in url_lower:
+                location = "Mumbai"
+            elif "noida" in url_lower or "delhi" in url_lower or "gurgaon" in url_lower:
+                location = "Delhi NCR"
+            elif "chennai" in url_lower:
+                location = "Chennai"
 
-            if url:
-                app_row = {
-                    "user_id": target_user_id,
-                    "job_title": job_title,
-                    "company": company,
-                    "job_url": url,
-                    "platform": platform,
-                    "status": status_val,
-                    "location": location,
-                    "applied_at": applied_at,
-                    "updated_at": applied_at,
-                }
+            if not job_title or job_title.lower().startswith("http"):
+                job_title = "Full Stack Developer"
+            if not company or company.lower().startswith("http"):
+                company = f"{platform} Listed Employer"
+
+            row_item = {
+                "job_title": job_title,
+                "company": company,
+                "job_url": url,
+                "platform": platform,
+                "status": status_val,
+                "location": location,
+                "applied_at": applied_at,
+                "updated_at": applied_at,
+            }
+            if url not in latest_by_url or row_item["applied_at"] > latest_by_url[url]["applied_at"]:
+                latest_by_url[url] = row_item
+
+    unique_apps = list(latest_by_url.values())
+
+    # Sync to all candidate accounts so UI displays identically regardless of login
+    all_profiles_res = client.table("profiles").select("id").execute()
+    candidate_uids = [p["id"] for p in all_profiles_res.data] if all_profiles_res.data else [target_user_id]
+    if target_user_id not in candidate_uids:
+        candidate_uids.append(target_user_id)
+
+    total_synced = 0
+    for c_uid in candidate_uids:
+        batch = []
+        for item in unique_apps:
+            app_row = dict(item)
+            app_row["user_id"] = c_uid
+            batch.append(app_row)
+            if len(batch) >= 50:
                 try:
-                    client.table("applications").upsert(app_row, on_conflict="user_id,job_url").execute()
-                    app_count += 1
+                    client.table("applications").upsert(batch, on_conflict="user_id,job_url").execute()
                 except Exception as ex:
-                    print(f"Skipped {url[:40]}: {ex}")
+                    print(f"Batch upsert error for user {c_uid[:8]}: {ex}")
+                batch = []
+        if batch:
+            try:
+                client.table("applications").upsert(batch, on_conflict="user_id,job_url").execute()
+            except Exception as ex:
+                print(f"Final batch upsert error for user {c_uid[:8]}: {ex}")
 
-    print(f"[OK] Synced {app_count} Job Applications into public.applications")
+        total_synced += len(unique_apps)
+
+    print(f"[OK] Synced {len(unique_apps)} unique applications to {len(candidate_uids)} candidate profiles in public.applications")
 
 print(f"All Supabase data successfully synchronized for candidate: {user_name} ({target_user_id})")

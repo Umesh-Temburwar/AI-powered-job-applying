@@ -138,8 +138,8 @@ def handle_indeed_application_modal(driver, profile, answers):
 
 
 def apply_on_indeed(driver, max_apps=25):
-    email = os.getenv("INDEED_EMAIL", os.getenv("NAUKRI_EMAIL", ""))
-    password = os.getenv("INDEED_PASSWORD", os.getenv("NAUKRI_PASSWORD", ""))
+    email = os.getenv("INDEED_EMAIL", "").strip()
+    password = os.getenv("INDEED_PASSWORD", "").strip()
     keywords = [kw.strip() for kw in os.getenv("KEYWORDS", "full stack developer, react developer").split(",") if kw.strip()]
     location = os.getenv("LOCATION", "pune")
 
@@ -226,9 +226,24 @@ def apply_on_indeed(driver, max_apps=25):
                 # Modal interaction
                 if handle_indeed_application_modal(driver, profile, answers):
                     applied_count += 1
-                    logger.info(f"✓ Successfully applied on Indeed! ({applied_count}/{max_apps})")
-                    record_application(platform="Indeed", job_title=kw, company="Indeed Employer", url=link, status="Applied")
-                    notify_application_success(platform="Indeed", job_title=kw, company="Indeed Employer", url=link)
+                    # Extract rich details from Indeed page
+                    title_elem = driver.find_elements(By.CSS_SELECTOR, "h1.jobsearch-JobInfoHeader-title, h1[data-testid='jobsearch-JobInfoHeader-title'], h1")
+                    actual_title = title_elem[0].text.strip() if title_elem and title_elem[0].text.strip() else kw
+
+                    comp_elem = driver.find_elements(By.CSS_SELECTOR, "div[data-testid='inlineHeader-companyName'], [data-company-name='true'], div.jobsearch-CompanyInfoContainer a")
+                    actual_comp = comp_elem[0].text.strip() if comp_elem and comp_elem[0].text.strip() else "Indeed Employer"
+
+                    loc_elem = driver.find_elements(By.CSS_SELECTOR, "div[data-testid='inlineHeader-companyLocation'], div[data-testid='job-location'], div.jobsearch-JobInfoHeader-companyLocation")
+                    actual_loc = loc_elem[0].text.strip() if loc_elem and loc_elem[0].text.strip() else (location or "India")
+
+                    sal_elem = driver.find_elements(By.CSS_SELECTOR, "div#salaryInfoAndJobType, [data-testid='attribute_snippets_section'], span.css-2iqe2o, [class*='salary']")
+                    actual_sal = sal_elem[0].text.strip() if sal_elem and sal_elem[0].text.strip() else "Competitive / Not disclosed"
+                    if "\n" in actual_sal:
+                        actual_sal = actual_sal.split("\n")[0].strip()
+
+                    logger.info(f"✓ Successfully applied on Indeed: '{actual_title}' @ {actual_comp} ({applied_count}/{max_apps})")
+                    record_application(platform="Indeed", job_title=actual_title, company=actual_comp, location=actual_loc, salary=actual_sal, url=link, status="Applied")
+                    notify_application_success(platform="Indeed", job_title=actual_title, company=actual_comp, url=link)
                     records.append({"platform": "Indeed", "url": link, "status": "Applied", "time": str(datetime.now())})
                 else:
                     failed_count += 1

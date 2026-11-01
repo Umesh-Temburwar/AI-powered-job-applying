@@ -54,7 +54,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-PROFILE_PATH = BASE_DIR / "profile_data.json"
+PROFILE_PATH = (BASE_DIR / "data" / "profile_data.json") if (BASE_DIR / "data" / "profile_data.json").exists() else (BASE_DIR / "profile_data.json")
 
 profile_data = {}
 if PROFILE_PATH.exists():
@@ -71,11 +71,25 @@ skills_list = profile_data.get("key_skills", [
 ])
 skills_str = ", ".join(skills_list) if isinstance(skills_list, list) else str(skills_list)
 
-resume_pdf = BASE_DIR / "Umesh-Temburwar-OCT.pdf"
-if not resume_pdf.exists():
-    for f in BASE_DIR.glob("*.pdf"):
-        resume_pdf = f
-        break
+resume_pdf = None
+candidate_resume_path = profile_data.get("resume_path") or os.getenv("RESUME_PATH")
+if candidate_resume_path and os.path.exists(candidate_resume_path):
+    resume_pdf = Path(candidate_resume_path)
+else:
+    resumes_dir = BASE_DIR / "data" / "resumes"
+    if resumes_dir.exists():
+        pdf_files = list(resumes_dir.glob("*.pdf"))
+        if pdf_files:
+            resume_pdf = pdf_files[0]
+
+if not resume_pdf or not resume_pdf.exists():
+    fallback_pdf = BASE_DIR / "data" / "resumes" / "Umesh-Temburwar-OCT.pdf"
+    if fallback_pdf.exists():
+        resume_pdf = fallback_pdf
+    else:
+        for f in BASE_DIR.glob("*.pdf"):
+            resume_pdf = f
+            break
 
 CONFIG = {
     # --- Personal info ---

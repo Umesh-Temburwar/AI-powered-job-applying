@@ -20,8 +20,8 @@ logger = logging.getLogger("AIEngine")
 load_dotenv()
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-PROFILE_PATH = os.path.join(BASE_DIR, "profile_data.json")
-ANSWERS_PATH = os.path.join(BASE_DIR, "application_answers.csv")
+PROFILE_PATH = os.path.join(BASE_DIR, "data", "profile_data.json") if os.path.exists(os.path.join(BASE_DIR, "data", "profile_data.json")) else os.path.join(BASE_DIR, "profile_data.json")
+ANSWERS_PATH = os.path.join(BASE_DIR, "data", "application_answers.csv") if os.path.exists(os.path.join(BASE_DIR, "data", "application_answers.csv")) else os.path.join(BASE_DIR, "application_answers.csv")
 
 
 def load_profile_data() -> Dict:
@@ -190,9 +190,11 @@ class QuestionAnswerer:
         """Query Gemini API for subjective screening questions."""
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+            cand_name = f"{self.personal.get('firstname', '')} {self.personal.get('lastname', '')}".strip() or self.personal.get('name') or "Candidate"
+            skills_str = ", ".join(self.skills[:6]) if self.skills else "Modern Web Technologies"
             prompt = (
-                f"You are answering a job application question on behalf of Umesh Temburwar, a Full Stack Developer "
-                f"specializing in React.js, Node.js, Express.js, MongoDB, PostgreSQL, and Supabase. "
+                f"You are answering a job application question on behalf of {cand_name}, a {role_title} "
+                f"specializing in {skills_str}. "
                 f"Role applied for: {role_title}.\n"
                 f"Question: {question}\n\n"
                 f"Provide a concise, professional, first-person response (under 80 words) that highlights skills and readiness."

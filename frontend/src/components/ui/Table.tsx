@@ -25,26 +25,24 @@ export function Table<T>({
   onRowClick,
 }: TableProps<T>) {
   return (
-    <div className="w-full overflow-x-auto border border-[#E5E5E5] rounded-[6px] bg-[#FFFFFF]">
+    <div className="w-full overflow-x-auto border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow-sm font-mono">
       <table className="w-full text-left text-[13px] border-collapse">
         <thead>
-          <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA] sticky top-0">
+          <tr className="border-b-2 border-[var(--border-color)] bg-[var(--bg-surface)] text-[var(--text-secondary)] text-[11px] uppercase tracking-wider">
             {columns.map((col) => (
               <th
                 key={col.key}
-                className={`py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B] ${
-                  col.className || ''
-                }`}
+                className={`py-3 px-4 font-bold ${col.className || ''}`}
               >
                 {col.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#E5E5E5]">
+        <tbody className="divide-y-2 divide-[var(--border-color)]">
           {isLoading ? (
             <tr>
-              <td colSpan={columns.length} className="py-10 text-center text-[#6B6B6B] text-[13px]">
+              <td colSpan={columns.length} className="py-10 text-center text-[var(--text-secondary)] text-[13px]">
                 Loading records...
               </td>
             </tr>
@@ -52,7 +50,7 @@ export function Table<T>({
             <tr>
               <td
                 colSpan={columns.length}
-                className="py-10 text-center text-[#6B6B6B] text-[13px]"
+                className="py-10 text-center text-[var(--text-secondary)] text-[13px]"
               >
                 {emptyText}
               </td>
@@ -61,13 +59,15 @@ export function Table<T>({
             data.map((row) => (
               <tr
                 key={keyExtractor(row)}
-                onClick={() => onRowClick?.(row)}
-                className={`transition-colors duration-150 hover:bg-[#FAFAFA] ${
-                  onRowClick ? 'cursor-pointer' : ''
+                onClick={() => onRowClick && onRowClick(row)}
+                className={`transition-colors ${
+                  onRowClick
+                    ? 'hover:bg-[var(--bg-card-hover)] cursor-pointer'
+                    : ''
                 }`}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={`py-3 px-4 text-[#111111] ${col.className || ''}`}>
+                  <td key={col.key} className={`py-3 px-4 text-[var(--text-primary)] ${col.className || ''}`}>
                     {col.render ? col.render(row) : (row as Record<string, unknown>)[col.key] as React.ReactNode}
                   </td>
                 ))}

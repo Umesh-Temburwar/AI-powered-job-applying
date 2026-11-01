@@ -387,13 +387,46 @@ def collect_job_links_from_tab(driver, window_handle):
 
         for job_wrapper in job_wrappers:
             # Find the title link - new selector is a.title (class="title ")
-            title_link = job_wrapper.find('a', class_='title')
+            title_link = (
+                job_wrapper.find('a', class_='title')
+                or job_wrapper.find('a', class_=lambda c: c and 'title' in c.lower())
+                or job_wrapper.find('a', href=lambda h: h and 'job-listings' in h)
+            )
             if title_link and title_link.get('href'):
                 href = title_link.get('href')
-                # Ensure full URL
                 if href.startswith('/'):
                     href = 'https://www.naukri.com' + href
-                links.append(href)
+                clean_url = href.split('?')[0]
+
+                # Scrape real Role, Company, Location, and Salary
+                role = title_link.get_text(strip=True) or "Software Developer"
+                comp_elem = (
+                    job_wrapper.find('a', class_='comp-name')
+                    or job_wrapper.find('a', class_=lambda c: c and 'comp' in c.lower())
+                    or job_wrapper.find('span', class_=lambda c: c and 'comp' in c.lower())
+                )
+                company = comp_elem.get_text(strip=True) if comp_elem else "Naukri Verified Employer"
+
+                loc_elem = (
+                    job_wrapper.find('span', class_='loc-wrap')
+                    or job_wrapper.find('span', class_='locWdth')
+                    or job_wrapper.find('span', class_=lambda c: c and ('loc' in c.lower() or 'city' in c.lower()))
+                )
+                location = loc_elem.get_text(strip=True) if loc_elem else (LOCATION or "Pune, India")
+
+                sal_elem = (
+                    job_wrapper.find('span', class_='sal-wrap')
+                    or job_wrapper.find('span', class_=lambda c: c and ('sal' in c.lower() or 'rupee' in c.lower()))
+                )
+                salary = sal_elem.get_text(strip=True) if sal_elem else "Not disclosed"
+
+                links.append({
+                    "url": clean_url,
+                    "title": role,
+                    "company": company,
+                    "location": location,
+                    "salary": salary,
+                })
 
     except WebDriverException as e:
         logger.warning(f"[Tab] Error reading tab: {e}")
@@ -404,7 +437,7 @@ def collect_job_links_from_tab(driver, window_handle):
 def collect_all_jobs_parallel(driver, search_urls):
     """
     Open all keyword search pages in parallel tabs and collect job links from each.
-    Returns a deduplicated list of job URLs.
+    Returns a deduplicated list of job dictionary items.
     """
     logger.info("=" * 50)
     logger.info(f"Opening {len(search_urls)} search pages in parallel tabs...")
@@ -414,13 +447,13 @@ def collect_all_jobs_parallel(driver, search_urls):
     original_window = open_tabs_parallel(driver, search_urls)
 
     # Collect job links from each tab
-    all_links = []
+    all_items = []
     window_handles = driver.window_handles
     logger.info(f"Collecting job links from {len(window_handles)} tabs...")
 
     for handle in window_handles:
-        tab_links = collect_job_links_from_tab(driver, handle)
-        all_links.extend(tab_links)
+        tab_items = collect_job_links_from_tab(driver, handle)
+        all_items.extend(tab_items)
 
     # Close all extra tabs and return to main
     logger.info("Closing search tabs...")
@@ -433,16 +466,17 @@ def collect_all_jobs_parallel(driver, search_urls):
                 pass
     driver.switch_to.window(original_window)
 
-    # Remove duplicates while preserving order
-    seen = set()
-    unique_links = []
-    for link in all_links:
-        if link not in seen:
-            seen.add(link)
-            unique_links.append(link)
+    # Remove duplicates by URL while preserving order
+    seen_urls = set()
+    unique_items = []
+    for item in all_items:
+        u = item.get("url") if isinstance(item, dict) else item
+        if u and u not in seen_urls:
+            seen_urls.add(u)
+            unique_items.append(item)
 
-    logger.info(f"Total unique job links collected: {len(unique_links)}")
-    return unique_links
+    logger.info(f"Total unique job links collected: {len(unique_items)}")
+    return unique_items
 
 
 def click_apply_button(driver, link):
@@ -491,38 +525,69 @@ def apply_to_jobs(driver, job_links):
     logger.info(f"Starting job applications (max: {MAX_APPLICATIONS})...")
     logger.info("=" * 50)
 
-    for i, link in enumerate(job_links, 1):
+    for i, item in enumerate(job_links, 1):
         if applied >= MAX_APPLICATIONS:
             logger.info(f"Reached max application limit ({MAX_APPLICATIONS}). Stopping.")
             break
 
-        logger.info(f"[{i}/{len(job_links)}] Visiting job: {link}")
+        link = item.get("url") if isinstance(item, dict) else str(item)
+        job_title = item.get("title", "") if isinstance(item, dict) else ""
+        company = item.get("company", "") if isinstance(item, dict) else ""
+        location = item.get("location", "") if isinstance(item, dict) else ""
+        salary = item.get("salary", "") if isinstance(item, dict) else ""
+
+        logger.info(f"[{i}/{len(job_links)}] Visiting job: {job_title or link} @ {company or 'Direct Employer'}")
         try:
             driver.get(link)
         except WebDriverException as e:
             logger.warning(f"  ✗ Failed to load page: {e}")
             failed += 1
-            applied_list['failed'].append(link)
+            applied_list['failed'].append(item)
             continue
+
+        # If details were missing from search card, scrape from detail page
+        try:
+            if not job_title:
+                t_elem = driver.find_elements(By.CSS_SELECTOR, "h1[class*='jd-header-title'], h1, .styles_jd-header-title__4H9M0")
+                if t_elem and t_elem[0].text.strip():
+                    job_title = t_elem[0].text.strip()
+            if not company:
+                c_elem = driver.find_elements(By.CSS_SELECTOR, "div[class*='jd-header-comp-name'] a, a[class*='comp-name'], [class*='company-name']")
+                if c_elem and c_elem[0].text.strip():
+                    company = c_elem[0].text.strip()
+            if not location:
+                l_elem = driver.find_elements(By.CSS_SELECTOR, "span[class*='jdn-location'], [class*='location']")
+                if l_elem and l_elem[0].text.strip():
+                    location = l_elem[0].text.strip()
+            if not salary:
+                s_elem = driver.find_elements(By.CSS_SELECTOR, "span[class*='jdn-salary'], [class*='salary']")
+                if s_elem and s_elem[0].text.strip():
+                    salary = s_elem[0].text.strip()
+        except Exception:
+            pass
+
+        record_item = {
+            "url": link,
+            "title": job_title or "Software Developer",
+            "company": company or "Naukri Verified Employer",
+            "location": location or (LOCATION or "Pune, India"),
+            "salary": salary or "Not disclosed",
+        }
 
         # --- Click the "Apply" button ---
         if click_apply_button(driver, link):
             applied += 1
-            applied_list['passed'].append(link)
-            logger.info(f"  ✓ Applied! Total: {applied}")
+            applied_list['passed'].append(record_item)
+            logger.info(f"  ✓ Applied! [{record_item['title']} @ {record_item['company']}] Total: {applied}")
             time.sleep(2)
         else:
             failed += 1
-            applied_list['failed'].append(link)
+            applied_list['failed'].append(record_item)
             logger.warning(f"  ✗ No Apply button found. Fail count: {failed}")
             continue
 
         # --- Handle any additional fields (first/last name, submit) ---
-        # Note: These handlers remain from the original script but the new Naukri
-        # uses "Apply on company site" which typically redirects to an external site.
-        # If Naukri's inline application form appears, these will handle it.
         try:
-            # Check for daily quota expired
             quota_el = driver.find_element(By.XPATH, "//*[text()='Your daily quota has been expired.']")
             if quota_el:
                 logger.info("Daily quota expired. Stopping.")
@@ -531,30 +596,24 @@ def apply_to_jobs(driver, job_links):
             pass
 
         try:
-            # If first name field is present, fill it
             driver.find_element(By.XPATH, "//input[@id='CUSTOM-FIRSTNAME']")
             firstname_el = driver.find_element(By.ID, 'CUSTOM-FIRSTNAME')
             firstname_el.clear()
             firstname_el.send_keys(FIRSTNAME)
-            logger.info("  Filled custom first name field")
         except NoSuchElementException:
             pass
 
         try:
-            # If last name field is present, fill it
             driver.find_element(By.XPATH, "//input[@id='CUSTOM-LASTNAME']")
             lastname_el = driver.find_element(By.ID, 'CUSTOM-LASTNAME')
             lastname_el.clear()
             lastname_el.send_keys(LASTNAME)
-            logger.info("  Filled custom last name field")
         except NoSuchElementException:
             pass
 
         try:
-            # Click "Submit and Apply" if present
             submit_btn = driver.find_element(By.XPATH, "//*[text()='Submit and Apply']")
             submit_btn.click()
-            logger.info("  Clicked 'Submit and Apply'")
             time.sleep(2)
         except NoSuchElementException:
             pass
@@ -565,7 +624,9 @@ def apply_to_jobs(driver, job_links):
 def save_results(applied_list):
     """Save applied/failed links to CSV and persistent SQLite CRM Tracker."""
     csv_file = "naukriapplied.csv"
-    final_dict = {k: pd.Series(v) for k, v in applied_list.items()}
+    passed_urls = [it.get("url") if isinstance(it, dict) else it for it in applied_list.get('passed', [])]
+    failed_urls = [it.get("url") if isinstance(it, dict) else it for it in applied_list.get('failed', [])]
+    final_dict = {'passed': pd.Series(passed_urls), 'failed': pd.Series(failed_urls)}
     df = pd.DataFrame.from_dict(final_dict)
     df.to_csv(csv_file, index=False)
     logger.info(f"Results saved to {csv_file}")
@@ -574,10 +635,24 @@ def save_results(applied_list):
     try:
         from platforms.tracker_db import record_application, has_applied
         from platforms.notifier import notify_application_success
-        for url in applied_list.get('passed', []):
+        for it in applied_list.get('passed', []):
+            url = it.get("url") if isinstance(it, dict) else str(it)
+            title = it.get("title", "Software Developer") if isinstance(it, dict) else "Software Developer"
+            company = it.get("company", "Naukri Verified Employer") if isinstance(it, dict) else "Naukri Verified Employer"
+            location = it.get("location", LOCATION or "Pune, India") if isinstance(it, dict) else (LOCATION or "Pune, India")
+            salary = it.get("salary", "Not disclosed") if isinstance(it, dict) else "Not disclosed"
+
             if url and not has_applied(url=url):
-                record_application(platform="Naukri", job_title="Naukri Applied Job", url=url, status="Applied")
-                notify_application_success(platform="Naukri", job_title="Naukri Keyword Applied Job", company="Naukri Employer", url=url)
+                record_application(
+                    platform="Naukri",
+                    job_title=title,
+                    company=company,
+                    location=location,
+                    salary=salary,
+                    url=url,
+                    status="applied"
+                )
+                notify_application_success(platform="Naukri", job_title=title, company=company, url=url)
     except Exception as e:
         logger.debug(f"Tracker sync notice: {e}")
 

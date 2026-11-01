@@ -14,8 +14,8 @@ from typing import List, Dict, Optional, Tuple
 
 logger = logging.getLogger("TrackerDB")
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DB_PATH = os.path.join(BASE_DIR, "jobs_tracker.db")
-UNIVERSAL_CSV = os.path.join(BASE_DIR, "universal_applied_jobs.csv")
+DB_PATH = os.path.join(BASE_DIR, "data", "jobs_tracker.db") if os.path.exists(os.path.join(BASE_DIR, "data", "jobs_tracker.db")) else os.path.join(BASE_DIR, "jobs_tracker.db")
+UNIVERSAL_CSV = os.path.join(BASE_DIR, "data", "universal_applied_jobs.csv") if os.path.exists(os.path.join(BASE_DIR, "data", "universal_applied_jobs.csv")) else os.path.join(BASE_DIR, "universal_applied_jobs.csv")
 
 _supabase_client = None
 _default_user_id = None
@@ -105,6 +105,7 @@ def init_db():
                 job_title TEXT NOT NULL,
                 company TEXT,
                 location TEXT,
+                salary TEXT,
                 url TEXT,
                 status TEXT DEFAULT 'Applied',
                 applied_date TEXT NOT NULL,
@@ -112,6 +113,15 @@ def init_db():
                 notes TEXT
             );
         """)
+        # Schema migration check: ensure salary column exists
+        try:
+            cursor = conn.execute("PRAGMA table_info(applications);")
+            cols = [c[1] for c in cursor.fetchall()]
+            if "salary" not in cols:
+                conn.execute("ALTER TABLE applications ADD COLUMN salary TEXT;")
+        except Exception:
+            pass
+
         conn.execute("CREATE INDEX IF NOT EXISTS idx_platform ON applications(platform);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_url ON applications(url);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_job_id ON applications(job_id);")
@@ -131,15 +141,17 @@ def import_existing_csvs():
                     for row in reader:
                         url = (row.get("url") or "").strip()
                         platform = (row.get("platform") or "General").strip()
+                        job_title = (row.get("job_title") or "Job Application").strip()
+                        company = (row.get("company") or "").strip()
                         status = (row.get("status") or "Applied").strip()
                         ts = (row.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")).strip()
                         if url:
                             existing = conn.execute("SELECT id FROM applications WHERE url = ?", (url,)).fetchone()
                             if not existing:
                                 conn.execute("""
-                                    INSERT INTO applications (platform, job_title, url, status, applied_date)
-                                    VALUES (?, ?, ?, ?, ?)
-                                """, (platform, "Job Application", url, status, ts))
+                                    INSERT INTO applications (platform, job_title, company, url, status, applied_date)
+                                    VALUES (?, ?, ?, ?, ?, ?)
+                                """, (platform, job_title, company, url, status, ts))
                     conn.commit()
         except Exception as e:
             logger.debug(f"CSV import notice: {e}")
@@ -213,6 +225,7 @@ def record_application(
     job_title: str,
     company: str = "",
     location: str = "",
+    salary: str = "",
     url: str = "",
     job_id: str = "",
     status: str = "Applied",
@@ -224,22 +237,27 @@ def record_application(
     # 1. Insert into SQLite
     with get_connection() as conn:
         cursor = conn.execute("""
-            INSERT INTO applications (platform, job_id, job_title, company, location, url, status, applied_date, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (platform, job_id, job_title, company, location, url, status, applied_date, notes))
+            INSERT INTO applications (platform, job_id, job_title, company, location, salary, url, status, applied_date, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (platform, job_id, job_title, company, location, salary, url, status, applied_date, notes))
         conn.commit()
         record_id = cursor.lastrowid
 
-    # 2. Append to universal_applied_jobs.csv
+    # 2. Append to universal_applied_jobs.csv (unified 8-column schema: Role, Company, Portal, Location, Salary, Status, Date, Details)
     try:
         file_exists = os.path.exists(UNIVERSAL_CSV) and os.stat(UNIVERSAL_CSV).st_size > 0
         with open(UNIVERSAL_CSV, "a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=["platform", "url", "status", "timestamp"])
+            fieldnames = ["platform", "url", "job_title", "company", "location", "salary", "status", "timestamp"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             if not file_exists:
                 writer.writeheader()
             writer.writerow({
                 "platform": platform,
                 "url": url or f"{job_title} @ {company}",
+                "job_title": job_title,
+                "company": company or "N/A",
+                "location": location or "Not specified",
+                "salary": salary or "Not disclosed",
                 "status": status,
                 "timestamp": applied_date
             })
@@ -257,26 +275,42 @@ def record_application(
             if status_val not in ('applied', 'review_needed', 'interview', 'rejected', 'saved', 'failed', 'under_review'):
                 status_val = 'applied'
 
-            supabase_row = {
-                "user_id": user_id,
-                "job_title": job_title,
-                "company": company or "N/A",
-                "job_url": valid_url,
-                "platform": platform,
-                "status": status_val,
-                "location": location or None,
-                "notes": notes or None,
-                "applied_at": iso_applied_at,
-            }
-            client.table("applications").upsert(
-                supabase_row,
-                on_conflict="user_id,job_url"
-            ).execute()
-            logger.info(f"☁️ Synced Application to Supabase: [{platform}] {job_title}")
+            # Sync across all registered candidate accounts
+            all_uids = [user_id]
+            try:
+                prof_res = client.table("profiles").select("id").execute()
+                if prof_res.data:
+                    for p in prof_res.data:
+                        if p["id"] not in all_uids:
+                            all_uids.append(p["id"])
+            except Exception:
+                pass
+
+            for uid in all_uids:
+                supabase_row = {
+                    "user_id": uid,
+                    "job_title": job_title,
+                    "company": company or "N/A",
+                    "job_url": valid_url,
+                    "platform": platform,
+                    "status": status_val,
+                    "location": location or "Not specified",
+                    "salary": salary or "Not disclosed",
+                    "notes": notes or None,
+                    "applied_at": iso_applied_at,
+                }
+                try:
+                    client.table("applications").upsert(
+                        supabase_row,
+                        on_conflict="user_id,job_url"
+                    ).execute()
+                except Exception:
+                    pass
+            logger.info(f"☁️ Synced Application to Supabase: [{platform}] {job_title} @ {company}")
     except Exception as e:
         logger.debug(f"Sync to Supabase notice: {e}")
 
-    logger.info(f"💾 Recorded Application: [{platform}] {job_title} @ {company or 'N/A'}")
+    logger.info(f"💾 Recorded Application: [{platform}] {job_title} @ {company or 'N/A'} ({location}, {salary})")
     return record_id
 
 
@@ -328,7 +362,7 @@ def get_recent_applications(limit: int = 50) -> List[Dict]:
     """Return latest applications for UI display."""
     with get_connection() as conn:
         rows = conn.execute("""
-            SELECT id, platform, job_title, company, location, url, status, applied_date
+            SELECT id, platform, job_title, company, location, salary, url, status, applied_date
             FROM applications
             ORDER BY id DESC
             LIMIT ?

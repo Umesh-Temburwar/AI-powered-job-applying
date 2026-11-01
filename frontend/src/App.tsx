@@ -14,6 +14,7 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 
 import { DashboardPage } from './pages/DashboardPage';
+import { GuidePage } from './pages/GuidePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ResumeManagerPage } from './pages/ResumeManagerPage';
@@ -23,6 +24,7 @@ import { ApplicationsPage } from './pages/ApplicationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AdminPage } from './pages/AdminPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { ApiOfflineModal } from './components/common/ApiOfflineModal';
 
 export function App() {
   return (
@@ -30,6 +32,7 @@ export function App() {
       <AuthProvider>
         <ToastProvider>
           <BrowserRouter>
+            <ApiOfflineModal />
             <Routes>
               {/* Public Marketing & Auth Routes */}
               <Route path="/" element={<LandingPage />} />
@@ -59,6 +62,7 @@ export function App() {
                 }
               >
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/guide" element={<GuidePage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/resumes" element={<ResumeManagerPage />} />
                 <Route path="/preferences" element={<PreferencesPage />} />

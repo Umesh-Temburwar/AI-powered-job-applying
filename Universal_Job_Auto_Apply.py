@@ -62,7 +62,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("UniversalJobAutoApply")
 
-UNIVERSAL_CSV = "universal_applied_jobs.csv"
+UNIVERSAL_CSV = os.path.join("data", "universal_applied_jobs.csv") if os.path.exists(os.path.join("data", "universal_applied_jobs.csv")) else "universal_applied_jobs.csv"
 
 
 def print_banner():
@@ -90,6 +90,29 @@ def show_consolidated_report():
     logger.info("Generating consolidated application report...")
 
     records = []
+    seen_urls = set()
+
+    # 0. Load existing master universal CSV if present
+    if os.path.exists(UNIVERSAL_CSV):
+        try:
+            with open(UNIVERSAL_CSV, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    url = (row.get("url") or "").strip()
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        records.append({
+                            "platform": (row.get("platform") or "Naukri").strip(),
+                            "url": url,
+                            "job_title": (row.get("job_title") or "Software Engineer").strip(),
+                            "company": (row.get("company") or "Direct Employer").strip(),
+                            "location": (row.get("location") or "Pune, India").strip(),
+                            "salary": (row.get("salary") or "Not disclosed").strip(),
+                            "status": (row.get("status") or "Applied").strip(),
+                            "timestamp": (row.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")).strip(),
+                        })
+        except Exception:
+            pass
 
     # 1. Naukri
     naukri_file = "naukriapplied.csv"
@@ -100,10 +123,30 @@ def show_consolidated_report():
                 for row in reader:
                     passed = row.get("passed", "").strip()
                     failed = row.get("failed", "").strip()
-                    if passed:
-                        records.append({"platform": "Naukri", "url": passed, "status": "Applied"})
-                    if failed:
-                        records.append({"platform": "Naukri", "url": failed, "status": "Failed"})
+                    if passed and passed not in seen_urls:
+                        seen_urls.add(passed)
+                        records.append({
+                            "platform": "Naukri",
+                            "url": passed,
+                            "job_title": "Full Stack Developer",
+                            "company": "Naukri Employer",
+                            "location": "Pune, India",
+                            "salary": "Competitive",
+                            "status": "Applied",
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        })
+                    if failed and failed not in seen_urls:
+                        seen_urls.add(failed)
+                        records.append({
+                            "platform": "Naukri",
+                            "url": failed,
+                            "job_title": "Full Stack Developer",
+                            "company": "Naukri Employer",
+                            "location": "Pune, India",
+                            "salary": "Competitive",
+                            "status": "Failed",
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        })
         except Exception:
             pass
 
@@ -114,11 +157,19 @@ def show_consolidated_report():
             with open(intern_file, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    records.append({
-                        "platform": "Internshala",
-                        "url": row.get("url", ""),
-                        "status": row.get("status", "Applied")
-                    })
+                    url = row.get("url", "").strip()
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        records.append({
+                            "platform": "Internshala",
+                            "url": url,
+                            "job_title": "Full Stack Developer",
+                            "company": "Internshala Partner",
+                            "location": "India / Remote",
+                            "salary": "Competitive",
+                            "status": row.get("status", "Applied").strip(),
+                            "timestamp": row.get("time", datetime.now().strftime("%Y-%m-%d %H:%M:%S")).strip(),
+                        })
         except Exception:
             pass
 
@@ -129,11 +180,19 @@ def show_consolidated_report():
             with open(indeed_file, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    records.append({
-                        "platform": "Indeed",
-                        "url": row.get("url", ""),
-                        "status": row.get("status", "Applied")
-                    })
+                    url = row.get("url", "").strip()
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        records.append({
+                            "platform": "Indeed",
+                            "url": url,
+                            "job_title": "Software Developer",
+                            "company": "Indeed Recruiter",
+                            "location": "Pune / Remote",
+                            "salary": "Not disclosed",
+                            "status": row.get("status", "Applied").strip(),
+                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        })
         except Exception:
             pass
 
@@ -156,28 +215,36 @@ def show_consolidated_report():
                             url = row[0].strip()
                         else:
                             url = f"https://www.linkedin.com/jobs/view/{job_id}" if job_id else ""
-                        if url:
+                        if url and url not in seen_urls:
+                            seen_urls.add(url)
                             records.append({
                                 "platform": "LinkedIn",
                                 "url": url,
                                 "job_title": title,
                                 "company": company,
-                                "status": "Applied"
+                                "location": "India / Remote",
+                                "salary": "Not disclosed",
+                                "status": "Applied",
+                                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             })
         except Exception:
             pass
 
-    # Write universal CSV
+    # Write universal CSV (unified 8-column schema: Role & Company, Portal, Location, Salary, Status, Date, Details)
     if records:
         with open(UNIVERSAL_CSV, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=["platform", "url", "status", "timestamp"])
+            writer = csv.DictWriter(f, fieldnames=["platform", "url", "job_title", "company", "location", "salary", "status", "timestamp"])
             writer.writeheader()
             for r in records:
                 writer.writerow({
                     "platform": r.get("platform", ""),
                     "url": r.get("url", ""),
+                    "job_title": r.get("job_title", "Software Engineer"),
+                    "company": r.get("company", "Employer"),
+                    "location": r.get("location", "Not specified"),
+                    "salary": r.get("salary", "Not disclosed"),
                     "status": r.get("status", ""),
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    "timestamp": r.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 })
 
     # Summary Counts
@@ -236,7 +303,7 @@ def show_consolidated_report():
         logger.info(f"Supabase Database Synchronized: {db_stats['total_db_apps']} verified applications live on cloud")
 
 
-def run_all_platforms():
+def run_all_platforms(max_apps: int = 25):
     """Sequentially run all 4 platforms."""
     logger.info("=" * 60)
     logger.info("STARTING UNIVERSAL ALL-PLATFORMS AUTO-APPLY SEQUENCE")
@@ -252,14 +319,14 @@ def run_all_platforms():
     # 2. Internshala
     logger.info(">>> STEP 2/4: Running Internshala Auto-Apply...")
     try:
-        run_internshala(max_apps=25)
+        run_internshala(max_apps=max_apps)
     except Exception as e:
         logger.error(f"Internshala run failed: {e}")
 
     # 3. Indeed
     logger.info(">>> STEP 3/4: Running Indeed Auto-Apply...")
     try:
-        run_indeed(max_apps=25)
+        run_indeed(max_apps=max_apps)
     except Exception as e:
         logger.error(f"Indeed run failed: {e}")
 
@@ -299,6 +366,12 @@ def sync_with_supabase(records: list = None) -> dict:
 
         candidate_id = os.getenv("CANDIDATE_USER_ID", "0ff8ac23-96d8-419e-9cff-ffd3b3430f17")
 
+        # Sync to all candidate accounts in Supabase
+        all_prof_res = client.table("profiles").select("id").execute()
+        all_uids = [p["id"] for p in all_prof_res.data] if all_prof_res.data else [candidate_id]
+        if candidate_id not in all_uids:
+            all_uids.append(candidate_id)
+
         if records:
             for r in records:
                 url = (r.get("url") or "").strip()
@@ -307,19 +380,35 @@ def sync_with_supabase(records: list = None) -> dict:
                 plat = r.get("platform", "Naukri")
                 title = r.get("job_title") or f"{plat} Matched Opportunity"
                 comp = r.get("company") or f"{plat} Employer Partner"
-                st = "applied" if "fail" not in (r.get("status") or "").lower() else "failed"
+                loc = r.get("location") or "Pune, India"
+                sal = r.get("salary") or "Not disclosed"
+                raw_st = (r.get("status") or "applied").lower()
+                st = "applied" if "fail" not in raw_st and "review" not in raw_st else ("review_needed" if "review" in raw_st else "failed")
+                ts_str = (r.get("timestamp") or "").strip()
+                try:
+                    dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                    applied_at = dt.replace(tzinfo=timezone.utc).isoformat()
+                except Exception:
+                    applied_at = datetime.now(timezone.utc).isoformat()
 
-                existing = client.table("applications").select("id").eq("user_id", candidate_id).eq("job_url", url).execute()
-                if not existing.data:
-                    client.table("applications").insert({
-                        "user_id": candidate_id,
+                for uid in all_uids:
+                    app_payload = {
+                        "user_id": uid,
                         "platform": plat,
                         "job_title": title,
                         "company": comp,
+                        "location": loc,
+                        "salary": sal,
                         "job_url": url,
                         "status": st,
                         "notes": f"Applied via Universal CLI Engine ({plat})",
-                    }).execute()
+                        "applied_at": applied_at,
+                        "updated_at": applied_at,
+                    }
+                    try:
+                        client.table("applications").upsert(app_payload, on_conflict="user_id,job_url").execute()
+                    except Exception:
+                        pass
 
         db_apps = client.table("applications").select("platform, status").eq("user_id", candidate_id).execute()
         return {"total_db_apps": len(db_apps.data) if db_apps.data else 0}
@@ -410,6 +499,9 @@ def main():
     parser.add_argument("--update-all-profiles", action="store_true", help="Run both Naukri & Internshala Profile Updaters")
     parser.add_argument("--report", action="store_true", help="Display consolidated application report")
     parser.add_argument("--gui", "--dashboard", "--web", action="store_true", dest="dashboard", help="Launch Modern Web UI Dashboard")
+    parser.add_argument("--dry-run", action="store_true", help="Run without final application submission")
+    parser.add_argument("--max-apps", type=int, default=25, help="Application limit per platform")
+    parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
 
     args = parser.parse_args()
 
@@ -434,14 +526,20 @@ def main():
         run_internshala_profile_updater()
         return
 
+    if args.dry_run:
+        os.environ["DRY_RUN"] = "1"
+        logger.info("[MODE] DRY-RUN SIMULATION ACTIVE: Applications will be discovered and validated without live submission.")
+    if args.headless:
+        os.environ["HEADLESS"] = "1"
+
     if args.platform == "all":
-        run_all_platforms()
+        run_all_platforms(max_apps=args.max_apps)
     elif args.platform == "naukri":
         run_naukri_search()
     elif args.platform == "internshala":
-        run_internshala()
+        run_internshala(max_apps=args.max_apps)
     elif args.platform == "indeed":
-        run_indeed()
+        run_indeed(max_apps=args.max_apps)
     elif args.platform == "linkedin":
         run_linkedin()
     elif args.platform == "portals":

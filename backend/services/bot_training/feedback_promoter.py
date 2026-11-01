@@ -14,7 +14,7 @@ from .similarity import normalize_text
 logger = logging.getLogger("FeedbackPromoter")
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-CSV_PATH = os.path.join(BASE_DIR, "application_answers.csv")
+CSV_PATH = os.path.join(BASE_DIR, "data", "application_answers.csv") if os.path.exists(os.path.join(BASE_DIR, "data", "application_answers.csv")) else os.path.join(BASE_DIR, "application_answers.csv")
 
 
 class FeedbackPromoter:

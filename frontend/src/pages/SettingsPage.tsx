@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { supabase } from '../lib/supabaseClient';
+import { configService } from '../services/configService';
 import {
   Card,
   CardHeader,
@@ -46,6 +47,7 @@ export const SettingsPage: React.FC = () => {
   // Dialog states
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,10 +83,73 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteAccountConfirmed = async () => {
-    setDeleteConfirmOpen(false);
-    showToast('Session terminated', 'info');
-    await logout();
-    navigate('/');
+    setIsResetting(true);
+    try {
+      // 1. Wipe all candidate data from backend (Supabase tables, SQLite DB, local resumes, .env, and in-memory caches)
+      await configService.resetCandidateData();
+
+      // 2. Extra direct client-side Supabase wipe if session exists
+      if (user?.id) {
+        try {
+          await Promise.allSettled([
+            supabase.from('applications').delete().eq('user_id', user.id),
+            supabase.from('automation_tasks').delete().eq('user_id', user.id),
+            supabase.from('platform_connections').delete().eq('user_id', user.id),
+            supabase.from('job_preferences').delete().eq('user_id', user.id),
+            supabase.from('resumes').delete().eq('user_id', user.id),
+            supabase.from('application_answers').delete().eq('user_id', user.id),
+          ]);
+          await supabase.from('profiles').update({
+            full_name: 'Candidate',
+            phone: null,
+            city: null,
+            headline: null,
+            skills: [],
+            summary: null,
+            is_onboarded: false,
+            onboarding_step: 1,
+            onboarded_at: null,
+            education: [],
+            experience: [],
+            projects: [],
+            certifications: [],
+            additional_info: {},
+            linkedin_url: null,
+            github_url: null,
+            portfolio_url: null,
+          }).eq('id', user.id);
+        } catch (sbErr) {
+          console.warn('Frontend Supabase direct wipe:', sbErr);
+        }
+      }
+
+      // 3. Clear all stored client caches
+      const keysToRemove = [
+        'onboarding_completed',
+        'candidate_preferences',
+        'bot_config',
+        'naukri_filters',
+        'cached_profile',
+        'active_task',
+        'last_automation_run',
+        'job_search_filters',
+      ];
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+      sessionStorage.clear();
+
+      showToast('✓ All candidate data deleted from Supabase & backend! Fresh candidate state active.', 'success');
+      setDeleteConfirmOpen(false);
+
+      // 4. Force full page refresh to /dashboard as a 100% fresh user
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 500);
+    } catch (err: any) {
+      console.error('Reset candidate data error:', err);
+      showToast(err?.message || 'Failed to wipe candidate data', 'error');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -325,6 +390,7 @@ export const SettingsPage: React.FC = () => {
             size="sm"
             onClick={() => setDeleteConfirmOpen(true)}
             leftIcon={<AlertTriangle className="w-4 h-4" />}
+            isLoading={isResetting}
           >
             Reset Candidate Data
           </Button>
@@ -344,12 +410,13 @@ export const SettingsPage: React.FC = () => {
       {/* Delete Data Confirmation */}
       <ConfirmDialog
         isOpen={deleteConfirmOpen}
-        onClose={() => setDeleteConfirmOpen(false)}
+        onClose={() => !isResetting && setDeleteConfirmOpen(false)}
         onConfirm={handleDeleteAccountConfirmed}
         title="Reset Candidate Data"
-        description="This action will wipe all stored candidate preferences and return the application to its clean initial state. This action cannot be undone."
-        confirmLabel="Reset Everything"
+        description="Permanently delete ALL candidate details, resumes, portal credentials, applied jobs history, and reset your account to a completely fresh state. This action cannot be undone."
+        confirmLabel={isResetting ? "Deleting All Data..." : "Reset Everything"}
         isDestructive
+        isLoading={isResetting}
       />
     </div>
   );

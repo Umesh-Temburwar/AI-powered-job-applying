@@ -1,54 +1,61 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
 @layer base {
   :root,
-  .light {
-    --bg-base: #FAFAFA;
+  .light,
+  [data-theme="light"] {
+    --bg-base: #F5F3EC;
     --bg-surface: #FFFFFF;
     --bg-card: #FFFFFF;
-    --bg-card-hover: #FAFAFA;
+    --bg-card-hover: #EFECE3;
     --bg-input: #FFFFFF;
-    --border-color: #E5E5E5;
-    --border-color-focus: #166534;
+    --border-color: #18181B;
+    --border-color-focus: #15803D;
 
-    --text-primary: #111111;
-    --text-secondary: #6B6B6B;
-    --text-muted: #888888;
+    --text-primary: #09090B;
+    --text-secondary: #3F3F46;
+    --text-muted: #71717A;
 
-    --accent: #166534;
-    --accent-hover: #14532D;
-    --accent-muted: #F0FDF4;
+    --accent: #15803D;
+    --accent-hover: #166534;
+    --accent-muted: #DCFCE7;
     --accent-fg: #FFFFFF;
 
-    --color-success: #166534;
-    --color-success-muted: transparent;
+    --color-success: #15803D;
+    --color-success-muted: #DCFCE7;
     --color-warning: #B45309;
-    --color-warning-muted: transparent;
+    --color-warning-muted: #FEF3C7;
     --color-danger: #B91C1C;
-    --color-danger-muted: transparent;
-    --color-info: #166534;
-    --color-info-muted: transparent;
+    --color-danger-muted: #FEE2E2;
+    --color-info: #0369A1;
+    --color-info-muted: #E0F2FE;
+
+    --retro-shadow: 3px 3px 0px #18181B;
+    --retro-shadow-lg: 5px 5px 0px #18181B;
   }
 
-  .dark {
+  .dark,
+  [data-theme="dark"] {
     color-scheme: dark;
 
-    --bg-base: #0B132B;
-    --bg-surface: #111D4A;
-    --bg-card: #1C2541;
-    --bg-card-hover: #223055;
-    --bg-input: #0D1630;
-    --border-color: #263859;
-    --border-color-focus: #00E5FF;
+    --bg-base: #0B0E14;
+    --bg-surface: #111520;
+    --bg-card: #141A26;
+    --bg-card-hover: #1C2436;
+    --bg-input: #0E121B;
+    --border-color: #2E384D;
+    --border-color-focus: #10B981;
 
-    --text-primary: #F8FAFC;
-    --text-secondary: #94A3B8;
-    --text-muted: #64748B;
+    --text-primary: #F4F4F5;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
 
-    --accent: #00E5FF;
-    --accent-hover: #33ECFF;
-    --accent-muted: rgba(0, 229, 255, 0.12);
-    --accent-fg: #0B132B;
+    --accent: #10B981;
+    --accent-hover: #34D399;
+    --accent-muted: rgba(16, 185, 129, 0.15);
+    --accent-fg: #0B0E14;
 
     --color-success: #10B981;
     --color-success-muted: rgba(16, 185, 129, 0.15);
@@ -58,6 +65,9 @@
     --color-danger-muted: rgba(239, 68, 68, 0.15);
     --color-info: #38BDF8;
     --color-info-muted: rgba(56, 189, 248, 0.15);
+
+    --retro-shadow: 3px 3px 0px #10B981;
+    --retro-shadow-lg: 5px 5px 0px #10B981;
   }
 
   * {
@@ -67,21 +77,35 @@
   body {
     background-color: var(--bg-base);
     color: var(--text-primary);
-    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 14px;
     line-height: 1.5;
     min-height: 100vh;
     margin: 0;
     padding: 0;
     -webkit-font-smoothing: antialiased;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
 
-  /* Hard ban on rounded-2xl / 3xl and heavy shadows */
   button, input, select, textarea {
     font-family: inherit;
     font-size: 14px;
   }
+}
+
+/* Retro Grid Background Pattern */
+.retro-grid-light {
+  background-size: 24px 24px;
+  background-image: 
+    linear-gradient(to right, rgba(24, 24, 27, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(24, 24, 27, 0.05) 1px, transparent 1px);
+}
+
+.retro-grid-dark {
+  background-size: 24px 24px;
+  background-image: 
+    linear-gradient(to right, rgba(16, 185, 129, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 185, 129, 0.07) 1px, transparent 1px);
 }
 
 /* Utilitarian token helper classes */
@@ -116,50 +140,77 @@
 .text-theme-info { color: var(--color-info); }
 .bg-theme-info-muted { background-color: var(--color-info-muted); color: var(--color-info); }
 
-/* Dark mode overrides for hardcoded Tailwind utility colors */
-.dark .bg-white,
-.dark .bg-\[\#FFFFFF\],
-.dark .bg-\[\#ffffff\] {
-  background-color: var(--bg-card) !important;
+/* Retro Tactile Shadow Helpers */
+.retro-border {
+  border: 2px solid var(--border-color);
 }
 
-.dark .bg-\[\#FAFAFA\],
-.dark .bg-\[\#fafafa\],
-.dark .bg-\[\#F8FAFC\],
-.dark .bg-\[\#f8fafc\] {
-  background-color: var(--bg-base) !important;
+.retro-shadow-sm {
+  box-shadow: 2px 2px 0px var(--border-color);
 }
 
-.dark .border-\[\#E5E5E5\],
-.dark .border-\[\#e5e5e5\],
-.dark .border-\[\#E2E8F0\],
-.dark .border-\[\#e2e8f0\],
-.dark .border-\[\#CCCCCC\],
-.dark .border-\[\#cccccc\] {
-  border-color: var(--border-color) !important;
+.retro-shadow {
+  box-shadow: 3px 3px 0px var(--border-color);
 }
 
-.dark .text-\[\#111111\],
-.dark .text-\[\#0F172A\],
-.dark .text-\[\#0f172a\] {
-  color: var(--text-primary) !important;
+.retro-shadow-lg {
+  box-shadow: 5px 5px 0px var(--border-color);
 }
 
-.dark .text-\[\#6B6B6B\],
-.dark .text-\[\#6b6b6b\],
-.dark .text-\[\#475569\],
-.dark .text-\[\#888888\],
-.dark .text-\[\#94A3B8\],
-.dark .text-\[\#94a3b8\] {
-  color: var(--text-secondary) !important;
+.retro-shadow-accent {
+  box-shadow: 3px 3px 0px var(--accent);
 }
 
-.dark .hover\:bg-\[\#FAFAFA\]:hover,
-.dark .hover\:bg-\[\#fafafa\]:hover {
-  background-color: var(--bg-card-hover) !important;
+.retro-btn {
+  border: 2px solid var(--border-color);
+  box-shadow: 3px 3px 0px var(--border-color);
+  transition: all 0.1s ease;
 }
 
-.dark .hover\:text-\[\#111111\]:hover,
-.dark .hover\:text-\[\#0f172a\]:hover {
-  color: var(--text-primary) !important;
+.retro-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px var(--border-color);
 }
+
+.retro-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px var(--border-color);
+}
+
+/* Slide in from right animation for auth & drawers */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+/* Hulk screen shake on outside clicks */
+@keyframes hulkShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px) rotate(-0.5deg); }
+  40%, 80% { transform: translateX(8px) rotate(0.5deg); }
+}
+
+.animate-hulk-shake {
+  animation: hulkShake 0.4s ease-in-out;
+}
+
+

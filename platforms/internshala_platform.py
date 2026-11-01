@@ -145,8 +145,8 @@ def build_search_urls(keywords, location=""):
 
 
 def apply_on_internshala(driver, max_apps=25):
-    email = os.getenv("INTERNSHALA_EMAIL", os.getenv("NAUKRI_EMAIL", ""))
-    password = os.getenv("INTERNSHALA_PASSWORD", os.getenv("NAUKRI_PASSWORD", ""))
+    email = os.getenv("INTERNSHALA_EMAIL", "").strip()
+    password = os.getenv("INTERNSHALA_PASSWORD", "").strip()
 
     if not email or not password:
         logger.error("INTERNSHALA_EMAIL or INTERNSHALA_PASSWORD not set in .env")
@@ -205,11 +205,15 @@ def apply_on_internshala(driver, max_apps=25):
                 driver.get(link)
                 time.sleep(3)
 
-                # Extract role & company for tracking
-                role_elem = driver.find_elements(By.CSS_SELECTOR, "h1, .heading_4_5, .profile")
+                # Extract role, company, location, salary for tracking
+                role_elem = driver.find_elements(By.CSS_SELECTOR, "h1, .heading_4_5, .profile, .job-title-href")
                 role_text = role_elem[0].text.strip() if role_elem else "Internshala Job"
-                comp_elem = driver.find_elements(By.CSS_SELECTOR, ".company_name, .link_display_like_text")
+                comp_elem = driver.find_elements(By.CSS_SELECTOR, ".company_name, .link_display_like_text, p.company-name")
                 comp_text = comp_elem[0].text.strip() if comp_elem else "Employer"
+                loc_elem = driver.find_elements(By.CSS_SELECTOR, ".location_link, #location_names, .location, [class*='location']")
+                loc_text = loc_elem[0].text.strip() if loc_elem else "India / Remote"
+                sal_elem = driver.find_elements(By.CSS_SELECTOR, ".stipend, .salary, [class*='salary'], [class*='stipend']")
+                sal_text = sal_elem[0].text.strip() if sal_elem else "Competitive"
 
                 # Find Apply Now button
                 apply_selectors = [
@@ -275,7 +279,7 @@ def apply_on_internshala(driver, max_apps=25):
                         logger.info(f"✓ Applied on Internshala: '{role_text}' @ {comp_text} ({applied_count}/{max_apps})")
                         
                         # Record in SQLite DB + CSV + Push Notification
-                        record_application(platform="Internshala", job_title=role_text, company=comp_text, url=link, status="Applied")
+                        record_application(platform="Internshala", job_title=role_text, company=comp_text, location=loc_text, salary=sal_text, url=link, status="Applied")
                         notify_application_success(platform="Internshala", job_title=role_text, company=comp_text, url=link)
                         records.append({"platform": "Internshala", "url": link, "status": "Applied", "time": str(datetime.now())})
                         time.sleep(2)

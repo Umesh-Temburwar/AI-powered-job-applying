@@ -387,7 +387,7 @@ def sync_local_profile_data(data: dict[str, Any]) -> None:
         import json
         import os
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        p_path = os.path.join(base_dir, "profile_data.json")
+        p_path = os.path.join(base_dir, "data", "profile_data.json") if os.path.exists(os.path.join(base_dir, "data", "profile_data.json")) else os.path.join(base_dir, "profile_data.json")
         if os.path.exists(p_path):
             existing: dict[str, Any] = {}
             try:

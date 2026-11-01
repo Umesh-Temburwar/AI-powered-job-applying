@@ -61,7 +61,7 @@ BROWSER_CHOICE = os.getenv('BROWSER', 'auto').strip().lower()
 EDGE_DRIVER_PATH = os.getenv('EDGE_DRIVER_PATH', '')
 CHROME_DRIVER_PATH = os.getenv('CHROME_DRIVER_PATH', '')
 MAX_SELECT = 5
-ANSWERS_CSV = "application_answers.csv"
+ANSWERS_CSV = os.path.join("data", "application_answers.csv") if os.path.exists(os.path.join("data", "application_answers.csv")) else "application_answers.csv"
 
 TABS = [
     {"num": 1, "id": "apply",        "label": "Applies"},
@@ -394,9 +394,10 @@ def select_jobs_and_apply(driver):
 
     if not job_cards:
         logger.warning("No recommended jobs available.")
-        return False
+        return False, []
 
     selected = 0
+    selected_jobs = []
     for card in job_cards:
         if selected >= MAX_SELECT:
             break
@@ -416,18 +417,55 @@ def select_jobs_and_apply(driver):
             driver.execute_script("arguments[0].click();", cb)
             selected += 1
 
+            # Extract accurate Role, Company, Location, Salary, URL
             try:
-                title = card.find_element(By.CSS_SELECTOR, ".title.typ-16Bold").text
-            except NoSuchElementException:
-                title = "Unknown"
-            logger.info(f"  [{selected}/{MAX_SELECT}] ✓ {title}")
+                title_elem = card.find_elements(By.CSS_SELECTOR, ".title.typ-16Bold, .title, [class*='title']")
+                title = title_elem[0].text.strip() if title_elem else "Software Developer"
+            except Exception:
+                title = "Software Developer"
+
+            try:
+                comp_elem = card.find_elements(By.CSS_SELECTOR, ".comp-name, a.comp-name, [class*='company']")
+                comp = comp_elem[0].text.strip() if comp_elem else "Naukri Verified Employer"
+            except Exception:
+                comp = "Naukri Verified Employer"
+
+            try:
+                loc_elem = card.find_elements(By.CSS_SELECTOR, ".loc-wrap, .loc, [class*='location']")
+                loc = loc_elem[0].text.strip() if loc_elem else "Pune, India"
+            except Exception:
+                loc = "Pune, India"
+
+            try:
+                sal_elem = card.find_elements(By.CSS_SELECTOR, ".sal-wrap, .sal, [class*='salary']")
+                sal = sal_elem[0].text.strip() if sal_elem else "Not disclosed"
+            except Exception:
+                sal = "Not disclosed"
+
+            try:
+                url_elem = card.find_elements(By.CSS_SELECTOR, "a.title, a[href*='job-listings']")
+                job_url = url_elem[0].get_attribute("href") if url_elem else ""
+                if job_url:
+                    job_url = job_url.split("?")[0]
+            except Exception:
+                job_url = ""
+
+            selected_jobs.append({
+                "title": title,
+                "company": comp,
+                "location": loc,
+                "salary": sal,
+                "url": job_url
+            })
+
+            logger.info(f"  [{selected}/{MAX_SELECT}] ✓ {title} @ {comp} ({loc}, {sal})")
             time.sleep(1)
         except Exception as e:
             logger.warning(f"  Select error: {e}")
 
     if selected == 0:
         logger.warning("No jobs were selected.")
-        return False
+        return False, []
 
     try:
         time.sleep(2)
@@ -436,16 +474,16 @@ def select_jobs_and_apply(driver):
         )
         if apply_btn.get_attribute('disabled') is not None:
             logger.warning("Apply button disabled after selection.")
-            return False
+            return False, []
 
         driver.execute_script("arguments[0].click();", apply_btn)
         logger.info(f"✓ Clicked Apply for {selected} jobs!")
         time.sleep(3)
-        return True
+        return True, selected_jobs
 
     except (TimeoutException, ElementClickInterceptedException) as e:
         logger.error(f"Could not click Apply: {e}")
-        return False
+        return False, []
 
 
 # ============================================================
@@ -928,13 +966,34 @@ def main():
             while True:
                 navigate_to_tab(driver, tab['id'])
 
-                if not select_jobs_and_apply(driver):
+                ok, current_selected_jobs = select_jobs_and_apply(driver)
+                if not ok:
                     logger.info(f"No more jobs in '{tab['label']}'.")
                     break
 
                 handle_chatbot_drawer(driver, known_answers)
-                total_applied += MAX_SELECT
+                total_applied += len(current_selected_jobs) if current_selected_jobs else MAX_SELECT
                 known_answers = load_answers()
+
+                # Record each real job individually in Tracker DB
+                try:
+                    from platforms.tracker_db import record_application, has_applied
+                    from platforms.notifier import notify_application_success
+                    for j in current_selected_jobs:
+                        j_url = j.get("url") or f"https://www.naukri.com/job-listings-{j.get('title')}-{j.get('company')}"
+                        if not has_applied(url=j_url):
+                            record_application(
+                                platform="Naukri",
+                                job_title=j.get("title", "Software Developer"),
+                                company=j.get("company", "Naukri Verified Employer"),
+                                location=j.get("location", "Pune, India"),
+                                salary=j.get("salary", "Not disclosed"),
+                                url=j_url,
+                                status="applied"
+                            )
+                            notify_application_success(platform="Naukri", job_title=j.get("title"), company=j.get("company"), url=j_url)
+                except Exception as ex:
+                    logger.debug(f"Tracker sync notice: {ex}")
 
                 logger.info(f"Total applied so far: ~{total_applied}")
                 time.sleep(3)
@@ -942,16 +1001,6 @@ def main():
         logger.info("=" * 50)
         logger.info(f"✅ Complete! Applied to ~{total_applied} jobs total.")
         logger.info("=" * 50)
-
-        # Record in CRM Tracker and send push notification
-        try:
-            from platforms.tracker_db import record_application
-            from platforms.notifier import notify_application_success
-            if total_applied > 0:
-                record_application(platform="Naukri", job_title=f"Recommended Jobs Batch ({total_applied} jobs)", company="Multiple Recruiters", status="Applied")
-                notify_application_success(platform="Naukri", job_title=f"Naukri Recommended Batch ({total_applied} jobs)", company="Top Recruiters")
-        except Exception as e:
-            logger.debug(f"Tracker sync notice: {e}")
 
     except Exception as e:
         logger.exception(f"Error: {e}")

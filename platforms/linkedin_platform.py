@@ -22,19 +22,30 @@ CONFIG_PATH = os.path.join(LINKEDIN_DIR, "config.yaml")
 
 def sync_linkedin_config():
     """Generate or update config.yaml for LinkedIn bot using .env settings."""
-    email = os.getenv("LINKEDIN_EMAIL", os.getenv("NAUKRI_EMAIL", ""))
-    password = os.getenv("LINKEDIN_PASSWORD", os.getenv("NAUKRI_PASSWORD", ""))
+    email = os.getenv("LINKEDIN_EMAIL", "").strip()
+    password = os.getenv("LINKEDIN_PASSWORD", "").strip()
     phone = os.getenv("PHONE", "+918856087984")
     keywords = [kw.strip() for kw in os.getenv("KEYWORDS", "Full Stack Developer, Software Engineer").split(",") if kw.strip()]
     location = os.getenv("LOCATION", "Pune")
 
     # Locate actual resume PDF
-    resume_pdf = os.path.join(BASE_DIR, "Umesh-Temburwar-OCT.pdf")
-    if not os.path.exists(resume_pdf):
-        for f in os.listdir(BASE_DIR):
-            if f.lower().endswith(".pdf"):
-                resume_pdf = os.path.join(BASE_DIR, f)
-                break
+    resume_pdf = os.getenv("RESUME_PATH")
+    if not resume_pdf or not os.path.exists(resume_pdf):
+        resumes_dir = os.path.join(BASE_DIR, "data", "resumes")
+        if os.path.exists(resumes_dir):
+            for f in os.listdir(resumes_dir):
+                if f.lower().endswith(".pdf"):
+                    resume_pdf = os.path.join(resumes_dir, f)
+                    break
+    if not resume_pdf or not os.path.exists(resume_pdf):
+        fallback_pdf = os.path.join(BASE_DIR, "data", "resumes", "Umesh-Temburwar-OCT.pdf")
+        if os.path.exists(fallback_pdf):
+            resume_pdf = fallback_pdf
+        else:
+            for f in os.listdir(BASE_DIR):
+                if f.lower().endswith(".pdf"):
+                    resume_pdf = os.path.join(BASE_DIR, f)
+                    break
 
     config_data = {
         "username": email,
@@ -93,10 +104,28 @@ def run_linkedin():
                 with open(out_csv, "r", encoding="utf-8") as f:
                     reader = csv.reader(f)
                     for row in reader:
-                        if row and row[0]:
-                            url = row[0].strip()
-                            if not has_applied(url=url):
-                                record_application(platform="LinkedIn", job_title="LinkedIn Easy Apply", url=url, status="Applied")
+                        # Row schema: [timestamp, jobID, job_title, company, attempted, result]
+                        if len(row) >= 4 and row[1]:
+                            job_id = row[1].strip()
+                            if not job_id:
+                                continue
+                            url = f"https://www.linkedin.com/jobs/view/{job_id}"
+                            title = row[2].strip() if len(row) > 2 and row[2].strip() else "LinkedIn Position"
+                            comp = row[3].strip() if len(row) > 3 and row[3].strip() else "LinkedIn Employer"
+                            result_val = str(row[5]).strip().lower() if len(row) > 5 else "true"
+                            
+                            # Only record if application was actually attempted/successful
+                            if result_val in ["true", "applied", "success", "1"]:
+                                if not has_applied(url=url):
+                                    record_application(
+                                        platform="LinkedIn",
+                                        job_title=title,
+                                        company=comp,
+                                        location="India / Remote",
+                                        salary="Not disclosed",
+                                        url=url,
+                                        status="Applied"
+                                    )
         except Exception as e:
             logger.debug(f"LinkedIn DB sync notice: {e}")
 

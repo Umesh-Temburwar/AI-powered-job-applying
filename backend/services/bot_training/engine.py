@@ -16,8 +16,8 @@ from typing import Dict, List, Optional, Any
 logger = logging.getLogger("BotTrainingEngine")
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-PROFILE_PATH = os.path.join(BASE_DIR, "profile_data.json")
-ANSWERS_PATH = os.path.join(BASE_DIR, "application_answers.csv")
+PROFILE_PATH = os.path.join(BASE_DIR, "data", "profile_data.json") if os.path.exists(os.path.join(BASE_DIR, "data", "profile_data.json")) else os.path.join(BASE_DIR, "profile_data.json")
+ANSWERS_PATH = os.path.join(BASE_DIR, "data", "application_answers.csv") if os.path.exists(os.path.join(BASE_DIR, "data", "application_answers.csv")) else os.path.join(BASE_DIR, "application_answers.csv")
 
 
 @dataclass

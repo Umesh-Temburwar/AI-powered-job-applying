@@ -59,7 +59,7 @@ class ApplicationService:
         page_size: int = 10,
     ) -> ApplicationListResponse:
         page = max(1, page)
-        page_size = max(1, min(100, page_size))
+        page_size = max(1, min(5000, page_size))
 
         if self.supabase:
             try:
@@ -70,7 +70,7 @@ class ApplicationService:
                 )
 
                 if status and status.lower() != "all":
-                    sb_query = sb_query.eq("status", status)
+                    sb_query = sb_query.ilike("status", status)
 
                 if platform and platform.lower() != "all":
                     sb_query = sb_query.ilike("platform", f"%{platform}%")
@@ -83,7 +83,7 @@ class ApplicationService:
 
                 offset = (page - 1) * page_size
                 res = (
-                    sb_query.order("created_at", desc=True)
+                    sb_query.order("applied_at", desc=True, nullsfirst=False)
                     .range(offset, offset + page_size - 1)
                     .execute()
                 )
@@ -137,7 +137,7 @@ class ApplicationService:
 
     list_applications = get_applications
 
-    def get_applied_job_urls(self, user_id: str, limit: int = 200) -> set[str]:
+    def get_applied_job_urls(self, user_id: str, limit: int = 500) -> set[str]:
         """Lightweight query returning set of recently applied job URLs to prevent duplicates without loading full model payloads."""
         if self.supabase:
             try:
@@ -145,7 +145,7 @@ class ApplicationService:
                     self.supabase.table("applications")
                     .select("job_url")
                     .eq("user_id", user_id)
-                    .order("created_at", desc=True)
+                    .order("applied_at", desc=True, nullsfirst=False)
                     .limit(limit)
                     .execute()
                 )
@@ -180,11 +180,16 @@ class ApplicationService:
 
         if self.supabase:
             try:
-                res = self.supabase.table("applications").insert(row).execute()
+                res = self.supabase.table("applications").upsert(row, on_conflict="user_id,job_url").execute()
                 if res.data and len(res.data) > 0:
                     return _map_row_to_application(res.data[0])
             except Exception:
-                pass
+                try:
+                    res = self.supabase.table("applications").insert(row).execute()
+                    if res.data and len(res.data) > 0:
+                        return _map_row_to_application(res.data[0])
+                except Exception:
+                    pass
 
         # Fallback memory
         if user_id not in _MEMORY_APPLICATIONS:
@@ -217,26 +222,56 @@ class ApplicationService:
         return False
 
     def get_platform_breakdown(self, user_id: str) -> List[PlatformBreakdownItem]:
-        apps = self.get_applications(user_id=user_id, page=1, page_size=1000).items
-        if not apps:
+        counts: Dict[str, int] = {}
+        total = 0
+
+        if self.supabase:
+            try:
+                res = (
+                    self.supabase.table("applications")
+                    .select("platform")
+                    .eq("user_id", user_id)
+                    .limit(5000)
+                    .execute()
+                )
+                platforms = [r.get("platform") for r in (res.data or []) if r.get("platform")]
+                for raw_p in platforms:
+                    p = raw_p.strip()
+                    if p.lower() == "linkedin":
+                        plat = "LinkedIn"
+                    elif p.lower() == "naukri":
+                        plat = "Naukri"
+                    elif p.lower() == "internshala":
+                        plat = "Internshala"
+                    elif p.lower() == "indeed":
+                        plat = "Indeed"
+                    else:
+                        plat = p.title()
+                    counts[plat] = counts.get(plat, 0) + 1
+                total = len(platforms)
+            except Exception:
+                pass
+
+        if total == 0:
+            apps = _MEMORY_APPLICATIONS.get(user_id, [])
+            for a in apps:
+                raw_p = a.get("platform") or "Other"
+                if raw_p.lower() == "linkedin":
+                    plat = "LinkedIn"
+                elif raw_p.lower() == "naukri":
+                    plat = "Naukri"
+                elif raw_p.lower() == "internshala":
+                    plat = "Internshala"
+                elif raw_p.lower() == "indeed":
+                    plat = "Indeed"
+                else:
+                    plat = raw_p.title()
+                counts[plat] = counts.get(plat, 0) + 1
+            total = len(apps)
+
+        if total == 0:
             return []
 
-        counts: Dict[str, int] = {}
-        for a in apps:
-            raw_p = a.platform.strip() if a.platform else "Other"
-            if raw_p.lower() == "linkedin":
-                plat = "LinkedIn"
-            elif raw_p.lower() == "naukri":
-                plat = "Naukri"
-            elif raw_p.lower() == "internshala":
-                plat = "Internshala"
-            elif raw_p.lower() == "indeed":
-                plat = "Indeed"
-            else:
-                plat = raw_p.title()
-            counts[plat] = counts.get(plat, 0) + 1
-
-        total = len(apps)
         breakdown: List[PlatformBreakdownItem] = []
         for plat, count in sorted(counts.items(), key=lambda x: x[1], reverse=True):
             pct = round((count / total) * 100) if total > 0 else 0
@@ -347,7 +382,7 @@ class ApplicationService:
         return [item for _, item in activities[:8]]
 
     def export_csv(self, user_id: str) -> str:
-        apps = self.get_applications(user_id=user_id, page=1, page_size=500).items
+        apps = self.get_applications(user_id=user_id, page=1, page_size=5000).items
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(

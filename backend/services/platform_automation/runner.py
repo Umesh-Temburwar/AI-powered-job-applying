@@ -27,9 +27,8 @@ if PROJECT_ROOT not in sys.path:
 SESSION_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "browser_sessions")
 )
-UNIVERSAL_CSV_PATH = os.path.abspath(
-    os.path.join(PROJECT_ROOT, "universal_applied_jobs.csv")
-)
+data_csv = os.path.join(PROJECT_ROOT, "data", "universal_applied_jobs.csv")
+UNIVERSAL_CSV_PATH = data_csv if os.path.exists(data_csv) else os.path.abspath(os.path.join(PROJECT_ROOT, "universal_applied_jobs.csv"))
 
 
 def find_edge_binary() -> Optional[str]:
@@ -92,12 +91,12 @@ def _get_user_session_dir(user_id: str, platform: str) -> str:
     return path
 
 
-def append_to_universal_csv(platform: str, job_title: str, company: str, job_url: str, status: str) -> None:
-    """Keep root universal_applied_jobs.csv synced with website task runs."""
+def append_to_universal_csv(platform: str, job_title: str, company: str, job_url: str, status: str, location: str = "Not specified", salary: str = "Not disclosed") -> None:
+    """Keep root universal_applied_jobs.csv synced with website task runs with full 8-column schema."""
     try:
-        file_exists = os.path.exists(UNIVERSAL_CSV_PATH)
+        file_exists = os.path.exists(UNIVERSAL_CSV_PATH) and os.stat(UNIVERSAL_CSV_PATH).st_size > 0
         with open(UNIVERSAL_CSV_PATH, "a", newline="", encoding="utf-8") as f:
-            fieldnames = ["platform", "url", "job_title", "company", "status", "timestamp"]
+            fieldnames = ["platform", "url", "job_title", "company", "location", "salary", "status", "timestamp"]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             if not file_exists:
                 writer.writeheader()
@@ -106,6 +105,8 @@ def append_to_universal_csv(platform: str, job_title: str, company: str, job_url
                 "url": job_url,
                 "job_title": job_title,
                 "company": company,
+                "location": location or "Not specified",
+                "salary": salary or "Not disclosed",
                 "status": status,
                 "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             })
@@ -422,343 +423,126 @@ async def run_platform_automation_task(
             logger.warning("Could not query platform_connections: %s", conn_err)
 
     # Determine execution platform list based on user selection & connected platforms
-    if raw_platform.lower() in ["all", "all platforms", "all portals", "all_platforms"]:
-        if len(connected_platforms) > 0:
-            platforms_to_run = connected_platforms
+    universal_bot_script = os.path.join(PROJECT_ROOT, "universal_bot.py")
+    if os.path.exists(universal_bot_script):
+        # 1. Determine CLI flags
+        bot_args: list[str] = []
+        if task_type == "profile_update":
+            if "naukri" in raw_platform.lower():
+                bot_args = ["--update-naukri-profile"]
+            elif "internshala" in raw_platform.lower():
+                bot_args = ["--update-internshala-profile"]
+            else:
+                bot_args = ["--update-all-profiles"]
+        elif task_type == "report":
+            bot_args = ["--report"]
         else:
-            platforms_to_run = ["Naukri", "Internshala", "Indeed", "LinkedIn"]
-    else:
-        # Match user's specific platform selection
-        matched_plat = "Naukri"
-        for candidate in ["Naukri", "Internshala", "Indeed", "LinkedIn"]:
-            if candidate.lower() in raw_platform.lower():
-                matched_plat = candidate
-                break
-        platforms_to_run = [matched_plat]
-
-    logger.info("Executing automation task %s for platforms: %s", task_id, platforms_to_run)
-
-    num_plats = len(platforms_to_run)
-    per_platform_max = max(1, max_apps_total // num_plats)
-
-    # Fetch existing application URLs for duplicate prevention
-    applied_urls = application_service.get_applied_job_urls(user_id=user_id, limit=200)
-
-    total_applications_created = 0
-
-    try:
-        for idx, plat in enumerate(platforms_to_run):
-            if is_cancelled():
-                return
-
-            adapter = get_adapter_for_platform(plat)
-            plat_name = adapter.platform_name
-
-            base_pct = int(15 + (idx / num_plats) * 80)
-            step_pct = int(15 + ((idx + 0.5) / num_plats) * 80)
-            end_plat_pct = int(15 + ((idx + 1) / num_plats) * 80)
-
-            # Update banner for current platform
-            update_task_state(
-                status_val="running",
-                progress_val=base_pct,
-                message_val=f"[{idx+1}/{num_plats}] Connecting to {plat_name} for {task_type}...",
-            )
-            await asyncio.sleep(0.5)
-            if is_cancelled():
-                return
-
-            # Profile Update Workflow
-            if task_type == "profile_update":
-                update_task_state(
-                    status_val="running",
-                    progress_val=step_pct,
-                    message_val=f"[{idx+1}/{num_plats}] Refreshing candidate profile, headline & skills on {plat_name}...",
-                )
-                await asyncio.sleep(0.8)
-                if is_cancelled():
-                    return
-
-                update_task_state(
-                    status_val="running",
-                    progress_val=end_plat_pct,
-                    message_val=f"[{idx+1}/{num_plats}] Successfully refreshed profile freshness on {plat_name}.",
-                )
-                continue
-
-            # Screening Test Workflow
-            elif task_type == "screening_test":
-                update_task_state(
-                    status_val="running",
-                    progress_val=step_pct,
-                    message_val=f"[{idx+1}/{num_plats}] Evaluating screening questionnaire intelligence on {plat_name}...",
-                )
-                simulator = QuestionnaireSimulator()
-                sim_questions = [
-                    QuestionItem(id="q1", prompt="What is your official notice period?", field_type="text", expected_answer="Immediate"),
-                    QuestionItem(id="q2", prompt="Are you an immediate joiner?", field_type="radio", options=["Yes", "No"], expected_answer="Yes"),
-                    QuestionItem(id="q3", prompt="Total years of experience in React.js", field_type="text", expected_answer="1"),
-                    QuestionItem(id="q4", prompt="Are you willing to relocate?", field_type="radio", options=["Yes", "No"], expected_answer="Yes"),
-                    QuestionItem(id="q5", prompt="Expected CTC (in LPA)", field_type="text", expected_answer="4.5"),
-                ]
-                sim_report = simulator.run_simulation(portal=plat_name, questions=sim_questions)
-                await asyncio.sleep(0.5)
-                if is_cancelled():
-                    return
-
-                update_task_state(
-                    status_val="running",
-                    progress_val=end_plat_pct,
-                    message_val=f"[{idx+1}/{num_plats}] Verified {sim_report.answered}/{sim_report.total_questions} screening questions on {plat_name} ({sim_report.accuracy_rate}% accuracy).",
-                )
-                continue
-
-            # Standard Job Apply Workflow
-            is_headless = bool(payload.get("headless", False))
-            if is_browser_launch_supported():
-                step_banner = f"[{idx+1}/{num_plats}] Launching visible browser on {plat_name} to search '{', '.join(keywords[:2])}' in {locations[0]}..."
+            # Job Apply Platform Selection
+            if any(term in raw_platform.lower() for term in ["all", "all portals", "all platforms"]):
+                target_plat = "all"
+            elif "naukri" in raw_platform.lower():
+                target_plat = "naukri"
+            elif "internshala" in raw_platform.lower():
+                target_plat = "internshala"
+            elif "indeed" in raw_platform.lower():
+                target_plat = "indeed"
+            elif "linkedin" in raw_platform.lower():
+                target_plat = "linkedin"
+            elif "portal" in raw_platform.lower():
+                target_plat = "portals"
             else:
-                step_banner = f"[{idx+1}/{num_plats}] Searching {plat_name} listings for '{', '.join(keywords[:2])}' in {locations[0]}..."
+                target_plat = "all"
 
-            update_task_state(
-                status_val="running",
-                progress_val=step_pct,
-                message_val=step_banner,
+            bot_args = ["--platform", target_plat, "--max-apps", str(max_apps_total)]
+            if dry_run:
+                bot_args.append("--dry-run")
+            if payload.get("headless"):
+                bot_args.append("--headless")
+
+        sub_env = os.environ.copy()
+        sub_env["PYTHONUNBUFFERED"] = "1"
+        sub_env["PYTHONIOENCODING"] = "utf-8"
+        if dry_run:
+            sub_env["DRY_RUN"] = "1"
+        if keywords:
+            sub_env["KEYWORDS"] = ", ".join(keywords)
+        if locations:
+            sub_env["LOCATION"] = ", ".join(locations)
+        sub_env["MAX_APPLICATIONS"] = str(max_apps_total)
+        sub_env["CANDIDATE_USER_ID"] = str(user_id)
+
+        update_task_state(
+            status_val="running",
+            progress_val=15,
+            message_val=f"Running universal_bot.py {' '.join(bot_args)}",
+        )
+
+        def _execute_cli() -> tuple[int, str]:
+            import subprocess
+            cmd = [sys.executable, "-u", universal_bot_script, *bot_args]
+            logger.info("Executing Universal Bot CLI: %s", " ".join(cmd))
+            proc = subprocess.Popen(
+                cmd,
+                cwd=PROJECT_ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=sub_env,
+                bufsize=1,
             )
-            await asyncio.sleep(0.5)
-            if is_cancelled():
-                return
-
-            opportunities: list[JobOpportunity] = []
-            active_driver = None
-            if is_browser_launch_supported():
-                try:
-                    def _do_platform_search() -> tuple[Any, list[JobOpportunity]]:
-                        d = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=is_headless)
-                        opps = []
-                        if d:
-                            try:
-                                s_urls = adapter.build_search_urls(keywords=keywords, locations=locations)
-                                opps = adapter.search_jobs(
-                                    driver=d,
-                                    search_urls=s_urls,
-                                    max_results=per_platform_max,
-                                    cancel_check=is_cancelled,
-                                )
-                            except Exception as search_err:
-                                logger.warning("Search exception on %s: %s", plat_name, search_err)
-                        return d, opps
-
-                    active_driver, opportunities = await asyncio.wait_for(asyncio.to_thread(_do_platform_search), timeout=70.0)
-                except asyncio.TimeoutError:
-                    logger.info("Live browser search for %s timed out after 70s. Falling back to verified listings.", plat_name)
-                except Exception as d_err:
-                    logger.info("Driver search attempt note for %s: %s", plat_name, d_err)
-            else:
-                logger.info("Browser search bypassed on cloud/test tier for %s; using verified opportunity matching.", plat_name)
-
-            # Ensure we discover unique vacancies that are not already in applied_urls
-            fresh_opportunities: list[JobOpportunity] = [
-                opp for opp in opportunities if opp.job_url not in applied_urls
-            ]
-
-            needed_count = per_platform_max
-            if len(fresh_opportunities) < needed_count:
-                sample_companies = [
-                    ("Persistent Systems", "Pune", "₹8 - 14 LPA"),
-                    ("Swiggy", "Bengaluru (Remote)", "₹12 - 20 LPA"),
-                    ("Zomato", "Gurgaon / Remote", "₹10 - 18 LPA"),
-                    ("Cognizant", "Pune / Hyderabad", "₹6 - 11 LPA"),
-                    ("TCS Digital", "Pune", "₹7 - 12 LPA"),
-                    ("Infosys", "Bengaluru", "₹6 - 10 LPA"),
-                    ("Wipro Technologies", "Pune", "₹6 - 12 LPA"),
-                    ("Razorpay", "Bengaluru (Remote)", "₹14 - 24 LPA"),
-                    ("Jio Platforms", "Mumbai / Pune", "₹9 - 16 LPA"),
-                ]
-                import uuid
-                gen_idx = 0
-                while len(fresh_opportunities) < needed_count and gen_idx < 30:
-                    kw = keywords[gen_idx % len(keywords)]
-                    comp, loc, sal = sample_companies[(gen_idx + idx * 3) % len(sample_companies)]
-                    cand_loc = locations[gen_idx % len(locations)] if locations else loc
-                    slug = kw.lower().replace(" ", "-").replace(".", "")
-                    comp_slug = comp.lower().replace(" ", "-")
-                    unique_id = uuid.uuid4().hex[:6]
-
-                    if plat_name.lower() == "internshala":
-                        j_url = f"https://internshala.com/job/detail/{slug}-{comp_slug}-{unique_id}"
-                    elif plat_name.lower() == "indeed":
-                        j_url = f"https://in.indeed.com/viewjob?jk=ind{unique_id}&q={slug}"
-                    elif plat_name.lower() == "linkedin":
-                        j_url = f"https://www.linkedin.com/jobs/view/{slug}-{comp_slug}-{unique_id}"
-                    else:
-                        j_url = f"https://www.naukri.com/job-listings-{slug}-{comp_slug}-{unique_id}"
-
-                    if j_url not in applied_urls:
-                        fresh_opp = JobOpportunity(
-                            job_title=f"{kw.title()}",
-                            company=comp,
-                            job_url=j_url,
-                            platform=plat_name,
-                            location=cand_loc,
-                            salary=sal,
-                            is_easy_apply=True,
-                        )
-                        fresh_opportunities.append(fresh_opp)
-                    gen_idx += 1
-
-            opportunities = fresh_opportunities
-
-            if is_cancelled():
-                if active_driver:
-                    try:
-                        active_driver.quit()
-                    except Exception:
-                        pass
-                return
-
-            plat_applied_count = 0
+            last_msg = "Universal Bot initialized"
+            cur_prog = 20
             try:
-                for opp in opportunities:
+                for raw_line in proc.stdout:
                     if is_cancelled():
-                        return
-                    if opp.job_url in applied_urls:
-                        logger.info("Job %s already tracked. Skipping.", opp.job_url)
-                        continue
-
-                    app_status = "applied" if not dry_run else "review_needed"
-                    note_text = (
-                        f"Application submitted on {plat_name} for '{opp.job_title}' at {opp.company}."
-                        if not dry_run
-                        else f"[DRY RUN] Job match discovered on {plat_name} for '{opp.job_title}'. Details verified."
-                    )
-
-                    if not dry_run and user_confirmed:
+                        proc.terminate()
                         try:
-                            def _do_live_apply(drv, target_opp) -> Optional[str]:
-                                d = drv
-                                should_close = False
-                                if not d:
-                                    d = launch_isolated_driver(user_id=user_id, platform=plat_name, headless=is_headless)
-                                    should_close = True
-                                if d:
-                                    try:
-                                        apply_res = adapter.apply_to_job(
-                                            driver=d,
-                                            job=target_opp,
-                                            user_profile=profile_dict,
-                                            resume_path=None,
-                                            dry_run=False,
-                                            user_confirmed=user_confirmed,
-                                        )
-                                        if apply_res and apply_res.notes:
-                                            return apply_res.notes
-                                    finally:
-                                        if should_close:
-                                            try:
-                                                d.quit()
-                                            except Exception:
-                                                pass
-                                return None
+                            proc.wait(timeout=2)
+                        except Exception:
+                            proc.kill()
+                        return -1, "Task cancelled by user."
+                    clean = sanitize_text(raw_line.strip()).encode("ascii", "ignore").decode("ascii")
+                    if clean and not clean.startswith("="):
+                        last_msg = clean
+                        cur_prog = min(95, cur_prog + 2)
+                        update_task_state(status_val="running", progress_val=cur_prog, message_val=clean[:120])
+                proc.wait()
+            except Exception as cli_err:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                return -1, str(cli_err)
+            return proc.returncode, last_msg
 
-                            live_note = await asyncio.wait_for(
-                                asyncio.to_thread(_do_live_apply, active_driver, opp), timeout=30.0
-                            )
-                            if live_note:
-                                note_text = live_note
-                        except Exception as live_err:
-                            logger.warning("Live application submission attempt note: %s", live_err)
-                            app_status = "review_needed"
-                            note_text = f"Live application deferred: candidate session requires re-verification on {plat_name}."
+        return_code, final_line = await asyncio.to_thread(_execute_cli)
 
-                    # Persist application immediately inside the loop
-                    try:
-                        application_service.create_application(
-                            user_id=user_id,
-                            req=ApplicationCreateRequest(
-                                task_id=task_id,
-                                job_title=opp.job_title,
-                                company=opp.company,
-                                job_url=opp.job_url,
-                                platform=opp.platform,
-                                status=app_status,
-                                location=opp.location,
-                                salary=opp.salary,
-                                notes=note_text,
-                            ),
-                        )
-                        append_to_universal_csv(
-                            platform=opp.platform,
-                            job_title=opp.job_title,
-                            company=opp.company,
-                            job_url=opp.job_url,
-                            status=app_status,
-                        )
-                        applied_urls.add(opp.job_url)
-                        plat_applied_count += 1
-                        total_applications_created += 1
+        if is_cancelled():
+            update_task_state(status_val="cancelled", progress_val=0, message_val="Task cancelled by user.")
+            return
 
-                        update_task_state(
-                            status_val="running",
-                            progress_val=min(
-                                95,
-                                step_pct + int((plat_applied_count / max(1, len(opportunities))) * (end_plat_pct - step_pct))
-                            ),
-                            message_val=f"[{idx+1}/{num_plats}] Processed {plat_name}: '{opp.job_title}' at {opp.company} ({plat_applied_count}/{len(opportunities)})",
-                        )
-                        await asyncio.sleep(0.1)
-                    except Exception as app_err:
-                        logger.warning("Could not persist application: %s", app_err)
+        # Synchronize applications to Supabase and CSV via consolidated report
+        try:
+            from Universal_Job_Auto_Apply import show_consolidated_report
+            await asyncio.to_thread(show_consolidated_report)
+        except Exception as rep_err:
+            logger.debug("Report sync note: %s", rep_err)
 
-            finally:
-                if active_driver:
-                    try:
-                        active_driver.quit()
-                    except Exception:
-                        pass
-                    active_driver = None
-
+        if return_code == 0:
             update_task_state(
-                status_val="running",
-                progress_val=end_plat_pct,
-                message_val=f"[{idx+1}/{num_plats}] {plat_name} complete: {plat_applied_count} vacancies recorded.",
+                status_val="completed",
+                progress_val=100,
+                message_val=f"Universal Bot completed successfully for {raw_platform}.",
+                completed_at=datetime.now(timezone.utc).isoformat(),
             )
-            await asyncio.sleep(0.4)
-
-        # ─────────────────────────────────────────────────────────────
-        # STAGE 3: Final Completion State (100%)
-        # ─────────────────────────────────────────────────────────────
-        mode_label = "[DRY RUN] " if dry_run else ""
-        if task_type == "job_apply":
-            final_msg = f"{mode_label}Successfully processed {total_applications_created} applications across {len(platforms_to_run)} platforms ({', '.join(platforms_to_run)})."
-        elif task_type == "profile_update":
-            final_msg = f"{mode_label}Successfully refreshed candidate profile freshness on {', '.join(platforms_to_run)}."
         else:
-            final_msg = f"{mode_label}Successfully verified screening questionnaire on {', '.join(platforms_to_run)}."
+            update_task_state(
+                status_val="completed" if "completed" in final_line.lower() else "failed",
+                progress_val=100,
+                message_val=f"Universal Bot finished: {final_line[:120]}",
+                completed_at=datetime.now(timezone.utc).isoformat(),
+            )
+        return
 
-        update_task_state(
-            status_val="completed",
-            progress_val=100,
-            message_val=final_msg,
-            completed_at=datetime.now(timezone.utc).isoformat(),
-        )
-        logger.info("Task %s completed successfully: %s", task_id, final_msg)
-
-    except asyncio.CancelledError:
-        logger.info("Task %s was cancelled by user.", task_id)
-        update_task_state(
-            status_val="cancelled",
-            progress_val=0,
-            message_val="Task was cancelled by candidate.",
-            cancelled_at=datetime.now(timezone.utc).isoformat(),
-            completed_at=datetime.now(timezone.utc).isoformat(),
-        )
-    except Exception as exc:
-        logger.error("Task %s execution error: %s", task_id, exc, exc_info=True)
-        update_task_state(
-            status_val="failed",
-            progress_val=0,
-            message_val=f"Automation error: {str(exc)}",
-            error_details=str(exc),
-            completed_at=datetime.now(timezone.utc).isoformat(),
-        )

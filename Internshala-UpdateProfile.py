@@ -47,7 +47,7 @@ logging.basicConfig(
 logger = logging.getLogger("InternshalaProfileUpdater")
 load_dotenv()
 
-PROFILE_DATA_FILE = "profile_data.json"
+PROFILE_DATA_FILE = os.path.join("data", "profile_data.json") if os.path.exists(os.path.join("data", "profile_data.json")) else "profile_data.json"
 
 
 def load_profile_data():
@@ -437,7 +437,7 @@ def update_portfolio(driver):
             github_input = driver.find_elements(By.CSS_SELECTOR, "input#github, input[name*='github'], input[placeholder*='github']")
             if github_input and github_input[0].is_displayed():
                 github_input[0].clear()
-                github_input[0].send_keys("https://github.com/umeshtemburwar")
+                github_input[0].send_keys(os.getenv("GITHUB_URL") or "https://github.com")
                 time.sleep(0.5)
 
             save_btns = driver.find_elements(By.CSS_SELECTOR, "#work-modal-submit, button[type='submit'], input[type='submit']")

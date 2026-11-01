@@ -17,11 +17,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
     return (
-      <div className="w-full">
+      <div className="w-full font-mono">
         {label && (
           <label
             htmlFor={selectId}
-            className="block text-[13px] font-medium text-[#111111] mb-1.5"
+            className="block text-xs font-bold text-[var(--text-primary)] uppercase mb-1.5"
           >
             {label}
           </label>
@@ -29,21 +29,25 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select
           id={selectId}
           ref={ref}
-          className={`h-9 w-full bg-[#FFFFFF] text-[#111111] border rounded-[6px] px-3 text-[14px] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#166534] focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed ${
-            error ? 'border-[#B91C1C]' : 'border-[#E5E5E5]'
+          className={`h-9 w-full bg-[var(--bg-input)] text-[var(--text-primary)] border-2 rounded-none px-3 text-[13px] transition-colors duration-150 focus:outline-none focus:border-[var(--border-color-focus)] disabled:opacity-50 disabled:cursor-not-allowed ${
+            error ? 'border-[var(--color-danger)]' : 'border-[var(--border-color)]'
           } ${className}`}
           {...props}
         >
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-white text-[#111111]">
+            <option
+              key={opt.value}
+              value={opt.value}
+              className="bg-[var(--bg-card)] text-[var(--text-primary)]"
+            >
               {opt.label}
             </option>
           ))}
         </select>
         {error ? (
-          <p className="mt-1 text-[13px] text-[#B91C1C]">{error}</p>
+          <p className="mt-1 text-xs text-[var(--color-danger)]">{error}</p>
         ) : helperText ? (
-          <p className="mt-1 text-[13px] text-[#6B6B6B]">{helperText}</p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">{helperText}</p>
         ) : null}
       </div>
     );

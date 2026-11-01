@@ -62,7 +62,7 @@ BROWSER_CHOICE = os.getenv('BROWSER', 'auto').strip().lower()
 EDGE_DRIVER_PATH = os.getenv('EDGE_DRIVER_PATH', '')
 CHROME_DRIVER_PATH = os.getenv('CHROME_DRIVER_PATH', '')
 
-PROFILE_DATA_FILE = "profile_data.json"
+PROFILE_DATA_FILE = os.path.join("data", "profile_data.json") if os.path.exists(os.path.join("data", "profile_data.json")) else "profile_data.json"
 
 
 def load_profile_data():

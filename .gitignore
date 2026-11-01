@@ -40,6 +40,10 @@ platforms/linkedin/config.yaml
 *.pem
 *.key
 
+# Secure Local Data & User Artifacts
+data/
+!data/README.md
+
 # Resume and personal documents / temp user storage
 *.pdf
 storage/

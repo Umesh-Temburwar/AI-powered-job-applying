@@ -624,7 +624,7 @@ export interface BackendApplicationListResponse {
 }
 
 export async function getApplicationsApi(
-  token: string,
+  token?: string,
   params?: {
     status?: string;
     platform?: string;
@@ -634,15 +634,18 @@ export async function getApplicationsApi(
   }
 ): Promise<BackendApplicationListResponse> {
   const q = new URLSearchParams();
-  if (params?.status && params.status !== 'all') q.set('status', params.status);
-  if (params?.platform && params.platform !== 'all') q.set('platform', params.platform);
+  if (params?.status && params.status.toLowerCase() !== 'all') q.set('status', params.status);
+  if (params?.platform && params.platform.toLowerCase() !== 'all') q.set('platform', params.platform);
   if (params?.query) q.set('query', params.query);
   if (params?.page) q.set('page', String(params.page));
   if (params?.pageSize) q.set('page_size', String(params.pageSize));
 
   const queryStr = q.toString() ? `?${q.toString()}` : '';
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   return apiClient<BackendApplicationListResponse>(`/api/v1/applications${queryStr}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers,
   });
 }
 
@@ -664,11 +667,11 @@ export async function deleteApplicationApi(token: string, id: string): Promise<{
   });
 }
 
-export async function exportApplicationsCsvApi(token: string): Promise<string> {
+export async function exportApplicationsCsvApi(token?: string): Promise<string> {
   const url = buildApiUrl('/api/v1/applications/export');
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error('Failed to export CSV');
   return res.text();
 }

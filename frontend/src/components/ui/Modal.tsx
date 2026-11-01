@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { playRetroSound } from '../../utils/soundEffects';
 import { Button } from './Button';
 
 export interface ModalProps {
@@ -20,6 +21,9 @@ export const Modal: React.FC<ModalProps> = ({
   maxWidth = 'md',
 }) => {
   useEffect(() => {
+    if (isOpen) {
+      playRetroSound('modal');
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
@@ -39,7 +43,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-mono">
       <div
         className="fixed inset-0"
         aria-hidden="true"
@@ -48,23 +52,31 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative w-full ${maxWidthStyles[maxWidth]} bg-[#FFFFFF] border border-[#E5E5E5] rounded-[6px] p-6 overflow-hidden z-10`}
+        className={`relative w-full ${maxWidthStyles[maxWidth]} bg-[var(--bg-card)] text-[var(--text-primary)] border-2 border-[var(--border-color)] retro-shadow-lg p-6 overflow-hidden z-10 animate-fade-in`}
       >
-        <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E5] mb-4">
-          <h3 className="text-[16px] font-semibold text-[#111111]">{title}</h3>
+        <div className="flex items-center justify-between pb-3 border-b-2 border-[var(--border-color)] mb-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 bg-red-500 inline-block border border-black/40" />
+            <span className="w-2.5 h-2.5 bg-amber-400 inline-block border border-black/40" />
+            <span className="w-2.5 h-2.5 bg-emerald-500 inline-block border border-black/40" />
+            <h3 className="text-[15px] font-bold text-[var(--text-primary)] uppercase ml-2">{title}</h3>
+          </div>
           <button
             onClick={onClose}
-            className="text-[#6B6B6B] hover:text-[#111111] transition-colors duration-150 p-1 rounded-[4px] hover:bg-[#FAFAFA]"
+            data-sound="click"
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-current p-1 cursor-pointer transition-colors"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="max-h-[75vh] overflow-y-auto">{children}</div>
+        <div className="max-h-[75vh] overflow-y-auto pr-1">
+          {children}
+        </div>
 
         {footer && (
-          <div className="mt-6 pt-4 border-t border-[#E5E5E5] flex items-center justify-end gap-3">
+          <div className="mt-5 pt-3 border-t-2 border-[var(--border-color)] flex items-center justify-end gap-2">
             {footer}
           </div>
         )}
@@ -117,7 +129,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </>
       }
     >
-      <p className="text-sm text-theme-secondary">{description}</p>
+      <p className="text-sm text-[var(--text-secondary)] font-mono">{description}</p>
     </Modal>
   );
 };

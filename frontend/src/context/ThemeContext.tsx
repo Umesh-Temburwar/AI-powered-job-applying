@@ -23,12 +23,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('uab_theme', theme);
     const root = document.documentElement;
+    const body = document.body;
+
     if (theme === 'dark') {
       root.classList.add('dark');
       root.classList.remove('light');
+      root.setAttribute('data-theme', 'dark');
+      body.classList.add('dark');
+      body.classList.remove('light');
+      body.setAttribute('data-theme', 'dark');
     } else {
       root.classList.add('light');
       root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+      body.classList.add('light');
+      body.classList.remove('dark');
+      body.setAttribute('data-theme', 'light');
     }
   }, [theme]);
 

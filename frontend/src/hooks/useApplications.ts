@@ -95,20 +95,14 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
 
   const fetchApplications = useCallback(async () => {
     const activeToken = (await getTokenRef.current?.()) || token;
-    if (!activeToken) {
-      setApplications([]);
-      setTotal(0);
-      setTotalPages(0);
-      setLoading(false);
-      return;
-    }
+    // Active token optional; backend defaults to candidate profile if omitted
 
     try {
       if (!cachedApplicationsData) {
         setLoading(true);
       }
       setError(null);
-      const res = await getApplicationsApi(activeToken, {
+      const res = await getApplicationsApi(activeToken || undefined, {
         ...filters,
         page,
         pageSize,
@@ -161,8 +155,7 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
 
   const exportCsv = async () => {
     const activeToken = (await getToken?.()) || token;
-    if (!activeToken) return '';
-    return await exportApplicationsCsvApi(activeToken);
+    return await exportApplicationsCsvApi(activeToken || undefined);
   };
 
   return {

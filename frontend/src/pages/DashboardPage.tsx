@@ -5,6 +5,9 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useConnections } from '../hooks/useConnections';
 import { useToast } from '../context/ToastContext';
 import { Button, Input, Select, Modal } from '../components/ui';
+import { ExternalLink, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { BotSetupModal } from '../components/common/BotSetupModal';
+import { playRetroSound } from '../utils/soundEffects';
 import type { PlatformName } from '../types';
 
 export const DashboardPage: React.FC = () => {
@@ -52,8 +55,12 @@ export const DashboardPage: React.FC = () => {
   const [connectModalPortal, setConnectModalPortal] = useState<any | null>(null);
   const [connectEmail, setConnectEmail] = useState<string>('');
   const [connectPassword, setConnectPassword] = useState<string>('');
+  const [showModalPassword, setShowModalPassword] = useState<boolean>(false);
   const [connectPermissionGranted, setConnectPermissionGranted] = useState<boolean>(true);
   const [connectModalSubmitting, setConnectModalSubmitting] = useState<boolean>(false);
+
+  // Bot Setup & Auto-Fill Modal State
+  const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
 
   // Task Launch Modal & Form State
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
@@ -124,6 +131,28 @@ export const DashboardPage: React.FC = () => {
 
   const handleRemoveLocation = (tag: string) => {
     setLocations((prev) => prev.filter((l) => l !== tag));
+  };
+
+  // Handle start bot automation directly from setup modal
+  const handleStartBotFromSetup = async (options?: { platform?: string; dryRun?: boolean }) => {
+    try {
+      const plat = (options?.platform || selectedPlatform || 'All Platforms') as any;
+      const isDry = options?.dryRun !== undefined ? options.dryRun : false;
+      await startTask({
+        platform: plat,
+        taskType: 'job_apply',
+        dryRun: isDry,
+        userConfirmedRealSubmission: !isDry,
+        maxApplications: maxApplications || 50,
+        keywords: keywords.length > 0 ? keywords : ['full stack developer', 'react developer', 'software engineer'],
+        locations: locations.length > 0 ? locations : ['pune', 'Remote'],
+        force: true,
+        headless: false,
+      });
+      showToast(`🚀 Bot started on ${plat} (${isDry ? 'Dry-Run Simulation' : 'Live Mode'})`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to start bot task', 'error');
+    }
   };
 
   // Start task submit
@@ -212,7 +241,7 @@ export const DashboardPage: React.FC = () => {
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 text-[13px] text-[#6B6B6B] font-medium">
+      <span className="inline-flex items-center gap-1.5 text-[13px] text-[var(--text-secondary)] font-medium">
         <span className="w-1.5 h-1.5 rounded-full bg-[#6B6B6B] shrink-0" />
         {status}
       </span>
@@ -230,13 +259,15 @@ export const DashboardPage: React.FC = () => {
   };
 
   const openConnectModal = (portal: any) => {
+    playRetroSound('click');
     setConnectModalPortal(portal);
     setConnectEmail(portal.account_email || (preferences as any)?.email || '');
     setConnectPassword('');
+    setShowModalPassword(false);
     setConnectPermissionGranted(true);
   };
 
-  const handleAuthorizeAndConnect = async (launchBrowser: boolean = true) => {
+  const handleAuthorizeAndConnect = async (launchBrowser: boolean = false) => {
     if (!connectModalPortal) return;
     const targetId = connectModalPortal.portal_id || connectModalPortal.platform;
     setConnectModalSubmitting(true);
@@ -247,9 +278,12 @@ export const DashboardPage: React.FC = () => {
         permission_granted: connectPermissionGranted,
         launch_browser: launchBrowser,
       });
-      showToast(`Connected ${connectModalPortal.display_name || connectModalPortal.platform} with bot automation permissions`, 'success');
+      playRetroSound('success');
+      showToast(`✓ Credentials saved to .env & connected ${connectModalPortal.display_name || connectModalPortal.platform}!`, 'success');
       setConnectModalPortal(null);
+      await refreshConnections();
     } catch (err) {
+      playRetroSound('error');
       showToast(err instanceof Error ? err.message : `Failed to connect ${connectModalPortal.platform}`, 'error');
     } finally {
       setConnectModalSubmitting(false);
@@ -273,15 +307,6 @@ export const DashboardPage: React.FC = () => {
       showToast('Successfully synced platform credentials from .env', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to sync credentials from .env', 'error');
-    }
-  };
-
-  const handleConnect = async (platform: string) => {
-    try {
-      await connectPlatform(platform);
-      showToast(`Opened browser login for ${platform}. Please sign in on the official portal.`, 'info');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : `Failed to connect ${platform}`, 'error');
     }
   };
 
@@ -352,7 +377,7 @@ export const DashboardPage: React.FC = () => {
         );
       case 'unsupported':
         return (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#6B6B6B] font-medium">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-secondary)] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-[#6B6B6B]" />
             Unsupported
           </span>
@@ -366,7 +391,7 @@ export const DashboardPage: React.FC = () => {
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-[#6B6B6B] font-medium">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-secondary)] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-[#6B6B6B]" />
             Not Connected
           </span>
@@ -396,54 +421,62 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="w-full">
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-6 border-b border-[#E5E5E5] mb-6">
+      <div className="flex items-center justify-between pb-6 border-b border-[var(--border-color)] mb-6">
         <div>
-          <h1 className="text-[20px] font-bold text-[#111111] leading-tight">
+          <h1 className="text-[20px] font-bold text-[var(--text-primary)] leading-tight">
             Dashboard
           </h1>
-          <p className="text-[13px] text-[#6B6B6B] mt-0.5">
+          <p className="text-[13px] text-[var(--text-secondary)] mt-0.5">
             Automation Worker Status: {currentTask?.status?.toUpperCase() || 'IDLE'}
           </p>
         </div>
-        <Button
-          variant="primary"
-          onClick={() => setIsLaunchModalOpen(true)}
-        >
-          Launch Task
-        </Button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              playRetroSound('click');
+              setIsSetupModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-none bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider retro-shadow transition-all cursor-pointer"
+            title="Configure resume, keywords, portal logins and start auto-apply"
+          >
+            <Sparkles className="w-4 h-4 fill-current" />
+            <span>🚀 Start / Launch Bot (All Setup)</span>
+          </button>
+        </div>
       </div>
 
       {/* Error Notices */}
       {dashError && (
-        <div className="mb-6 p-3 rounded-[6px] border border-[#B91C1C] text-[#B91C1C] text-[13px] bg-[#FFFFFF] flex items-center justify-between">
+        <div className="mb-6 p-3 rounded-none border border-[#B91C1C] text-[#B91C1C] text-[13px] bg-[var(--bg-card)] flex items-center justify-between">
           <span>{dashError.trim().startsWith('<') ? 'Backend server is waking up from idle state (502 Bad Gateway). Please wait a few seconds and refresh.' : dashError}</span>
           <button
             onClick={() => window.location.reload()}
-            className="ml-4 px-2.5 py-1 text-[12px] font-medium text-[#111111] bg-[#F5F5F5] hover:bg-[#E5E5E5] rounded-[4px] border border-[#E5E5E5] transition-colors"
+            className="ml-4 px-2.5 py-1 text-[12px] font-medium text-[var(--text-primary)] bg-[var(--bg-card-hover)] hover:bg-[var(--bg-card-hover)] rounded-none border-2 border-[var(--border-color)] transition-colors"
           >
             Retry
           </button>
         </div>
       )}
       {taskError && (
-        <div className="mb-6 p-3 rounded-[6px] border border-[#B45309] text-[#B45309] text-[13px] bg-[#FFFFFF]">
+        <div className="mb-6 p-3 rounded-none border border-[#B45309] text-[#B45309] text-[13px] bg-[var(--bg-card)]">
           {taskError.trim().startsWith('<') ? 'Automation worker is reconnecting. Please wait a moment.' : taskError}
         </div>
       )}
 
       {/* Truthful Active Task Banner */}
       {currentTask && currentTask.status !== 'idle' && (
-        <div className="mb-6 p-4 rounded-[6px] border border-[#E5E5E5] bg-[#FFFFFF] flex items-center justify-between">
+        <div className="mb-6 p-4 rounded-none border-2 border-[var(--border-color)] bg-[var(--bg-card)] flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[13px] font-medium text-[#111111]">
+              <span className="text-[13px] font-medium text-[var(--text-primary)]">
                 {getTaskBannerTitle()}
               </span>
-              <span className="text-[11px] font-mono text-[#6B6B6B] bg-[#F5F5F5] px-1.5 py-0.5 rounded-[3px]">
+              <span className="text-[11px] font-mono text-[var(--text-secondary)] bg-[var(--bg-card-hover)] px-1.5 py-0.5 rounded-none">
                 ID: {currentTask.id.slice(0, 8)}
               </span>
             </div>
-            <div className="text-[12px] text-[#6B6B6B] mt-0.5">
+            <div className="text-[12px] text-[var(--text-secondary)] mt-0.5">
               {currentTask.currentStepMessage || `Progress: ${currentTask.progressPercent || 0}%`}
             </div>
             {currentTask.status === 'failed' && currentTask.errorDetails && (
@@ -478,13 +511,13 @@ export const DashboardPage: React.FC = () => {
       )}
 
       {/* Website Connections Section */}
-      <div className="border border-[#E5E5E5] rounded-[6px] bg-[#FFFFFF] p-5 mb-8">
-        <div className="flex items-center justify-between pb-3 border-b border-[#E5E5E5] mb-4">
+      <div className="border-2 border-[var(--border-color)] rounded-none bg-[var(--bg-card)] p-5 mb-8">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)] mb-4">
           <div>
-            <h2 className="text-[14px] font-semibold text-[#111111]">
+            <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">
               Website Connections
             </h2>
-            <p className="text-[12px] text-[#6B6B6B] mt-0.5">
+            <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
               Candidate-isolated browser sessions for official job portals. Passwords are never stored.
             </p>
           </div>
@@ -499,17 +532,21 @@ export const DashboardPage: React.FC = () => {
               Sync from .env
             </Button>
             <Button
-              variant="primary"
+              variant="secondary"
               size="sm"
               onClick={handleConnectAll}
               disabled={actionPlatform === 'all' || connectionsLoading}
+              title="Authorize all configured portals"
             >
               {actionPlatform === 'all' ? 'Authorizing All...' : 'Authorize All Portals'}
             </Button>
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => refreshConnections()}
+              onClick={() => {
+                playRetroSound('button');
+                refreshConnections();
+              }}
               disabled={connectionsLoading}
             >
               Refresh
@@ -518,7 +555,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {connError && (
-          <div className="mb-4 p-2.5 rounded-[4px] border border-[#B91C1C] text-[#B91C1C] text-[12px] bg-[#FFFFFF]">
+          <div className="mb-4 p-2.5 rounded-none border border-[#B91C1C] text-[#B91C1C] text-[12px] bg-[var(--bg-card)]">
             {connError}
           </div>
         )}
@@ -533,13 +570,13 @@ export const DashboardPage: React.FC = () => {
             return (
               <div
                 key={targetId}
-                className="p-3.5 rounded-[6px] border border-[#E5E5E5] bg-[#FAFAFA] flex flex-col justify-between hover:border-[#D4D4D4] transition-colors"
+                className="p-3.5 rounded-none border-2 border-[var(--border-color)] bg-[var(--bg-base)] flex flex-col justify-between hover:border-[var(--border-color)] transition-colors"
               >
                 <div>
                   <div className="flex items-start justify-between gap-1.5">
                     <div>
                       <div className="flex items-center gap-1">
-                        <span className="text-[13px] font-semibold text-[#111111]">
+                        <span className="text-[13px] font-semibold text-[var(--text-primary)]">
                           {conn.display_name || conn.platform}
                         </span>
                         {conn.website_url && (
@@ -547,14 +584,14 @@ export const DashboardPage: React.FC = () => {
                             href={conn.website_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[#9CA3AF] hover:text-[#4B5563] text-[11px] leading-none"
+                            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-[11px] leading-none"
                             title={`Visit ${conn.display_name || conn.platform}`}
                           >
                             ↗
                           </a>
                         )}
                       </div>
-                      <span className="text-[10px] text-[#6B6B6B] block mt-0.5">
+                      <span className="text-[10px] text-[var(--text-secondary)] block mt-0.5">
                         {conn.integration_type === 'official_api'
                           ? 'Official API'
                           : 'Isolated Browser Profile'}
@@ -566,28 +603,28 @@ export const DashboardPage: React.FC = () => {
                   {/* Capabilities indicators */}
                   <div className="flex flex-wrap gap-1 mt-2">
                     {conn.capabilities?.public_job_discovery && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-[3px] bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]">
                         Discovery
                       </span>
                     )}
                     {conn.capabilities?.job_detail_navigation && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-[3px] bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
                         Navigation
                       </span>
                     )}
                     {conn.capabilities?.application_form_assistance && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-[3px] bg-[#FAF5FF] text-[#6B21A8] border border-[#E9D5FF]">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-[#FAF5FF] text-[#6B21A8] border border-[#E9D5FF]">
                         Assist
                       </span>
                     )}
                     {conn.capabilities?.application_submission && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-[3px] bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
                         Apply
                       </span>
                     )}
                   </div>
 
-                  <p className="text-[11px] text-[#6B6B6B] mt-2 line-clamp-3">
+                  <p className="text-[11px] text-[var(--text-secondary)] mt-2 line-clamp-3">
                     {conn.error_message ||
                       (conn.last_verified
                         ? `Verified at ${new Date(conn.last_verified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -598,13 +635,13 @@ export const DashboardPage: React.FC = () => {
                         : 'Open portal to sign in on official website.')}
                   </p>
                   {conn.account_email && (
-                    <span className="text-[10px] font-mono text-[#15803D] bg-[#F0FDF4] px-1.5 py-0.5 rounded-[3px] block mt-1.5 truncate border border-[#DCFCE7]">
+                    <span className="text-[10px] font-mono text-[#15803D] bg-[#F0FDF4] px-1.5 py-0.5 rounded-none block mt-1.5 truncate border border-[#DCFCE7]">
                       {conn.account_email}
                     </span>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-[#E5E5E5]">
+                <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-[var(--border-color)]">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -618,7 +655,7 @@ export const DashboardPage: React.FC = () => {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => handleConnect(targetId)}
+                      onClick={() => openConnectModal(conn)}
                       disabled={isConnecting}
                     >
                       {isConnecting ? 'Connecting...' : 'Connect'}
@@ -673,27 +710,27 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Stats: Single row of 4 plain numbers with 1px vertical dividers */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 border border-[#E5E5E5] rounded-[6px] bg-[#FFFFFF] divide-y sm:divide-y-0 sm:divide-x divide-[#E5E5E5] mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 border-2 border-[var(--border-color)] rounded-none bg-[var(--bg-card)] divide-y sm:divide-y-0 sm:divide-x divide-[#E5E5E5] mb-8">
         <div className="p-4 sm:p-5">
-          <div className="text-[12px] text-[#6B6B6B]">Total Processed</div>
-          <div className="text-[24px] font-bold text-[#111111] mt-1">
+          <div className="text-[12px] text-[var(--text-secondary)]">Total Processed</div>
+          <div className="text-[24px] font-bold text-[var(--text-primary)] mt-1">
             {metrics?.totalApplied ?? 0}
           </div>
         </div>
         <div className="p-4 sm:p-5">
-          <div className="text-[12px] text-[#6B6B6B]">Submitted</div>
+          <div className="text-[12px] text-[var(--text-secondary)]">Submitted</div>
           <div className="text-[24px] font-bold text-[#166534] mt-1">
             {metrics?.successful ?? 0}
           </div>
         </div>
         <div className="p-4 sm:p-5">
-          <div className="text-[12px] text-[#6B6B6B]">Review Required</div>
+          <div className="text-[12px] text-[var(--text-secondary)]">Review Required</div>
           <div className="text-[24px] font-bold text-[#B45309] mt-1">
             {metrics?.pendingReview ?? 0}
           </div>
         </div>
         <div className="p-4 sm:p-5">
-          <div className="text-[12px] text-[#6B6B6B]">Failed</div>
+          <div className="text-[12px] text-[var(--text-secondary)]">Failed</div>
           <div className="text-[24px] font-bold text-[#B91C1C] mt-1">
             {metrics?.failedOrSkipped ?? 0}
           </div>
@@ -704,14 +741,14 @@ export const DashboardPage: React.FC = () => {
       <div className="space-y-3">
         {/* Filter Bar Above Table */}
         <div className="flex items-center justify-between">
-          <span className="text-[14px] font-semibold text-[#111111]">
+          <span className="text-[14px] font-semibold text-[var(--text-primary)]">
             Applications
           </span>
           <div className="w-48">
             <select
               value={portalFilter}
               onChange={(e) => handlePortalFilterChange(e.target.value)}
-              className="h-9 w-full bg-[#FFFFFF] border border-[#E5E5E5] rounded-[6px] px-3 text-[13px] text-[#111111] focus:outline-none focus:ring-2 focus:ring-[#166534]"
+              className="h-9 w-full bg-[var(--bg-card)] border-2 border-[var(--border-color)] rounded-none px-3 text-[13px] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#166534]"
             >
               <option value="all">All Portals</option>
               <option value="Naukri">Naukri</option>
@@ -723,30 +760,35 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Clean Data Table */}
-        <div className="w-full overflow-x-auto border border-[#E5E5E5] rounded-[6px] bg-[#FFFFFF]">
+        <div className="w-full overflow-x-auto border-2 border-[var(--border-color)] rounded-none bg-[var(--bg-card)]">
           <table className="w-full text-left text-[13px] border-collapse">
             <thead>
-              <tr className="border-b border-[#E5E5E5] bg-[#FAFAFA] sticky top-0">
-                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Job title</th>
-                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Company</th>
-                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Portal</th>
-                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Status</th>
-                <th className="py-2.5 px-4 font-medium text-[12px] text-[#6B6B6B]">Date</th>
+              <tr className="border-b border-[var(--border-color)] bg-[var(--bg-base)] sticky top-0">
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[var(--text-secondary)]">Role & Company</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[var(--text-secondary)]">Portal</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[var(--text-secondary)]">Location</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[var(--text-secondary)]">Salary</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[var(--text-secondary)]">Status</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[var(--text-secondary)]">Date</th>
+                <th className="py-2.5 px-4 font-medium text-[12px] text-[var(--text-secondary)] text-right">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E5E5E5]">
               {appsLoading && applications.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-[#6B6B6B]">
+                  <td colSpan={7} className="py-8 text-center text-[var(--text-secondary)]">
                     Loading applications...
                   </td>
                 </tr>
               ) : applications.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-[#6B6B6B]">
+                  <td colSpan={7} className="py-8 text-center text-[var(--text-secondary)]">
                     No applications found.{' '}
                     <button
-                      onClick={() => setIsLaunchModalOpen(true)}
+                      onClick={() => {
+                        playRetroSound('click');
+                        setIsSetupModalOpen(true);
+                      }}
                       className="text-[#166534] font-medium hover:underline cursor-pointer ml-1"
                     >
                       Start run
@@ -757,22 +799,43 @@ export const DashboardPage: React.FC = () => {
                 applications.map((app) => (
                   <tr
                     key={app.id}
-                    className="hover:bg-[#FAFAFA] transition-colors duration-150"
+                    className="hover:bg-[var(--bg-base)] transition-colors duration-150"
                   >
-                    <td className="py-3 px-4 font-medium text-[#111111]">
-                      {app.jobTitle}
+                    <td className="py-3 px-4 font-medium text-[var(--text-primary)]">
+                      <div className="font-medium text-[var(--text-primary)]">{app.jobTitle}</div>
+                      <div className="text-[12px] text-[var(--text-secondary)]">{app.company}</div>
                     </td>
-                    <td className="py-3 px-4 text-[#6B6B6B]">
-                      {app.company}
+                    <td className="py-3 px-4 text-[var(--text-secondary)]">
+                      <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-[#F0FDF4] text-[#166534] border border-[#DCFCE7]">
+                        {app.platform}
+                      </span>
                     </td>
-                    <td className="py-3 px-4 text-[#6B6B6B]">
-                      {app.platform}
+                    <td className="py-3 px-4 text-[12px] text-[var(--text-secondary)]">
+                      {app.location || '—'}
+                    </td>
+                    <td className="py-3 px-4 text-[12px] font-mono text-[var(--text-secondary)]">
+                      {app.salary || 'Not specified'}
                     </td>
                     <td className="py-3 px-4">
                       {renderStatus(app.status)}
                     </td>
-                    <td className="py-3 px-4 text-[#6B6B6B]">
+                    <td className="py-3 px-4 text-[12px] text-[var(--text-secondary)]">
                       {app.appliedDate ? new Date(app.appliedDate).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {app.url ? (
+                        <a
+                          href={app.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[12px] text-[#166534] hover:underline font-medium"
+                        >
+                          View Job
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <span className="text-[var(--text-muted)] text-[12px]">—</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -782,7 +845,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Pagination Below Table */}
-        <div className="flex items-center justify-between pt-3 text-[13px] text-[#6B6B6B]">
+        <div className="flex items-center justify-between pt-3 text-[13px] text-[var(--text-secondary)]">
           <div>
             Showing {applications.length} of {total} applications
           </div>
@@ -824,7 +887,7 @@ export const DashboardPage: React.FC = () => {
       >
         <form onSubmit={handleStartTask} className="space-y-4">
           {validationError && (
-            <div className="p-2.5 rounded-[6px] border border-[#B91C1C] text-[#B91C1C] text-[13px]">
+            <div className="p-2.5 rounded-none border border-[#B91C1C] text-[#B91C1C] text-[13px]">
               {validationError}
             </div>
           )}
@@ -849,20 +912,20 @@ export const DashboardPage: React.FC = () => {
 
           {/* Job Keywords */}
           <div>
-            <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
+            <label className="block text-[13px] font-medium text-[var(--text-primary)] mb-1.5">
               Target Job Roles / Keywords
             </label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {keywords.map((kw) => (
                 <span
                   key={kw}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[12px] bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111]"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[12px] bg-[var(--bg-base)] border-2 border-[var(--border-color)] text-[var(--text-primary)]"
                 >
                   {kw}
                   <button
                     type="button"
                     onClick={() => handleRemoveKeyword(kw)}
-                    className="hover:text-[#B91C1C] text-[#6B6B6B] ml-1"
+                    className="hover:text-[#B91C1C] text-[var(--text-secondary)] ml-1"
                     aria-label={`Remove keyword ${kw}`}
                   >
                     ×
@@ -891,20 +954,20 @@ export const DashboardPage: React.FC = () => {
 
           {/* Locations */}
           <div>
-            <label className="block text-[13px] font-medium text-[#111111] mb-1.5">
+            <label className="block text-[13px] font-medium text-[var(--text-primary)] mb-1.5">
               Target Locations
             </label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {locations.map((loc) => (
                 <span
                   key={loc}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-[12px] bg-[#FAFAFA] border border-[#E5E5E5] text-[#111111]"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[12px] bg-[var(--bg-base)] border-2 border-[var(--border-color)] text-[var(--text-primary)]"
                 >
                   {loc}
                   <button
                     type="button"
                     onClick={() => handleRemoveLocation(loc)}
-                    className="hover:text-[#B91C1C] text-[#6B6B6B] ml-1"
+                    className="hover:text-[#B91C1C] text-[var(--text-secondary)] ml-1"
                     aria-label={`Remove location ${loc}`}
                   >
                     ×
@@ -944,13 +1007,13 @@ export const DashboardPage: React.FC = () => {
             />
 
             <div className="pt-6">
-              <label className="flex items-center gap-2 text-[13px] text-[#6B6B6B] cursor-pointer">
+              <label className="flex items-center gap-2 text-[13px] text-[var(--text-secondary)] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={force}
                   onChange={(e) => setForce(e.target.checked)}
                   disabled={actionLoading}
-                  className="rounded-[4px] border-[#E5E5E5] text-[#166534] focus:ring-[#166534]"
+                  className="rounded-none border-[var(--border-color)] text-[#166534] focus:ring-[#166534]"
                 />
                 <span>Allow Duplicate / Force Enqueue</span>
               </label>
@@ -958,8 +1021,8 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Safety Settings: Dry Run Simulation */}
-          <div className="p-3 rounded-[6px] border border-[#E5E5E5] bg-[#FAFAFA] space-y-1">
-            <label className="flex items-start gap-2 text-[13px] text-[#111111] cursor-pointer">
+          <div className="p-3 rounded-none border-2 border-[var(--border-color)] bg-[var(--bg-base)] space-y-1">
+            <label className="flex items-start gap-2 text-[13px] text-[var(--text-primary)] cursor-pointer">
               <input
                 type="checkbox"
                 checked={dryRun}
@@ -971,13 +1034,13 @@ export const DashboardPage: React.FC = () => {
                   }
                 }}
                 disabled={actionLoading}
-                className="mt-0.5 rounded-[4px] border-[#E5E5E5] text-[#166534] focus:ring-[#166534]"
+                className="mt-0.5 rounded-none border-[var(--border-color)] text-[#166534] focus:ring-[#166534]"
               />
               <div>
                 <span className="font-medium block">
                   Enable Dry-Run Simulation Mode (Recommended)
                 </span>
-                <span className="text-[12px] text-[#6B6B6B]">
+                <span className="text-[12px] text-[var(--text-secondary)]">
                   Performs searches and form filling without final submission.
                 </span>
               </div>
@@ -985,14 +1048,14 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {!dryRun && (
-            <div className="p-3 rounded-[6px] border border-[#B91C1C] bg-[#FFFFFF] space-y-1">
+            <div className="p-3 rounded-none border border-[#B91C1C] bg-[var(--bg-card)] space-y-1">
               <label className="flex items-start gap-2 text-[13px] text-[#B91C1C] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={confirmLiveSubmission}
                   onChange={(e) => setConfirmLiveSubmission(e.target.checked)}
                   disabled={actionLoading}
-                  className="mt-0.5 rounded-[4px] border-[#B91C1C] text-[#B91C1C]"
+                  className="mt-0.5 rounded-none border-[#B91C1C] text-[#B91C1C]"
                 />
                 <span className="font-medium">
                   I confirm real portal job submission for this run
@@ -1002,7 +1065,7 @@ export const DashboardPage: React.FC = () => {
           )}
 
           {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E5E5E5]">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-color)]">
             <Button
               type="button"
               variant="secondary"
@@ -1026,16 +1089,17 @@ export const DashboardPage: React.FC = () => {
       <Modal
         isOpen={!!connectModalPortal}
         onClose={() => setConnectModalPortal(null)}
-        title={`Connect ${connectModalPortal?.display_name || connectModalPortal?.platform || 'Platform'}`}
+        title={`Connect ${connectModalPortal?.display_name || connectModalPortal?.platform || 'Platform'} (Direct .env Sync)`}
       >
         <div className="space-y-4 pt-1">
-          <div className="flex items-center justify-between p-3 rounded-[6px] bg-[#F0FDF4] border border-[#BBF7D0]">
+          {/* Direct .env Sync Info Banner */}
+          <div className="flex items-center justify-between p-3 rounded-none bg-[#F0FDF4] border border-[#BBF7D0]">
             <div>
               <span className="text-[13px] font-semibold text-[#166534] block">
                 {connectModalPortal?.display_name || connectModalPortal?.platform} Official Connection
               </span>
               <span className="text-[11px] text-[#15803D]">
-                Isolated user profile with direct bot automation permissions.
+                🔒 Saving directly writes credentials into root .env ({((connectModalPortal?.portal_id || connectModalPortal?.platform || '').toLowerCase().replace(/[^a-z0-9]/g, '')).toUpperCase()}_EMAIL & _PASSWORD).
               </span>
             </div>
             {connectModalPortal?.website_url && (
@@ -1043,69 +1107,80 @@ export const DashboardPage: React.FC = () => {
                 href={connectModalPortal.website_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[12px] text-[#15803D] underline hover:text-[#166534]"
+                className="text-[12px] text-[#15803D] underline hover:text-[#166534] flex items-center gap-1"
               >
-                Visit Site ↗
+                Visit Site <ExternalLink className="w-3 h-3" />
               </a>
             )}
           </div>
 
+          {/* Account Email / Username */}
+          <div>
+            <label className="block text-[12px] font-bold text-[var(--text-primary)] mb-1">
+              Portal Account Email / Username *
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. your-email@example.com or username"
+              value={connectEmail}
+              onChange={(e) => setConnectEmail(e.target.value)}
+              disabled={connectModalSubmitting}
+            />
+            <span className="text-[11px] text-[var(--text-secondary)] mt-1 block">
+              Associated with your {connectModalPortal?.display_name || connectModalPortal?.platform} account.
+            </span>
+          </div>
+
+          {/* Password with Eye Toggle */}
+          <div>
+            <label className="block text-[12px] font-bold text-[var(--text-primary)] mb-1">
+              Portal Password *
+            </label>
+            <div className="relative">
+              <Input
+                type={showModalPassword ? 'text' : 'password'}
+                placeholder="Enter password for automated login..."
+                value={connectPassword}
+                onChange={(e) => setConnectPassword(e.target.value)}
+                disabled={connectModalSubmitting}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowModalPassword(!showModalPassword)}
+                className="absolute right-3 top-2.5 text-gray-500 hover:text-[var(--text-primary)] cursor-pointer"
+                title={showModalPassword ? 'Hide password' : 'Show password'}
+              >
+                {showModalPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <span className="text-[11px] text-[var(--text-secondary)] mt-1 block">
+              Automated login and verification ke liye zaroori hai. Ye data local machine ke .env me safe rehta hai.
+            </span>
+          </div>
+
           {/* Explicit User Permission Checkbox */}
-          <div className="p-3.5 rounded-[6px] border border-[#E5E5E5] bg-[#FAFAFA]">
-            <label className="flex items-start gap-2.5 text-[13px] text-[#111111] cursor-pointer">
+          <div className="p-3 rounded-none border border-[var(--border-color)] bg-[var(--bg-base)]">
+            <label className="flex items-start gap-2.5 text-[12px] text-[var(--text-primary)] cursor-pointer">
               <input
                 type="checkbox"
                 checked={connectPermissionGranted}
                 onChange={(e) => setConnectPermissionGranted(e.target.checked)}
-                className="mt-0.5 rounded-[4px] border-[#E5E5E5] text-[#166534] focus:ring-[#166534]"
+                className="mt-0.5 rounded-none border-[var(--border-color)] text-[#166534] focus:ring-[#166534]"
               />
               <div>
-                <span className="font-semibold block text-[#111111]">
+                <span className="font-semibold block text-[var(--text-primary)]">
                   Grant Automation Permission
                 </span>
-                <span className="text-[12px] text-[#6B6B6B] leading-relaxed block mt-0.5">
-                  I authorize Universal Job Apply Bot to connect to {connectModalPortal?.display_name || connectModalPortal?.platform}, discover vacancies, and submit applications on my behalf matching my target roles.
+                <span className="text-[11px] text-[var(--text-secondary)] leading-relaxed block mt-0.5">
+                  I authorize Universal Job Apply Bot to discover vacancies and submit applications on my behalf on {connectModalPortal?.display_name || connectModalPortal?.platform}.
                 </span>
               </div>
             </label>
           </div>
 
-          {/* Account Email */}
-          <div>
-            <label className="block text-[12px] font-medium text-[#111111] mb-1">
-              Portal Account Email / Username
-            </label>
-            <Input
-              type="email"
-              placeholder="e.g. your-email@example.com"
-              value={connectEmail}
-              onChange={(e) => setConnectEmail(e.target.value)}
-              disabled={connectModalSubmitting}
-            />
-            <span className="text-[11px] text-[#6B6B6B] mt-1 block">
-              Associated with your {connectModalPortal?.display_name || connectModalPortal?.platform} account.
-            </span>
-          </div>
-
-          {/* Optional Password */}
-          <div>
-            <label className="block text-[12px] font-medium text-[#111111] mb-1">
-              Portal Password (Optional)
-            </label>
-            <Input
-              type="password"
-              placeholder="Enter password for automated login..."
-              value={connectPassword}
-              onChange={(e) => setConnectPassword(e.target.value)}
-              disabled={connectModalSubmitting}
-            />
-            <span className="text-[11px] text-[#6B6B6B] mt-1 block">
-              Optional if already signed into your browser profile. Passwords are never shared.
-            </span>
-          </div>
-
           {/* Modal Action Buttons */}
-          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3 border-t border-[#E5E5E5]">
+          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3 border-t border-[var(--border-color)]">
             <Button
               type="button"
               variant="secondary"
@@ -1119,20 +1194,30 @@ export const DashboardPage: React.FC = () => {
               variant="secondary"
               onClick={() => handleAuthorizeAndConnect(true)}
               disabled={connectModalSubmitting || !connectPermissionGranted}
+              title="Launch isolated browser login window"
             >
-              Open Browser Login Window
+              🌐 Open Browser Window
             </Button>
             <Button
               type="button"
               variant="primary"
               onClick={() => handleAuthorizeAndConnect(false)}
               disabled={connectModalSubmitting || !connectPermissionGranted}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
             >
-              {connectModalSubmitting ? 'Connecting...' : 'Authorize & Connect'}
+              {connectModalSubmitting ? 'Saving to .env & Connecting...' : '💾 Save to .env & Connect'}
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* Universal Bot Setup & Resume Autofill Modal */}
+      <BotSetupModal
+        isOpen={isSetupModalOpen}
+        onClose={() => setIsSetupModalOpen(false)}
+        onStartBot={handleStartBotFromSetup}
+        showToast={showToast}
+      />
     </div>
   );
 };

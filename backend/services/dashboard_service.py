@@ -22,13 +22,37 @@ def get_user_dashboard_summary(user_id: Optional[str] = None) -> DashboardSummar
             platform_breakdown=[],
         )
 
-    # 1. Real Application Statistics
-    apps_resp = application_service.get_applications(user_id=user_id, page=1, page_size=2000)
-    all_apps = apps_resp.items
+    # 1. Real Application Statistics across all candidate records
+    supabase = get_supabase_client()
+    total_apps = 0
+    successful = 0
+    pending_review = 0
 
-    total_apps = apps_resp.total
-    successful = len([a for a in all_apps if a.status in ("applied", "interview", "under_review")])
-    pending_review = len([a for a in all_apps if a.status == "review_needed"])
+    if supabase:
+        try:
+            apps_stat_res = (
+                supabase.table("applications")
+                .select("status", count="exact")
+                .eq("user_id", user_id)
+                .limit(5000)
+                .execute()
+            )
+            total_apps = apps_stat_res.count if apps_stat_res.count is not None else len(apps_stat_res.data or [])
+            for r in (apps_stat_res.data or []):
+                st = (r.get("status") or "").lower()
+                if st in ("applied", "interview", "under_review"):
+                    successful += 1
+                elif st in ("review_needed", "review_required"):
+                    pending_review += 1
+        except Exception:
+            pass
+
+    if total_apps == 0:
+        apps_resp = application_service.get_applications(user_id=user_id, page=1, page_size=100)
+        all_apps = apps_resp.items
+        total_apps = apps_resp.total
+        successful = len([a for a in all_apps if a.status in ("applied", "interview", "under_review")])
+        pending_review = len([a for a in all_apps if a.status in ("review_needed", "review_required")])
 
     # 2. Real Automation Task Statistics
     failed_tasks = 0

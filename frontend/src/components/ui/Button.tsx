@@ -21,7 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium rounded-[6px] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#166534] focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm';
+    'inline-flex items-center justify-center font-mono font-bold rounded-none transition-all duration-100 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm select-none';
 
   const sizeStyles = {
     sm: 'h-8 px-3 text-xs gap-1.5',
@@ -31,20 +31,21 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles = {
     primary:
-      'bg-[#166534] hover:bg-[#14532D] text-white font-medium border border-[#166534]',
+      'bg-[var(--accent)] text-[var(--accent-fg)] border-2 border-[var(--border-color)] retro-shadow-sm hover:opacity-95 active:translate-x-[1px] active:translate-y-[1px]',
     secondary:
-      'bg-white text-[#111111] border border-[#E5E5E5] hover:bg-[#FAFAFA]',
+      'bg-[var(--bg-card)] text-[var(--text-primary)] border-2 border-[var(--border-color)] retro-shadow-sm hover:bg-[var(--bg-card-hover)] active:translate-x-[1px] active:translate-y-[1px]',
     outline:
-      'bg-transparent border border-[#E5E5E5] text-[#111111] hover:bg-[#FAFAFA]',
+      'bg-transparent border-2 border-[var(--border-color)] text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] active:translate-x-[1px] active:translate-y-[1px]',
     danger:
-      'bg-[#B91C1C] hover:bg-[#991B1B] text-white border border-[#B91C1C]',
+      'bg-[var(--color-danger)] text-white border-2 border-[var(--border-color)] retro-shadow-sm hover:opacity-90 active:translate-x-[1px] active:translate-y-[1px]',
     ghost:
-      'bg-transparent text-[#6B6B6B] hover:text-[#111111] hover:bg-[#FAFAFA]',
+      'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]',
   };
 
   return (
     <button
       disabled={disabled || isLoading}
+      data-sound={variant === 'primary' ? 'success' : 'button'}
       className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
       {...props}
     >

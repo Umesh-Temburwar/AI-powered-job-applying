@@ -59,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userMeta.user_name ||
       (current.user.email ? current.user.email.split('@')[0] : 'Candidate');
 
-    const adminEmails = ['umeshtemburwar2002@gmail.com'];
+    const adminEmails = ['umeshtemburwar2002@gmail.com', 'utemburwar2002@gmail.com'];
     const userEmail = (current.user.email || '').trim().toLowerCase();
     const isAdmin = Boolean(
       (userEmail && adminEmails.includes(userEmail)) ||
@@ -98,38 +98,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  // Initialize session restoration and listen to auth state changes
   useEffect(() => {
     let isMounted = true;
 
-    if (!isSupabaseConfigured) {
-      setIsLoading(false);
-      return;
-    }
-
-    const initAuth = async () => {
+    async function initAuth() {
       try {
-        const { data, error: sessionErr } = await supabase.auth.getSession();
-        if (sessionErr) throw sessionErr;
+        if (!isSupabaseConfigured) {
+          setIsLoading(false);
+          return;
+        }
+
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.warn('Error reading session:', sessionError);
+        }
+
         if (isMounted) {
-          syncSession(data.session);
+          if (data?.session) {
+            syncSession(data.session);
+          } else {
+            setUser(null);
+            setSession(null);
+          }
+          setIsLoading(false);
         }
       } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Failed to restore session');
-        }
-      } finally {
+        console.error('Initialization error in AuthContext:', err);
         if (isMounted) {
           setIsLoading(false);
         }
       }
-    };
+    }
 
     initAuth();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       if (isMounted) {
         syncSession(currentSession);
         setIsLoading(false);
@@ -138,16 +141,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
+      authListener?.subscription.unsubscribe();
     };
   }, [syncSession]);
 
   const login = async (email: string, password: string) => {
     setError(null);
+    setIsLoading(true);
+
     if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured yet. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env.'
-      );
+      setIsLoading(false);
+      throw new Error('Supabase client is not configured.');
     }
 
     const { data, error: loginErr } = await supabase.auth.signInWithPassword({
@@ -155,11 +159,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
     });
 
+    setIsLoading(false);
+
     if (loginErr) {
-      throw new Error(loginErr.message);
+      setError(loginErr.message);
+      throw loginErr;
     }
 
-    syncSession(data.session);
+    if (data.session) {
+      syncSession(data.session);
+    }
   };
 
   const register = async (
@@ -168,74 +177,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fullName: string
   ): Promise<RegisterResult> => {
     setError(null);
+    setIsLoading(true);
+
     if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured yet. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env.'
-      );
+      setIsLoading(false);
+      throw new Error('Supabase client is not configured.');
     }
 
-    const emailRedirectTo = `${window.location.origin}/auth/confirm`;
-    const { data, error: signUpErr } = await supabase.auth.signUp({
+    const { data, error: regErr } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
         data: {
           full_name: fullName.trim(),
         },
-        emailRedirectTo,
       },
     });
 
-    if (signUpErr) {
-      throw new Error(signUpErr.message);
+    setIsLoading(false);
+
+    if (regErr) {
+      setError(regErr.message);
+      throw regErr;
     }
 
-    // If email confirmation is required, session is null
     const needsEmailVerification = !data.session;
-    if (data.session) {
-      syncSession(data.session);
+    return { needsEmailVerification };
+  };
+
+  const logout = async () => {
+    setError(null);
+    if (!isSupabaseConfigured) {
+      setUser(null);
+      setSession(null);
+      return;
     }
 
-    return { needsEmailVerification };
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      setUser(null);
+      setSession(null);
+    }
+  };
+
+  const signInWithGithub = async () => {
+    setError(null);
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase is not configured.');
+    }
+
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${window.location.origin}/auth/confirm`,
+      },
+    });
+
+    if (oauthError) {
+      setError(oauthError.message);
+      throw oauthError;
+    }
   };
 
   const resendVerificationEmail = async (email: string) => {
     setError(null);
     if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured yet. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env.'
-      );
+      throw new Error('Supabase client is not configured.');
     }
 
-    const emailRedirectTo = `${window.location.origin}/auth/confirm`;
     const { error: resendErr } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim(),
-      options: {
-        emailRedirectTo,
-      },
     });
 
     if (resendErr) {
-      throw new Error(resendErr.message);
+      setError(resendErr.message);
+      throw resendErr;
     }
-  };
-
-  const logout = async () => {
-    setError(null);
-    if (isSupabaseConfigured) {
-      await supabase.auth.signOut();
-    }
-    setUser(null);
-    setSession(null);
   };
 
   const resetPassword = async (email: string) => {
     setError(null);
+    setIsLoading(true);
+
     if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured yet. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
-      );
+      setIsLoading(false);
+      throw new Error('Supabase is not configured.');
     }
 
     const redirectUrl = `${window.location.origin}/reset-password`;
@@ -243,66 +271,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       redirectTo: redirectUrl,
     });
 
+    setIsLoading(false);
+
     if (resetErr) {
-      throw new Error(resetErr.message);
+      setError(resetErr.message);
+      throw resetErr;
     }
   };
 
   const updatePassword = async (newPassword: string) => {
     setError(null);
+    setIsLoading(true);
+
     if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured yet. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
-      );
+      setIsLoading(false);
+      throw new Error('Supabase is not configured.');
     }
 
     const { error: updateErr } = await supabase.auth.updateUser({
       password: newPassword,
     });
 
+    setIsLoading(false);
+
     if (updateErr) {
-      throw new Error(updateErr.message);
+      setError(updateErr.message);
+      throw updateErr;
     }
   };
 
-  const signInWithGithub = async () => {
-    setError(null);
-    if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured yet. Please add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env.'
-      );
-    }
-
-    const redirectTo = `${window.location.origin}/auth/confirm`;
-    const { error: oauthErr } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo,
-      },
-    });
-
-    if (oauthErr) {
-      throw new Error(oauthErr.message);
-    }
+  const getToken = async (): Promise<string | null> => {
+    if (!isSupabaseConfigured) return null;
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || null;
   };
-
-  const getToken = useCallback(async (): Promise<string | null> => {
-    if (!isSupabaseConfigured) {
-      return session?.token || null;
-    }
-    try {
-      const { data, error: sessionErr } = await supabase.auth.getSession();
-      if (sessionErr || !data.session) {
-        return session?.token || null;
-      }
-      if (data.session.access_token && data.session.access_token !== session?.token) {
-        syncSession(data.session);
-      }
-      return data.session.access_token;
-    } catch {
-      return session?.token || null;
-    }
-  }, [session?.token, syncSession]);
 
   return (
     <AuthContext.Provider

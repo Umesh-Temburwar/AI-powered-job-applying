@@ -26,6 +26,7 @@ import {
 import { useProfile } from '../hooks/useProfile';
 import { useResumes } from '../hooks/useResumes';
 import { usePreferences } from '../hooks/usePreferences';
+import { configService } from '../services/configService';
 import { useToast } from '../context/ToastContext';
 import {
   Card,
@@ -169,6 +170,7 @@ export const OnboardingPage: React.FC = () => {
       setUploadingResume(true);
       const res = await uploadResume(file, true);
       setUploadedResumeName(file.name);
+      configService.uploadResumeAutofill(file).catch(() => {});
 
       if (res.ocr_needed) {
         setOcrWarning('Scanned document detected. Digital text was limited, so please review fields in the next steps.');
@@ -398,6 +400,20 @@ export const OnboardingPage: React.FC = () => {
         dailyApplicationLimit: dailyLimit,
         experienceLevel: isFresher ? 'Fresher / Entry Level' : '1-3 Years',
       });
+
+      // 3. Sync to project root .env and local bot files
+      const nameParts = (fullName || '').trim().split(' ');
+      const fname = nameParts[0] || '';
+      const lname = nameParts.slice(1).join(' ') || '';
+      configService.saveConfig({
+        firstname: fname,
+        lastname: lname,
+        phone: phone,
+        email: email,
+        keywords: targetTitles.join(', '),
+        location: targetLocations[0] || city || 'pune',
+        max_applications: dailyLimit,
+      }).catch(() => {});
 
       showToast('🎉 Onboarding completed successfully! Welcome to your dashboard.', 'success');
       navigate('/dashboard', { replace: true });
