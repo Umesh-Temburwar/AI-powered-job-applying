@@ -394,60 +394,44 @@ def train_bot_with_candidate_details(config: dict[str, Any]) -> int:
 
 def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = None) -> dict[str, Any]:
     """Persist user configuration to root .env, data/profile_data.json, and data/resume.ini."""
-    # 1. Map to .env keys
-    fname = str(config.get("firstname") or "").strip()
-    lname = str(config.get("lastname") or "").strip()
-    phone = str(config.get("phone") or "").strip()
-    keywords = str(config.get("keywords") or "").strip()
-    location = str(config.get("location") or "pune").strip()
-    pages_per_kw = str(config.get("pages_per_keyword") or 2)
-    max_apps = str(config.get("max_applications") or 50)
-    browser = str(config.get("browser") or "auto").strip().lower()
+    existing_env = get_current_env_dict()
+
+    def _get_val(cfg_key: str, env_key: str, default: str = "") -> str:
+        if cfg_key in config and config[cfg_key] is not None and str(config[cfg_key]).strip() != "":
+            return str(config[cfg_key]).strip()
+        return existing_env.get(env_key, default).strip()
+
+    # 1. Base profile fields
+    fname = _get_val("firstname", "FIRSTNAME")
+    lname = _get_val("lastname", "LASTNAME")
+    phone = _get_val("phone", "PHONE")
+    keywords = _get_val("keywords", "KEYWORDS")
+    location = _get_val("location", "LOCATION", "pune")
+    pages_per_kw = _get_val("pages_per_keyword", "PAGES_PER_KEYWORD", "2")
+    max_apps = _get_val("max_applications", "MAX_APPLICATIONS", "50")
+    browser = _get_val("browser", "BROWSER", "auto").lower()
 
     # Job & Career Details
-    tot_exp = str(config.get("total_experience_years") if config.get("total_experience_years") is not None else "").strip()
-    rel_exp = str(config.get("relevant_experience_years") if config.get("relevant_experience_years") is not None else "").strip()
-    cur_ctc = str(config.get("current_ctc") or "").strip()
-    exp_ctc = str(config.get("expected_ctc") or "").strip()
-    notice = str(config.get("notice_period") or "").strip()
-    work_mode = str(config.get("work_mode") or "").strip()
-    relocate = str(config.get("willing_to_relocate") or "").strip()
-    gender = str(config.get("gender") or "Male").strip()
+    tot_exp = _get_val("total_experience_years", "TOTAL_EXPERIENCE_YEARS")
+    rel_exp = _get_val("relevant_experience_years", "RELEVANT_EXPERIENCE_YEARS")
+    cur_ctc = _get_val("current_ctc", "CURRENT_CTC")
+    exp_ctc = _get_val("expected_ctc", "EXPECTED_CTC")
+    notice = _get_val("notice_period", "NOTICE_PERIOD")
+    work_mode = _get_val("work_mode", "WORK_MODE")
+    relocate = _get_val("willing_to_relocate", "WILLING_TO_RELOCATE")
+    gender = _get_val("gender", "GENDER", "Male")
 
-    degree = str(config.get("education_degree") or "").strip()
-    college = str(config.get("education_college") or "").strip()
-    pass_yr = str(config.get("education_passing_year") or "").strip()
-    score = str(config.get("education_score") or "").strip()
+    degree = _get_val("education_degree", "EDUCATION_DEGREE")
+    college = _get_val("education_college", "EDUCATION_COLLEGE")
+    pass_yr = _get_val("education_passing_year", "EDUCATION_PASSING_YEAR")
+    score = _get_val("education_score", "EDUCATION_SCORE")
 
-    linkedin = str(config.get("linkedin_url") or "").strip()
-    github = str(config.get("github_url") or "").strip()
-    portfolio = str(config.get("portfolio_url") or "").strip()
+    linkedin = _get_val("linkedin_url", "LINKEDIN_URL")
+    github = _get_val("github_url", "GITHUB_URL")
+    portfolio = _get_val("portfolio_url", "PORTFOLIO_URL")
     cover_letter = str(config.get("cover_letter") or "").strip()
 
-    naukri_email = str(config.get("naukri_email") or "").strip()
-    naukri_password = str(config.get("naukri_password") or "").strip()
-    internshala_email = str(config.get("internshala_email") or "").strip()
-    internshala_password = str(config.get("internshala_password") or "").strip()
-    indeed_email = str(config.get("indeed_email") or "").strip()
-    indeed_password = str(config.get("indeed_password") or "").strip()
-    linkedin_email = str(config.get("linkedin_email") or "").strip()
-    linkedin_password = str(config.get("linkedin_password") or "").strip()
-    foundit_email = str(config.get("foundit_email") or "").strip()
-    foundit_password = str(config.get("foundit_password") or "").strip()
-    wellfound_email = str(config.get("wellfound_email") or "").strip()
-    wellfound_password = str(config.get("wellfound_password") or "").strip()
-    glassdoor_email = str(config.get("glassdoor_email") or "").strip()
-    glassdoor_password = str(config.get("glassdoor_password") or "").strip()
-    cutshort_email = str(config.get("cutshort_email") or "").strip()
-    cutshort_password = str(config.get("cutshort_password") or "").strip()
-
-    telegram_bot_token = str(config.get("telegram_bot_token") or "").strip()
-    telegram_chat_id = str(config.get("telegram_chat_id") or "").strip()
-    discord_webhook = str(config.get("discord_webhook_url") or "").strip()
-    gemini_key = str(config.get("gemini_api_key") or "").strip()
-    dashboard_port = str(config.get("dashboard_port") or 5000)
-
-    env_map = {
+    env_map: dict[str, str] = {
         "FIRSTNAME": fname,
         "LASTNAME": lname,
         "PHONE": phone,
@@ -471,37 +455,52 @@ def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = Non
         "LINKEDIN_URL": linkedin,
         "GITHUB_URL": github,
         "PORTFOLIO_URL": portfolio,
-        "NAUKRI_EMAIL": naukri_email,
-        "NAUKRI_PASSWORD": naukri_password,
-        "INTERNSHALA_EMAIL": internshala_email,
-        "INTERNSHALA_PASSWORD": internshala_password,
-        "INDEED_EMAIL": indeed_email,
-        "INDEED_PASSWORD": indeed_password,
-        "LINKEDIN_EMAIL": linkedin_email,
-        "LINKEDIN_PASSWORD": linkedin_password,
-        "FOUNDIT_EMAIL": foundit_email,
-        "FOUNDIT_PASSWORD": foundit_password,
-        "WELLFOUND_EMAIL": wellfound_email,
-        "WELLFOUND_PASSWORD": wellfound_password,
-        "GLASSDOOR_EMAIL": glassdoor_email,
-        "GLASSDOOR_PASSWORD": glassdoor_password,
-        "CUTSHORT_EMAIL": cutshort_email,
-        "CUTSHORT_PASSWORD": cutshort_password,
-        "TELEGRAM_BOT_TOKEN": telegram_bot_token,
-        "TELEGRAM_CHAT_ID": telegram_chat_id,
-        "DISCORD_WEBHOOK_URL": discord_webhook,
-        "GEMINI_API_KEY": gemini_key,
-        "DASHBOARD_PORT": dashboard_port,
     }
+
+    # Portal Credentials: ONLY update if explicitly provided and non-empty in config, OR keep existing!
+    portal_keys = [
+        ("naukri_email", "NAUKRI_EMAIL"),
+        ("naukri_password", "NAUKRI_PASSWORD"),
+        ("internshala_email", "INTERNSHALA_EMAIL"),
+        ("internshala_password", "INTERNSHALA_PASSWORD"),
+        ("indeed_email", "INDEED_EMAIL"),
+        ("indeed_password", "INDEED_PASSWORD"),
+        ("linkedin_email", "LINKEDIN_EMAIL"),
+        ("linkedin_password", "LINKEDIN_PASSWORD"),
+        ("foundit_email", "FOUNDIT_EMAIL"),
+        ("foundit_password", "FOUNDIT_PASSWORD"),
+        ("wellfound_email", "WELLFOUND_EMAIL"),
+        ("wellfound_password", "WELLFOUND_PASSWORD"),
+        ("glassdoor_email", "GLASSDOOR_EMAIL"),
+        ("glassdoor_password", "GLASSDOOR_PASSWORD"),
+        ("cutshort_email", "CUTSHORT_EMAIL"),
+        ("cutshort_password", "CUTSHORT_PASSWORD"),
+        ("telegram_bot_token", "TELEGRAM_BOT_TOKEN"),
+        ("telegram_chat_id", "TELEGRAM_CHAT_ID"),
+        ("discord_webhook_url", "DISCORD_WEBHOOK_URL"),
+        ("gemini_api_key", "GEMINI_API_KEY"),
+        ("dashboard_port", "DASHBOARD_PORT"),
+    ]
+    for cfg_k, env_k in portal_keys:
+        if cfg_k in config and config[cfg_k] is not None and str(config[cfg_k]).strip() != "":
+            env_map[env_k] = str(config[cfg_k]).strip()
+        elif env_k in existing_env and existing_env[env_k].strip() != "":
+            env_map[env_k] = existing_env[env_k].strip()
+
+    # Candidate profile email fallback for NAUKRI_EMAIL if not set
+    cand_email = str(config.get("email") or "").strip()
+    if cand_email and not env_map.get("NAUKRI_EMAIL"):
+        env_map["NAUKRI_EMAIL"] = cand_email
 
     # Update .env
     update_root_env_file(env_map)
 
     # 2. Update data/profile_data.json
     full_name = f"{fname} {lname}".strip()
+    effective_email = cand_email or env_map.get("NAUKRI_EMAIL") or None
     prof_updates = {
         "full_name": full_name or None,
-        "email": naukri_email or None,
+        "email": effective_email,
         "phone": phone or None,
         "city": location,
         "headline": keywords,
@@ -523,7 +522,7 @@ def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = Non
         "name": full_name or prof_json["personal"].get("name", ""),
         "firstname": fname or prof_json["personal"].get("firstname", ""),
         "lastname": lname or prof_json["personal"].get("lastname", ""),
-        "email": naukri_email or prof_json["personal"].get("email", ""),
+        "email": effective_email or prof_json["personal"].get("email", ""),
         "phone": phone or prof_json["personal"].get("phone", ""),
         "current_location": location or prof_json["personal"].get("current_location", "Pune"),
         "total_experience_years": tot_exp or prof_json["personal"].get("total_experience_years", "0"),

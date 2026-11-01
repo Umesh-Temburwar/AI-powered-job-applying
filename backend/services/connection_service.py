@@ -189,6 +189,10 @@ class ConnectionService:
     def __init__(self):
         self.supabase = get_supabase_client()
 
+    def get_portal_registry(self) -> list[PortalRegistryItem]:
+        """Return static registry of all supported job portals."""
+        return self.get_portal_catalog()
+
     def get_portal_catalog(self) -> list[PortalRegistryItem]:
         """Return static registry of all supported job portals."""
         return [
@@ -384,10 +388,12 @@ class ConnectionService:
         if launch_browser:
             opened = _launch_browser_window(session_dir, portal.login_url)
 
-        # Lookup in .env if account_email not provided
+        # Lookup in .env if account_email or account_password not provided
+        env_creds = _read_env_credentials()
         if not is_valid_credential(account_email):
-            env_creds = _read_env_credentials()
             account_email = env_creds.get(portal.id, {}).get("email")
+        if not is_valid_credential(account_password):
+            account_password = env_creds.get(portal.id, {}).get("password")
 
         now_iso = datetime.now(timezone.utc).isoformat()
         has_creds = bool(account_email and account_password and is_valid_credential(account_email) and is_valid_credential(account_password))
@@ -536,6 +542,20 @@ class ConnectionService:
     def sync_from_env(self, user_id: str) -> list[PlatformConnectionItem]:
         """Automatically load credentials and portal emails from root .env and configure connections."""
         env_creds = _read_env_credentials()
+        db_records: dict[str, dict[str, Any]] = {}
+        if self.supabase:
+            try:
+                res = self.supabase.table("platform_connections").select("*").eq("user_id", user_id).execute()
+                if res.data:
+                    for row in res.data:
+                        db_records[row.get("platform", "").lower()] = row
+            except Exception:
+                pass
+        user_mem = _MEMORY_CONNECTIONS.get(user_id, {})
+        for k, v in user_mem.items():
+            if k.lower() not in db_records:
+                db_records[k.lower()] = v
+
         results = []
         for portal in get_all_portals():
             p_id = portal.id
@@ -544,6 +564,10 @@ class ConnectionService:
             pwd = cred.get("password") if is_valid_credential(cred.get("password")) else None
             session_dir = _get_user_session_dir(user_id, p_id)
             has_cookies = _has_portal_cookies(session_dir, p_id) if portal.status != "unsupported" else False
+            prev_rec = db_records.get(p_id) or db_records.get(portal.name.lower())
+
+            if not email and prev_rec and is_valid_credential(prev_rec.get("account_email")):
+                email = prev_rec.get("account_email")
 
             if portal.status == "unsupported":
                 status = "unsupported"
@@ -554,9 +578,13 @@ class ConnectionService:
                 status = "connected"
                 last_ver = datetime.now(timezone.utc).isoformat()
                 err_msg = None
+            elif prev_rec and prev_rec.get("status") == "connected" and prev_rec.get("metadata", {}).get("has_credentials") and email:
+                status = "connected"
+                last_ver = prev_rec.get("last_verified") or datetime.now(timezone.utc).isoformat()
+                err_msg = None
             elif has_cookies and email:
                 status = "connected"
-                last_ver = datetime.now(timezone.utc).isoformat()
+                last_ver = (prev_rec and prev_rec.get("last_verified")) or datetime.now(timezone.utc).isoformat()
                 err_msg = None
             elif email:
                 status = "login_required"

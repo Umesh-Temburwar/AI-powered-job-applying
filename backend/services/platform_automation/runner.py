@@ -18,6 +18,25 @@ from services.platform_automation.linkedin import LinkedInPlatformAdapter
 from services.platform_automation.naukri import NaukriPlatformAdapter
 from services.bot_training.questionnaire_simulator import QuestionnaireSimulator, QuestionItem
 
+try:
+    from services.automation_runner import sanitize_text
+except ImportError:
+    import re
+    _SENSITIVE_PATTERNS = [
+        (re.compile(r'(password\s*[:=]\s*)([^\s,]+)', re.IGNORECASE), r'\1***REDACTED***'),
+        (re.compile(r'(token\s*[:=]\s*)([^\s,]+)', re.IGNORECASE), r'\1***REDACTED***'),
+        (re.compile(r'(secret\s*[:=]\s*)([^\s,]+)', re.IGNORECASE), r'\1***REDACTED***'),
+        (re.compile(r'(bearer\s+)([A-Za-z0-9_\-\.]+)', re.IGNORECASE), r'\1***REDACTED***'),
+        (re.compile(r'(eyJ[A-Za-z0-9_\-]*\.eyJ[A-Za-z0-9_\-]*\.[A-Za-z0-9_\-]*)'), r'***REDACTED_JWT***'),
+    ]
+    def sanitize_text(text: str) -> str:
+        if not text:
+            return ""
+        s = text
+        for p, r in _SENSITIVE_PATTERNS:
+            s = p.sub(r, s)
+        return s
+
 logger = logging.getLogger("AutomationRunner")
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -534,14 +553,14 @@ async def run_platform_automation_task(
             update_task_state(
                 status_val="completed",
                 progress_val=100,
-                message_val=f"Universal Bot completed successfully for {raw_platform}.",
+                message_val=f"{'[DRY RUN] ' if dry_run else ''}Universal Bot completed successfully for {raw_platform}.",
                 completed_at=datetime.now(timezone.utc).isoformat(),
             )
         else:
             update_task_state(
-                status_val="completed" if "completed" in final_line.lower() else "failed",
+                status_val="completed" if ("completed" in final_line.lower() or dry_run) else "failed",
                 progress_val=100,
-                message_val=f"Universal Bot finished: {final_line[:120]}",
+                message_val=f"{'[DRY RUN] ' if dry_run else ''}Universal Bot finished: {final_line[:120]}",
                 completed_at=datetime.now(timezone.utc).isoformat(),
             )
         return

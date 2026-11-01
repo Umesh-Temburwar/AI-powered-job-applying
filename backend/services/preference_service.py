@@ -56,6 +56,40 @@ async def get_user_preferences(user_id: str) -> JobPreferencesResponse:
                     require_manual_review=bool(r.get("require_manual_review", True)),
                     updated_at=r.get("updated_at"),
                 )
+            else:
+                # Seed default row in Supabase
+                now_iso = datetime.now(timezone.utc).isoformat()
+                new_row = {
+                    "user_id": user_id,
+                    "job_titles": ["Full Stack Developer", "React Developer", "Software Engineer"],
+                    "locations": ["Remote", "Pune", "Bengaluru"],
+                    "experience_level": "entry_level",
+                    "employment_types": ["full_time"],
+                    "min_salary": 6.0,
+                    "max_salary": 14.0,
+                    "selected_platforms": ["naukri", "internshala", "indeed"],
+                    "daily_application_limit": 25,
+                    "require_manual_review": True,
+                    "created_at": now_iso,
+                    "updated_at": now_iso,
+                }
+                res_ins = client.table("job_preferences").insert(new_row).execute()
+                if res_ins.data and len(res_ins.data) > 0:
+                    r = res_ins.data[0]
+                    return JobPreferencesResponse(
+                        id=str(r["id"]),
+                        user_id=str(r["user_id"]),
+                        job_titles=r.get("job_titles") or [],
+                        locations=r.get("locations") or [],
+                        experience_level=str(r.get("experience_level") or "entry_level"),
+                        employment_types=r.get("employment_types") or ["full_time"],
+                        min_salary=float(r["min_salary"]) if r.get("min_salary") is not None else None,
+                        max_salary=float(r["max_salary"]) if r.get("max_salary") is not None else None,
+                        selected_platforms=r.get("selected_platforms") or ["naukri", "internshala", "indeed"],
+                        daily_application_limit=int(r.get("daily_application_limit") or 25),
+                        require_manual_review=bool(r.get("require_manual_review", True)),
+                        updated_at=r.get("updated_at"),
+                    )
         except Exception as e:
             logger.error("Error fetching job preferences from Supabase: %s", e)
 
@@ -125,6 +159,26 @@ async def update_user_preferences(user_id: str, updates: JobPreferencesUpdateReq
                     require_manual_review=bool(r.get("require_manual_review", True)),
                     updated_at=r.get("updated_at"),
                 )
+            else:
+                # No row existed yet -> Insert new record
+                insert_dict = {"user_id": user_id, "created_at": now_iso, **update_dict}
+                res_ins = client.table("job_preferences").insert(insert_dict).execute()
+                if res_ins.data and len(res_ins.data) > 0:
+                    r = res_ins.data[0]
+                    return JobPreferencesResponse(
+                        id=str(r["id"]),
+                        user_id=str(r["user_id"]),
+                        job_titles=r.get("job_titles") or [],
+                        locations=r.get("locations") or [],
+                        experience_level=str(r.get("experience_level") or "entry_level"),
+                        employment_types=r.get("employment_types") or ["full_time"],
+                        min_salary=float(r["min_salary"]) if r.get("min_salary") is not None else None,
+                        max_salary=float(r["max_salary"]) if r.get("max_salary") is not None else None,
+                        selected_platforms=r.get("selected_platforms") or ["naukri", "internshala", "indeed"],
+                        daily_application_limit=int(r.get("daily_application_limit") or 25),
+                        require_manual_review=bool(r.get("require_manual_review", True)),
+                        updated_at=r.get("updated_at"),
+                    )
         except Exception as e:
             logger.error("Error updating preferences in Supabase: %s", e)
 

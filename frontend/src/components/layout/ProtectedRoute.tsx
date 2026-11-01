@@ -60,8 +60,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/dashboard" replace />;
   }
 
+  const localCompleted = typeof window !== 'undefined' && localStorage.getItem('onboarding_completed') === 'true';
+  const effectiveIsOnboarded = isOnboarded || localCompleted;
+
   // Redirect users who haven't finished onboarding to the onboarding wizard
-  if (!isOnboarded && shouldCheckOnboarding && hasResolvedInitialCheck) {
+  if (!effectiveIsOnboarded && shouldCheckOnboarding && hasResolvedInitialCheck) {
     return <Navigate to="/onboarding" replace />;
   }
 

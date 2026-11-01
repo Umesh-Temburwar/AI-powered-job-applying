@@ -158,24 +158,40 @@ export function useProfile() {
         if (updates.skills !== undefined) payload.skills = updates.skills;
         if (updates.education !== undefined) {
           payload.education = updates.education.map((e) => ({
-            id: e.id,
-            degree: e.degree,
-            institution: e.institution,
-            year: e.year,
-            score: e.score,
+            id: e.id ? String(e.id) : undefined,
+            degree: String(e.degree || ''),
+            institution: String(e.institution || ''),
+            year: e.year ? String(e.year) : undefined,
+            score: e.score ? String(e.score) : undefined,
           }));
         }
         if (updates.experience !== undefined) {
           payload.experience = updates.experience.map((x) => ({
-            id: x.id,
-            role: x.role,
-            company: x.company,
-            duration: x.duration,
-            description: x.description,
+            id: x.id ? String(x.id) : undefined,
+            role: String(x.role || ''),
+            company: String(x.company || ''),
+            duration: x.duration ? String(x.duration) : undefined,
+            description: x.description ? String(x.description) : undefined,
           }));
         }
-        if (updates.projects !== undefined) payload.projects = updates.projects;
-        if (updates.certifications !== undefined) payload.certifications = updates.certifications;
+        if (updates.projects !== undefined) {
+          payload.projects = updates.projects.map((p) => ({
+            id: p.id ? String(p.id) : undefined,
+            title: String(p.title || ''),
+            description: p.description ? String(p.description) : undefined,
+            technologies: p.technologies || [],
+            url: p.url ? String(p.url) : undefined,
+          }));
+        }
+        if (updates.certifications !== undefined) {
+          payload.certifications = updates.certifications.map((c) => ({
+            id: c.id ? String(c.id) : undefined,
+            name: String(c.name || ''),
+            issuer: c.issuer ? String(c.issuer) : undefined,
+            date: c.date ? String(c.date) : undefined,
+            url: c.url ? String(c.url) : undefined,
+          }));
+        }
         if (updates.additionalInfo !== undefined) payload.additional_info = updates.additionalInfo;
         if (updates.isOnboarded !== undefined) payload.is_onboarded = updates.isOnboarded;
         if (updates.onboardingStep !== undefined) payload.onboarding_step = updates.onboardingStep;

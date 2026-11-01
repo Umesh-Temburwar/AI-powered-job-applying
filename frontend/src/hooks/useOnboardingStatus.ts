@@ -4,6 +4,34 @@ import { useAuth } from '../context/AuthContext';
 
 let memoryCachedStatus: BackendOnboardingStatus | null = null;
 
+export function markOnboardingCompletedLocally(): void {
+  const completedStatus: BackendOnboardingStatus = {
+    is_onboarded: true,
+    onboarding_step: 7,
+    completion_percentage: 100,
+    missing_fields: [],
+    has_resume: true,
+    has_preferences: true,
+  };
+  memoryCachedStatus = completedStatus;
+  try {
+    sessionStorage.setItem('onboarding_status_cache', JSON.stringify(completedStatus));
+    localStorage.setItem('onboarding_completed', 'true');
+  } catch {
+    // Ignore quota errors
+  }
+}
+
+export function clearOnboardingCache(): void {
+  memoryCachedStatus = null;
+  try {
+    sessionStorage.removeItem('onboarding_status_cache');
+    localStorage.removeItem('onboarding_completed');
+  } catch {
+    // Ignore quota errors
+  }
+}
+
 export function useOnboardingStatus() {
   const { session, user } = useAuth();
   const token = session?.token;
@@ -49,6 +77,9 @@ export function useOnboardingStatus() {
       setStatus(res);
       try {
         sessionStorage.setItem('onboarding_status_cache', JSON.stringify(res));
+        if (res.is_onboarded) {
+          localStorage.setItem('onboarding_completed', 'true');
+        }
       } catch {
         // Ignore quota errors
       }
@@ -83,9 +114,12 @@ export function useOnboardingStatus() {
     }
   }, [userId, token]);
 
+  const hasLocalCompleted = typeof window !== 'undefined' && localStorage.getItem('onboarding_completed') === 'true';
+  const effectiveIsOnboarded = hasLocalCompleted || (status?.is_onboarded ?? true);
+
   return {
     status,
-    isOnboarded: status?.is_onboarded ?? true,
+    isOnboarded: effectiveIsOnboarded,
     currentStep: status?.onboarding_step ?? 1,
     completionPercentage: status?.completion_percentage ?? 100,
     missingFields: status?.missing_fields ?? [],

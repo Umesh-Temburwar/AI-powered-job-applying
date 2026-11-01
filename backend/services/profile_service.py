@@ -329,6 +329,14 @@ async def update_user_profile(user_id: str, updates: ProfileUpdateRequest) -> Pr
                 prof = _row_to_profile(res.data[0])
                 _PROFILE_CACHE[user_id] = (time.time(), prof)
                 return prof
+            else:
+                # Row didn't exist in profiles table yet -> insert
+                insert_dict = {"id": user_id, "created_at": now_iso, **update_dict}
+                res_ins = client.table("profiles").insert(insert_dict).execute()
+                if res_ins.data and len(res_ins.data) > 0:
+                    prof = _row_to_profile(res_ins.data[0])
+                    _PROFILE_CACHE[user_id] = (time.time(), prof)
+                    return prof
         except Exception as exc:
             logger.error("Error updating profile in Supabase: %s", exc)
 

@@ -21,6 +21,7 @@ def in_memory_db(monkeypatch):
             job_title TEXT NOT NULL,
             company TEXT,
             location TEXT,
+            salary TEXT,
             url TEXT,
             status TEXT DEFAULT 'Applied',
             applied_date TEXT NOT NULL,

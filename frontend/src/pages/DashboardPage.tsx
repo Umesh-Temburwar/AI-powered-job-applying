@@ -441,7 +441,7 @@ export const DashboardPage: React.FC = () => {
             title="Configure resume, keywords, portal logins and start auto-apply"
           >
             <Sparkles className="w-4 h-4 fill-current" />
-            <span>🚀 Start / Launch Bot (All Setup)</span>
+            <span>🚀 Start / Launch Bot</span>
           </button>
         </div>
       </div>

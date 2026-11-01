@@ -26,6 +26,7 @@ import {
 import { useProfile } from '../hooks/useProfile';
 import { useResumes } from '../hooks/useResumes';
 import { usePreferences } from '../hooks/usePreferences';
+import { markOnboardingCompletedLocally } from '../hooks/useOnboardingStatus';
 import { configService } from '../services/configService';
 import { useToast } from '../context/ToastContext';
 import {
@@ -118,6 +119,7 @@ export const OnboardingPage: React.FC = () => {
       if (profile.linkedinUrl) setLinkedinUrl(profile.linkedinUrl);
       if (profile.githubUrl) setGithubUrl(profile.githubUrl);
       if (profile.portfolioUrl) setPortfolioUrl(profile.portfolioUrl);
+      if (profile.education && profile.education.length > 0) setEducationList(profile.education);
       if (profile.skills && profile.skills.length > 0) setSkills(profile.skills);
       const hasExp = Boolean(profile.experience && profile.experience.length > 0);
       if (hasExp) {
@@ -364,44 +366,67 @@ export const OnboardingPage: React.FC = () => {
   const handleFinalSubmit = async () => {
     try {
       setSaving(true);
-      // 1. Mark profile completed
+
+      const safeEducation = educationList.map((e, idx) => ({
+        id: String(e.id || idx + 1),
+        degree: String(e.degree || '').trim(),
+        institution: String(e.institution || '').trim(),
+        year: e.year ? String(e.year).trim() : '',
+        score: e.score ? String(e.score).trim() : undefined,
+      }));
+
+      const safeExperience = isFresher ? [] : experienceList.map((x, idx) => ({
+        id: String(x.id || idx + 1),
+        role: String(x.role || '').trim(),
+        company: String(x.company || '').trim(),
+        duration: x.duration ? String(x.duration).trim() : '',
+        description: x.description ? String(x.description).trim() : '',
+      }));
+
+      const safeTitles = targetTitles.length > 0 ? targetTitles : ['Full Stack Developer'];
+      const safeLocations = targetLocations.length > 0 ? targetLocations : [city || 'Remote'];
+
+      // 1. Mark profile completed in Supabase / backend
       await updateProfile({
-        fullName,
-        email,
-        phone,
-        city,
-        currentLocation: city,
-        headline,
-        summary,
-        linkedinUrl,
-        githubUrl,
-        portfolioUrl,
+        fullName: fullName.trim() || 'Candidate',
+        email: email.trim(),
+        phone: phone.trim(),
+        city: city.trim(),
+        currentLocation: city.trim(),
+        headline: headline.trim(),
+        summary: summary.trim(),
+        linkedinUrl: linkedinUrl.trim(),
+        githubUrl: githubUrl.trim(),
+        portfolioUrl: portfolioUrl.trim(),
         skills,
-        education: educationList,
-        experience: isFresher ? [] : experienceList,
+        education: safeEducation,
+        experience: safeExperience,
         projects: projectsList,
         certifications: certificationsList,
         additionalInfo: {
           is_fresher: isFresher,
-          notice_period_days: noticePeriodDays,
-          willing_to_relocate: willingToRelocate,
-          work_authorization: workAuthorization,
-          expected_salary_lakhs: expectedSalaryLakhs,
+          notice_period_days: Number(noticePeriodDays) || 15,
+          willing_to_relocate: Boolean(willingToRelocate),
+          work_authorization: workAuthorization || 'Authorized to work in India',
+          expected_salary_lakhs: expectedSalaryLakhs ? Number(expectedSalaryLakhs) : undefined,
         },
         isOnboarded: true,
         onboardingStep: 7,
       });
 
-      // 2. Save job preferences
+      // 2. Save job preferences in Supabase / backend
       await updatePreferences({
-        targetTitles,
-        targetLocations,
+        targetTitles: safeTitles,
+        targetLocations: safeLocations,
         selectedPlatforms,
-        dailyApplicationLimit: dailyLimit,
+        dailyApplicationLimit: Number(dailyLimit) || 25,
         experienceLevel: isFresher ? 'Fresher / Entry Level' : '1-3 Years',
       });
 
-      // 3. Sync to project root .env and local bot files
+      // 3. Mark client onboarding cache as completed so ProtectedRoute never bounces
+      markOnboardingCompletedLocally();
+
+      // 4. Sync to project root .env and local bot files
       const nameParts = (fullName || '').trim().split(' ');
       const fname = nameParts[0] || '';
       const lname = nameParts.slice(1).join(' ') || '';
@@ -410,14 +435,15 @@ export const OnboardingPage: React.FC = () => {
         lastname: lname,
         phone: phone,
         email: email,
-        keywords: targetTitles.join(', '),
-        location: targetLocations[0] || city || 'pune',
-        max_applications: dailyLimit,
+        keywords: safeTitles.join(', '),
+        location: safeLocations[0] || city || 'pune',
+        max_applications: Number(dailyLimit) || 25,
       }).catch(() => {});
 
       showToast('🎉 Onboarding completed successfully! Welcome to your dashboard.', 'success');
       navigate('/dashboard', { replace: true });
     } catch (err) {
+      console.error('Error completing onboarding:', err);
       showToast(err instanceof Error ? err.message : 'Error completing onboarding', 'error');
     } finally {
       setSaving(false);
