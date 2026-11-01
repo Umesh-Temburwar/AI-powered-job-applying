@@ -14,7 +14,6 @@ import {
   Play,
   Eye,
   EyeOff,
-  RotateCcw,
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { usePreferences } from '../hooks/usePreferences';
@@ -154,7 +153,6 @@ export const ProfilePage: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
   const [deleteResumeModalOpen, setDeleteResumeModalOpen] = useState(false);
-  const [resetAllModalOpen, setResetAllModalOpen] = useState(false);
   const [deletingResume, setDeletingResume] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -201,18 +199,18 @@ export const ProfilePage: React.FC = () => {
 
   // 2. Job & Career Screening Details (Directly for Bot Applications)
   const [totalExperience, setTotalExperience] = useState('0');
-  const [relevantExperience, setRelevantExperience] = useState('1');
-  const [currentCtc, setCurrentCtc] = useState('0 (Fresher)');
-  const [expectedCtc, setExpectedCtc] = useState('4.5 Lakhs');
+  const [relevantExperience, setRelevantExperience] = useState('0');
+  const [currentCtc, setCurrentCtc] = useState('0');
+  const [expectedCtc, setExpectedCtc] = useState('0');
   const [noticePeriod, setNoticePeriod] = useState('Immediate (0 Days)');
   const [workMode, setWorkMode] = useState('Remote / Hybrid');
   const [willingToRelocate, setWillingToRelocate] = useState('Yes');
   const [coverLetter, setCoverLetter] = useState('');
 
   // 3. Primary Academic Qualifications (Screening Sync)
-  const [educationDegree, setEducationDegree] = useState('Bachelor of Technology (B.Tech)');
+  const [educationDegree, setEducationDegree] = useState('');
   const [educationCollege, setEducationCollege] = useState('');
-  const [educationPassingYear, setEducationPassingYear] = useState('2025');
+  const [educationPassingYear, setEducationPassingYear] = useState('');
   const [educationScore, setEducationScore] = useState('');
 
   // 4. Target Roles & Locations (Search Keywords Chips)
@@ -718,52 +716,6 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleResetAllConfirmed = () => {
-    playRetroSound('click');
-    setFirstname('');
-    setLastname('');
-    setPhone('');
-    setEmail('');
-    setGender('Male');
-    setCurrentCity('');
-    setHeadline('');
-    setSummary('');
-    setTotalExperience('0');
-    setRelevantExperience('0');
-    setNoticePeriod('Immediate / 15 Days');
-    setWorkMode('Flexible / Remote');
-    setCurrentCtc('0');
-    setExpectedCtc('0');
-    setWillingToRelocate('Yes');
-    setEducationDegree('');
-    setEducationCollege('');
-    setEducationPassingYear('2025');
-    setEducationScore('');
-    setEducation([]);
-    setSkills([]);
-    setSkillInput('');
-    setKeywordList([]);
-    setLocationList([]);
-    setLinkedinUrl('');
-    setGithubUrl('');
-    setPortfolioUrl('');
-    setCoverLetter('');
-    setNaukriEmail('');
-    setNaukriPassword('');
-    setInternshalaEmail('');
-    setInternshalaPassword('');
-    setIndeedEmail('');
-    setIndeedPassword('');
-    setLinkedinEmail('');
-    setLinkedinPassword('');
-    setExperience([]);
-    setProjects([]);
-    setCertifications([]);
-    setIsDirty(true);
-    setResetAllModalOpen(false);
-    showToast('All candidate details and platform credentials have been reset. Click "Save Profile" to synchronize.', 'info');
-  };
-
   // Launch Bot according to Quick Commands Cheatsheet
   const handleLaunchBot = async () => {
     try {
@@ -932,17 +884,6 @@ export const ProfilePage: React.FC = () => {
               Unsaved changes
             </span>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setResetAllModalOpen(true)}
-            disabled={saving || startingBot}
-            leftIcon={<RotateCcw className="w-3.5 h-3.5 text-amber-400" />}
-            className="text-amber-400 border-amber-500/40 hover:bg-amber-500/10 font-bold"
-          >
-            Reset All
-          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -2211,17 +2152,6 @@ export const ProfilePage: React.FC = () => {
               type="button"
               variant="outline"
               size="md"
-              onClick={() => setResetAllModalOpen(true)}
-              disabled={saving || startingBot}
-              leftIcon={<RotateCcw className="w-4 h-4 text-amber-400" />}
-              className="text-amber-400 border-amber-500/40 hover:bg-amber-500/10 font-bold"
-            >
-              Reset All
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
               onClick={handleSave}
               disabled={saving || startingBot}
               leftIcon={<Save className="w-4 h-4" />}
@@ -2404,17 +2334,7 @@ export const ProfilePage: React.FC = () => {
         </form>
       </Modal>
 
-            {/* Reset All Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={resetAllModalOpen}
-        onClose={() => setResetAllModalOpen(false)}
-        onConfirm={handleResetAllConfirmed}
-        title="Reset All Profile & Bot Data"
-        description="Are you sure you want to reset all profile details, screening answers, job targeting, and portal credentials? This will clear all form fields in this editor."
-        confirmLabel="Reset All Data"
-        isDestructive
-      />
-
+      
       {/* Delete Resume Confirmation Dialog */}
       <ConfirmDialog
         isOpen={deleteResumeModalOpen}
