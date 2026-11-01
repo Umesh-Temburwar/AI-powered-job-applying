@@ -644,10 +644,130 @@ export const ProfilePage: React.FC = () => {
       }
 
       setLocalResumeName(null);
-      await Promise.allSettled([loadData(), refreshResumes()]);
+
+      // 3. Clear all form fields
+      setFirstname('');
+      setLastname('');
+      setPhone('');
+      setEmail('');
+      setGender('Male');
+      setCurrentCity('');
+      setHeadline('');
+      setSummary('');
+      setTotalExperience('0');
+      setRelevantExperience('0');
+      setCurrentCtc('0');
+      setExpectedCtc('0');
+      setNoticePeriod('Immediate (0 Days)');
+      setWorkMode('Remote / Hybrid');
+      setWillingToRelocate('Yes');
+      setCoverLetter('');
+      setEducationDegree('');
+      setEducationCollege('');
+      setEducationPassingYear('');
+      setEducationScore('');
+      setEducation([]);
+      setSkills([]);
+      setSkillInput('');
+      setKeywordList([]);
+      setKeywordInput('');
+      setLocationList([]);
+      setLocationInput('');
+      setExperience([]);
+      setProjects([]);
+      setCertifications([]);
+      setLinkedinUrl('');
+      setGithubUrl('');
+      setPortfolioUrl('');
+      setNaukriEmail('');
+      setNaukriPassword('');
+      setInternshalaEmail('');
+      setInternshalaPassword('');
+      setIndeedEmail('');
+      setIndeedPassword('');
+      setLinkedinEmail('');
+      setLinkedinPassword('');
+      setIsDirty(false);
+
+      // 4. Wipe persisted configs in Root .env and data/profile_data.json
+      try {
+        await configService.saveConfig({
+          firstname: '',
+          lastname: '',
+          phone: '',
+          email: '',
+          gender: 'Male',
+          total_experience_years: '0',
+          relevant_experience_years: '0',
+          current_ctc: '0',
+          expected_ctc: '0',
+          notice_period: 'Immediate (0 Days)',
+          work_mode: 'Remote / Hybrid',
+          willing_to_relocate: 'Yes',
+          education_degree: '',
+          education_college: '',
+          education_passing_year: '',
+          education_score: '',
+          linkedin_url: '',
+          github_url: '',
+          portfolio_url: '',
+          cover_letter: '',
+          keywords: '',
+          location: '',
+          key_skills: [],
+          naukri_headline: '',
+          profile_summary: '',
+          naukri_email: '',
+          naukri_password: '',
+          internshala_email: '',
+          internshala_password: '',
+          indeed_email: '',
+          indeed_password: '',
+          linkedin_email: '',
+          linkedin_password: '',
+          max_applications: 25,
+        });
+      } catch (saveErr) {
+        console.warn('Config wipe error:', saveErr);
+      }
+
+      // 5. Wipe Supabase Profile and Preferences
+      try {
+        await updateProfile({
+          fullName: '',
+          email: '',
+          phone: '',
+          city: '',
+          currentLocation: '',
+          headline: '',
+          summary: '',
+          linkedinUrl: '',
+          githubUrl: '',
+          portfolioUrl: '',
+          skills: [],
+          education: [],
+          experience: [],
+          projects: [],
+          certifications: [],
+          additionalInfo: {},
+        });
+      } catch (sbProfErr) {
+        console.warn('Supabase profile wipe error:', sbProfErr);
+      }
+
+      try {
+        await updatePreferences({
+          targetTitles: [],
+          targetLocations: [],
+        });
+      } catch (sbPrefErr) {
+        console.warn('Supabase preferences wipe error:', sbPrefErr);
+      }
+
+      await refreshResumes();
 
       playRetroSound('success');
-      showToast('✓ Resume removed from profile and bot automation storage.', 'success');
+      showToast('✓ Resume removed and all form data has been cleared.', 'success');
       setDeleteResumeModalOpen(false);
     } catch (err: any) {
       playRetroSound('error');
@@ -2340,9 +2460,9 @@ export const ProfilePage: React.FC = () => {
         isOpen={deleteResumeModalOpen}
         onClose={() => !deletingResume && setDeleteResumeModalOpen(false)}
         onConfirm={handleDeleteResumeConfirmed}
-        title="Remove Attached Resume"
-        description="Are you sure you want to remove this resume from your profile? This will delete the resume file from bot automation storage and Supabase. You can upload a new resume anytime."
-        confirmLabel={deletingResume ? "Removing Resume..." : "Remove Resume"}
+        title="Remove Attached Resume & Clear Form Data"
+        description="Are you sure you want to remove this resume from your profile? This will delete the resume file from storage and clear all candidate details, screening answers, and portal credentials from the form."
+        confirmLabel={deletingResume ? "Removing..." : "Remove Resume & Clear Data"}
         isDestructive
         isLoading={deletingResume}
       />
