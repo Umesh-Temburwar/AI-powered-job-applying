@@ -6,14 +6,6 @@ interface RegisterResult {
   needsEmailVerification: boolean;
 }
 
-const PUBLIC_CANDIDATE_USER: AuthUser = {
-  id: '0ff8ac23-96d8-419e-9cff-ffd3b3430f17',
-  email: 'umeshtemburwar2002@gmail.com',
-  fullName: 'Umesh Temburwar',
-  isAdmin: true,
-};
-const PUBLIC_TOKEN = 'public-umesh-token-2026';
-
 interface AuthContextType {
   user: AuthUser | null;
   session: AuthSession | null;
@@ -116,24 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // Check for active public session bypass first
-        const savedPublic = localStorage.getItem('jobbot_public_session');
-        if (savedPublic) {
-          try {
-            const parsed = JSON.parse(savedPublic);
-            if (parsed?.token && parsed?.user) {
-              if (isMounted) {
-                setUser(parsed.user);
-                setSession(parsed);
-                setIsLoading(false);
-              }
-              return;
-            }
-          } catch {
-            localStorage.removeItem('jobbot_public_session');
-          }
-        }
-
         const { data, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) {
           console.warn('Error reading session:', sessionError);
@@ -174,44 +148,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setError(null);
     setIsLoading(true);
-
-    const idLower = email.trim().toLowerCase();
-    const isPublicUmesh =
-      (idLower === 'umesh' ||
-       idLower === 'umeshtemburwar2002@gmail.com' ||
-       idLower === 'utemburwar2002@gmail.com') &&
-      password === 'Umesh@123';
-
-    if (isPublicUmesh) {
-      if (isSupabaseConfigured) {
-        try {
-          const { data, error: sbErr } = await supabase.auth.signInWithPassword({
-            email: 'umeshtemburwar2002@gmail.com',
-            password,
-          });
-          if (!sbErr && data?.session) {
-            localStorage.removeItem('jobbot_public_session');
-            syncSession(data.session);
-            setIsLoading(false);
-            return;
-          }
-        } catch {
-          // Fall through to public bypass session
-        }
-      }
-
-      // Activate public candidate session
-      const publicSession: AuthSession = {
-        token: PUBLIC_TOKEN,
-        user: PUBLIC_CANDIDATE_USER,
-        expiresAt: Math.floor(Date.now() / 1000) + 86400 * 365,
-      };
-      localStorage.setItem('jobbot_public_session', JSON.stringify(publicSession));
-      setUser(PUBLIC_CANDIDATE_USER);
-      setSession(publicSession);
-      setIsLoading(false);
-      return;
-    }
 
     if (!isSupabaseConfigured) {
       setIsLoading(false);
@@ -270,7 +206,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    localStorage.removeItem('jobbot_public_session');
     setError(null);
     if (!isSupabaseConfigured) {
       setUser(null);
@@ -366,15 +301,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getToken = async (): Promise<string | null> => {
-    const savedPublic = localStorage.getItem('jobbot_public_session');
-    if (savedPublic) {
-      try {
-        const parsed = JSON.parse(savedPublic);
-        if (parsed?.token) return parsed.token;
-      } catch {
-        localStorage.removeItem('jobbot_public_session');
-      }
-    }
     if (!isSupabaseConfigured) return null;
     const { data } = await supabase.auth.getSession();
     return data.session?.access_token || null;

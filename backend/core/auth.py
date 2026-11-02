@@ -171,16 +171,6 @@ async def get_current_user(
             claims={"sub": f"usr_{mock_uid}"},
         )
 
-    # 1.5 Public Candidate & Admin Login (Username: Umesh / Password: Umesh@123)
-    if token in ("public-umesh-token-2026", "public-umesh-token") or token.startswith("public-umesh-"):
-        public_uid = getattr(active_settings, "CANDIDATE_USER_ID", "0ff8ac23-96d8-419e-9cff-ffd3b3430f17")
-        return AuthenticatedUser(
-            id=str(public_uid),
-            email="umeshtemburwar2002@gmail.com",
-            role="admin",
-            claims={"sub": str(public_uid), "email": "umeshtemburwar2002@gmail.com", "role": "admin"},
-        )
-
     # 2. Inspect unverified JWT header and claims safely
     try:
         unverified_header = jwt.get_unverified_header(token)
