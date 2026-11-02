@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type { AuthUser, AuthSession } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { clearCachedProfile } from '../hooks/useProfile';
+import { clearCachedResumes } from '../hooks/useResumes';
 
 /**
  * Safely resolves the environment-aware app origin for Supabase redirects:
@@ -48,6 +49,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sync Supabase user into application AuthUser model
   const syncSession = useCallback((sbSession: typeof supabase.auth.getSession extends () => Promise<{ data: { session: infer S } }> ? S : unknown) => {
     if (!sbSession || !('user' in (sbSession as object))) {
+      clearCachedProfile();
+      clearCachedResumes();
       setUser(null);
       setSession(null);
       return;
@@ -239,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     setError(null);
     clearCachedProfile();
+    clearCachedResumes();
     if (!isSupabaseConfigured) {
       setUser(null);
       setSession(null);

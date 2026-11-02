@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useResumes } from '../hooks/useResumes';
 import { useProfile } from '../hooks/useProfile';
+import { useAuth } from '../context/AuthContext';
 import { configService, type BotEnvConfig } from '../services/configService';
 import { useToast } from '../context/ToastContext';
 import { playRetroSound } from '../utils/soundEffects';
@@ -37,6 +38,7 @@ export const ResumeManagerPage: React.FC = () => {
     refreshResumes,
   } = useResumes();
   const { autofillProfile } = useProfile();
+  const { user } = useAuth();
   const { showToast } = useToast();
 
   const [botConfig, setBotConfig] = useState<BotEnvConfig | null>(null);
@@ -246,7 +248,7 @@ export const ResumeManagerPage: React.FC = () => {
     }
   };
 
-  const activeBotResumeName = botConfig?.resume_name || (resumes.length > 0 ? resumes[0].fileName : null);
+  const activeBotResumeName = (user?.isAdmin ? botConfig?.resume_name : null) || (resumes.length > 0 ? resumes[0].fileName : null);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">

@@ -67,42 +67,24 @@ def get_latest_resume_info() -> tuple[Optional[str], Optional[str]]:
     return None, None
 
 
-def get_active_resume_file_response(user_id: Optional[str] = None):
+def get_active_resume_file_response(
+    user_id: Optional[str] = None,
+    user_email: Optional[str] = None,
+    is_admin: bool = False,
+):
     """Serve active candidate resume file with inline disposition for in-browser PDF viewing."""
     from fastapi import HTTPException
     from fastapi.responses import FileResponse, Response, RedirectResponse
 
-    # 1. Local disk in data/resumes/ or .env RESUME_PATH
-    r_name, r_path = get_latest_resume_info()
-    if r_path and os.path.exists(r_path):
-        clean_name = r_name or os.path.basename(r_path)
-        ext = clean_name.lower()
-        if ext.endswith(".pdf"):
-            media_type = "application/pdf"
-        elif ext.endswith(".docx"):
-            media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        elif ext.endswith(".txt"):
-            media_type = "text/plain"
-        else:
-            media_type = "application/octet-stream"
+    admin_emails = {"umeshtemburwar2002@gmail.com", "utemburwar2002@gmail.com"}
+    clean_email = (user_email or "").strip().lower()
+    is_effective_admin = is_admin or clean_email in admin_emails or (user_id is None and user_email is None)
 
-        return FileResponse(
-            path=r_path,
-            media_type=media_type,
-            filename=clean_name,
-            headers={
-                "Content-Disposition": f'inline; filename="{clean_name}"',
-                "Cache-Control": "public, max-age=3600",
-            },
-        )
-
-    # 2. Supabase storage lookup
+    # 1. Supabase storage lookup for this specific candidate
     client = get_supabase_client()
-    if client:
+    if client and user_id and not user_id.startswith("usr_"):
         try:
-            query = client.table("resumes").select("storage_path, file_name, mime_type")
-            if user_id and not user_id.startswith("usr_"):
-                query = query.eq("user_id", user_id)
+            query = client.table("resumes").select("storage_path, file_name, mime_type").eq("user_id", user_id)
             res = query.eq("is_default", True).limit(1).execute()
             if not res.data:
                 res = query.order("created_at", desc=True).limit(1).execute()
@@ -128,7 +110,7 @@ def get_active_resume_file_response(user_id: Optional[str] = None):
         except Exception as sup_err:
             logger.debug("Could not retrieve resume from Supabase: %s", sup_err)
 
-    # 3. Check in-memory store for tests
+    # 2. Check in-memory store for candidate or tests
     try:
         from services.resume_service import _MEMORY_RESUMES
         for r in _MEMORY_RESUMES.values():
@@ -142,84 +124,227 @@ def get_active_resume_file_response(user_id: Optional[str] = None):
     except Exception:
         pass
 
+    # 3. Only if administrator or local runner without user context: check local disk in data/resumes/ or .env
+    if is_effective_admin:
+        r_name, r_path = get_latest_resume_info()
+        if r_path and os.path.exists(r_path):
+            clean_name = r_name or os.path.basename(r_path)
+            ext = clean_name.lower()
+            if ext.endswith(".pdf"):
+                media_type = "application/pdf"
+            elif ext.endswith(".docx"):
+                media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            elif ext.endswith(".txt"):
+                media_type = "text/plain"
+            else:
+                media_type = "application/octet-stream"
+
+            return FileResponse(
+                path=r_path,
+                media_type=media_type,
+                filename=clean_name,
+                headers={
+                    "Content-Disposition": f'inline; filename="{clean_name}"',
+                    "Cache-Control": "public, max-age=3600",
+                },
+            )
+
     raise HTTPException(status_code=404, detail="No active resume file found. Please upload a resume first.")
 
 
-def get_full_configuration() -> dict[str, Any]:
-    """Retrieve combined configuration from .env, profile_data.json, and data/resumes."""
+def get_full_configuration(
+    user_id: Optional[str] = None,
+    user_email: Optional[str] = None,
+    is_admin: bool = False,
+) -> dict[str, Any]:
+    """Retrieve configuration. Admins see full host environment; regular candidates see their own isolated data."""
+    admin_emails = {"umeshtemburwar2002@gmail.com", "utemburwar2002@gmail.com"}
+    clean_email = (user_email or "").strip().lower()
+    is_effective_admin = is_admin or clean_email in admin_emails or (user_id is None and user_email is None)
+
     env = get_current_env_dict()
     prof = get_current_profile_data()
-    personal = prof.get("personal", {})
-    edu = prof.get("education", {})
-    if isinstance(edu, list) and len(edu) > 0:
-        edu = edu[0]
-    elif not isinstance(edu, dict):
-        edu = {}
-    r_name, r_path = get_latest_resume_info()
+
+    if is_effective_admin:
+        personal = prof.get("personal", {})
+        edu = prof.get("education", {})
+        if isinstance(edu, list) and len(edu) > 0:
+            edu = edu[0]
+        elif not isinstance(edu, dict):
+            edu = {}
+        r_name, r_path = get_latest_resume_info()
+
+        return {
+            # Personal details
+            "firstname": env.get("FIRSTNAME") or personal.get("firstname") or "",
+            "lastname": env.get("LASTNAME") or personal.get("lastname") or "",
+            "phone": env.get("PHONE") or personal.get("phone") or "",
+            "email": env.get("EMAIL") or personal.get("email") or "",
+            "gender": env.get("GENDER") or personal.get("gender") or "Male",
+            # Search & Job Application Preferences
+            "keywords": env.get("KEYWORDS") or prof.get("naukri_headline") or "",
+            "location": env.get("LOCATION") or personal.get("current_location") or "",
+            "pages_per_keyword": int(env.get("PAGES_PER_KEYWORD", 2)),
+            "max_applications": int(env.get("MAX_APPLICATIONS", 50)),
+            "browser": env.get("BROWSER") or "auto",
+            # Career & Screening Details for all portals
+            "total_experience_years": env.get("TOTAL_EXPERIENCE_YEARS") or str(personal.get("total_experience_years", "0")),
+            "relevant_experience_years": env.get("RELEVANT_EXPERIENCE_YEARS") or str(personal.get("relevant_experience_years", "0")),
+            "current_ctc": env.get("CURRENT_CTC") or personal.get("current_ctc", ""),
+            "expected_ctc": env.get("EXPECTED_CTC") or personal.get("expected_ctc", ""),
+            "notice_period": env.get("NOTICE_PERIOD") or personal.get("notice_period", "Immediate (0 Days)"),
+            "work_mode": env.get("WORK_MODE") or personal.get("work_mode", "Remote / Hybrid"),
+            "willing_to_relocate": env.get("WILLING_TO_RELOCATE") or personal.get("willing_to_relocate", "Yes"),
+            "work_authorization": env.get("WORK_AUTHORIZATION") or personal.get("work_authorization", "Authorized to work in India"),
+            "is_fresher": env.get("IS_FRESHER", "").lower() in ("true", "1", "yes") or personal.get("is_fresher", False),
+            "selected_platforms": prof.get("selected_platforms") or ["Naukri", "Internshala", "Indeed", "LinkedIn"],
+            # Highest Education Details
+            "education_degree": env.get("EDUCATION_DEGREE") or edu.get("degree", ""),
+            "education_college": env.get("EDUCATION_COLLEGE") or edu.get("institution") or edu.get("college", ""),
+            "education_passing_year": env.get("EDUCATION_PASSING_YEAR") or str(edu.get("year") or edu.get("passing_year", "")),
+            "education_score": env.get("EDUCATION_SCORE") or str(edu.get("score") or edu.get("cgpa", "")),
+            # Social & Portfolio Links
+            "linkedin_url": env.get("LINKEDIN_URL") or personal.get("linkedin_url", ""),
+            "github_url": env.get("GITHUB_URL") or personal.get("github_url", ""),
+            "portfolio_url": env.get("PORTFOLIO_URL") or personal.get("portfolio_url", ""),
+            "cover_letter": env.get("COVER_LETTER") or prof.get("cover_letter", ""),
+            # Platform credentials
+            "naukri_email": env.get("NAUKRI_EMAIL", ""),
+            "naukri_password": env.get("NAUKRI_PASSWORD", ""),
+            "internshala_email": env.get("INTERNSHALA_EMAIL", ""),
+            "internshala_password": env.get("INTERNSHALA_PASSWORD", ""),
+            "indeed_email": env.get("INDEED_EMAIL", ""),
+            "indeed_password": env.get("INDEED_PASSWORD", ""),
+            "linkedin_email": env.get("LINKEDIN_EMAIL", ""),
+            "linkedin_password": env.get("LINKEDIN_PASSWORD", ""),
+            "foundit_email": env.get("FOUNDIT_EMAIL", ""),
+            "foundit_password": env.get("FOUNDIT_PASSWORD", ""),
+            "wellfound_email": env.get("WELLFOUND_EMAIL", ""),
+            "wellfound_password": env.get("WELLFOUND_PASSWORD", ""),
+            "glassdoor_email": env.get("GLASSDOOR_EMAIL", ""),
+            "glassdoor_password": env.get("GLASSDOOR_PASSWORD", ""),
+            "cutshort_email": env.get("CUTSHORT_EMAIL", ""),
+            "cutshort_password": env.get("CUTSHORT_PASSWORD", ""),
+            # AI & Notifications
+            "telegram_bot_token": env.get("TELEGRAM_BOT_TOKEN", ""),
+            "telegram_chat_id": env.get("TELEGRAM_CHAT_ID", ""),
+            "discord_webhook_url": env.get("DISCORD_WEBHOOK_URL", ""),
+            "gemini_api_key": env.get("GEMINI_API_KEY", ""),
+            "dashboard_port": int(env.get("DASHBOARD_PORT", 5000)),
+            # Resume state
+            "resume_name": r_name,
+            "resume_path": r_path,
+            "key_skills": prof.get("key_skills", []),
+            "profile_summary": prof.get("profile_summary", ""),
+            "naukri_headline": prof.get("naukri_headline", ""),
+        }
+
+    # Isolated candidate profile resolution (No server host data leakage)
+    r_name = None
+    r_path = None
+    client = get_supabase_client()
+    if client and user_id and not user_id.startswith("usr_"):
+        try:
+            res = client.table("resumes").select("file_name, storage_path").eq("user_id", user_id).eq("is_default", True).limit(1).execute()
+            if not res.data:
+                res = client.table("resumes").select("file_name, storage_path").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
+            if res.data:
+                r_name = res.data[0].get("file_name")
+                r_path = res.data[0].get("storage_path")
+        except Exception as e:
+            logger.debug("Could not query candidate resume in Supabase: %s", e)
+
+    if not r_name:
+        try:
+            from services.resume_service import _MEMORY_RESUMES
+            for r in _MEMORY_RESUMES.values():
+                if r.get("user_id") == user_id:
+                    r_name = r.get("file_name")
+                    r_path = r.get("storage_path")
+                    break
+        except Exception:
+            pass
+
+    cand_firstname = ""
+    cand_lastname = ""
+    cand_phone = ""
+    cand_email = clean_email or ""
+    cand_headline = ""
+    cand_summary = ""
+    cand_skills = []
+
+    if client and user_id and not user_id.startswith("usr_"):
+        try:
+            prof_res = client.table("profiles").select("*").eq("id", user_id).limit(1).execute()
+            if prof_res.data:
+                p = prof_res.data[0]
+                fn = p.get("full_name") or ""
+                parts = fn.strip().split(" ")
+                cand_firstname = parts[0] if parts else ""
+                cand_lastname = " ".join(parts[1:]) if len(parts) > 1 else ""
+                cand_phone = p.get("phone") or ""
+                cand_email = p.get("email") or cand_email
+                cand_headline = p.get("headline") or ""
+                cand_summary = p.get("summary") or ""
+                cand_skills = p.get("skills") or []
+        except Exception as e:
+            logger.debug("Could not query candidate profile in Supabase: %s", e)
 
     return {
-        # Personal details
-        "firstname": env.get("FIRSTNAME") or personal.get("firstname") or "",
-        "lastname": env.get("LASTNAME") or personal.get("lastname") or "",
-        "phone": env.get("PHONE") or personal.get("phone") or "",
-        "email": env.get("EMAIL") or personal.get("email") or "",
-        "gender": env.get("GENDER") or personal.get("gender") or "Male",
-        # Search & Job Application Preferences
-        "keywords": env.get("KEYWORDS") or prof.get("naukri_headline") or "",
-        "location": env.get("LOCATION") or personal.get("current_location") or "",
-        "pages_per_keyword": int(env.get("PAGES_PER_KEYWORD", 2)),
-        "max_applications": int(env.get("MAX_APPLICATIONS", 50)),
-        "browser": env.get("BROWSER") or "auto",
-        # Career & Screening Details for all portals
-        "total_experience_years": env.get("TOTAL_EXPERIENCE_YEARS") or str(personal.get("total_experience_years", "0")),
-        "relevant_experience_years": env.get("RELEVANT_EXPERIENCE_YEARS") or str(personal.get("relevant_experience_years", "0")),
-        "current_ctc": env.get("CURRENT_CTC") or personal.get("current_ctc", ""),
-        "expected_ctc": env.get("EXPECTED_CTC") or personal.get("expected_ctc", ""),
-        "notice_period": env.get("NOTICE_PERIOD") or personal.get("notice_period", "Immediate (0 Days)"),
-        "work_mode": env.get("WORK_MODE") or personal.get("work_mode", "Remote / Hybrid"),
-        "willing_to_relocate": env.get("WILLING_TO_RELOCATE") or personal.get("willing_to_relocate", "Yes"),
-        "work_authorization": env.get("WORK_AUTHORIZATION") or personal.get("work_authorization", "Authorized to work in India"),
-        "is_fresher": env.get("IS_FRESHER", "").lower() in ("true", "1", "yes") or personal.get("is_fresher", False),
-        "selected_platforms": prof.get("selected_platforms") or ["Naukri", "Internshala", "Indeed", "LinkedIn"],
-        # Highest Education Details
-        "education_degree": env.get("EDUCATION_DEGREE") or edu.get("degree", ""),
-        "education_college": env.get("EDUCATION_COLLEGE") or edu.get("institution") or edu.get("college", ""),
-        "education_passing_year": env.get("EDUCATION_PASSING_YEAR") or str(edu.get("year") or edu.get("passing_year", "")),
-        "education_score": env.get("EDUCATION_SCORE") or str(edu.get("score") or edu.get("cgpa", "")),
-        # Social & Portfolio Links
-        "linkedin_url": env.get("LINKEDIN_URL") or personal.get("linkedin_url", ""),
-        "github_url": env.get("GITHUB_URL") or personal.get("github_url", ""),
-        "portfolio_url": env.get("PORTFOLIO_URL") or personal.get("portfolio_url", ""),
-        "cover_letter": env.get("COVER_LETTER") or prof.get("cover_letter", ""),
-        # Platform credentials
-        "naukri_email": env.get("NAUKRI_EMAIL", ""),
-        "naukri_password": env.get("NAUKRI_PASSWORD", ""),
-        "internshala_email": env.get("INTERNSHALA_EMAIL", ""),
-        "internshala_password": env.get("INTERNSHALA_PASSWORD", ""),
-        "indeed_email": env.get("INDEED_EMAIL", ""),
-        "indeed_password": env.get("INDEED_PASSWORD", ""),
-        "linkedin_email": env.get("LINKEDIN_EMAIL", ""),
-        "linkedin_password": env.get("LINKEDIN_PASSWORD", ""),
-        "foundit_email": env.get("FOUNDIT_EMAIL", ""),
-        "foundit_password": env.get("FOUNDIT_PASSWORD", ""),
-        "wellfound_email": env.get("WELLFOUND_EMAIL", ""),
-        "wellfound_password": env.get("WELLFOUND_PASSWORD", ""),
-        "glassdoor_email": env.get("GLASSDOOR_EMAIL", ""),
-        "glassdoor_password": env.get("GLASSDOOR_PASSWORD", ""),
-        "cutshort_email": env.get("CUTSHORT_EMAIL", ""),
-        "cutshort_password": env.get("CUTSHORT_PASSWORD", ""),
-        # AI & Notifications
-        "telegram_bot_token": env.get("TELEGRAM_BOT_TOKEN", ""),
-        "telegram_chat_id": env.get("TELEGRAM_CHAT_ID", ""),
-        "discord_webhook_url": env.get("DISCORD_WEBHOOK_URL", ""),
-        "gemini_api_key": env.get("GEMINI_API_KEY", ""),
-        "dashboard_port": int(env.get("DASHBOARD_PORT", 5000)),
-        # Resume state
+        "firstname": cand_firstname,
+        "lastname": cand_lastname,
+        "phone": cand_phone,
+        "email": cand_email,
+        "gender": "Male",
+        "keywords": cand_headline,
+        "location": "",
+        "pages_per_keyword": 2,
+        "max_applications": 50,
+        "browser": "auto",
+        "total_experience_years": "0",
+        "relevant_experience_years": "0",
+        "current_ctc": "",
+        "expected_ctc": "",
+        "notice_period": "Immediate (0 Days)",
+        "work_mode": "Remote / Hybrid",
+        "willing_to_relocate": "Yes",
+        "work_authorization": "Authorized to work in India",
+        "is_fresher": False,
+        "selected_platforms": ["Naukri", "Internshala", "Indeed", "LinkedIn"],
+        "education_degree": "",
+        "education_college": "",
+        "education_passing_year": "",
+        "education_score": "",
+        "linkedin_url": "",
+        "github_url": "",
+        "portfolio_url": "",
+        "cover_letter": "",
+        "naukri_email": "",
+        "naukri_password": "",
+        "internshala_email": "",
+        "internshala_password": "",
+        "indeed_email": "",
+        "indeed_password": "",
+        "linkedin_email": "",
+        "linkedin_password": "",
+        "foundit_email": "",
+        "foundit_password": "",
+        "wellfound_email": "",
+        "wellfound_password": "",
+        "glassdoor_email": "",
+        "glassdoor_password": "",
+        "cutshort_email": "",
+        "cutshort_password": "",
+        "telegram_bot_token": "",
+        "telegram_chat_id": "",
+        "discord_webhook_url": "",
+        "gemini_api_key": "",
+        "dashboard_port": 5000,
         "resume_name": r_name,
         "resume_path": r_path,
-        "key_skills": prof.get("key_skills", []),
-        "profile_summary": prof.get("profile_summary", ""),
-        "naukri_headline": prof.get("naukri_headline", ""),
+        "key_skills": cand_skills,
+        "profile_summary": cand_summary,
+        "naukri_headline": cand_headline,
     }
 
 

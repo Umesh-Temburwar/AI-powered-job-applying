@@ -63,30 +63,22 @@ function mapBackendToUserProfile(b: BackendProfileResponse): UserProfile {
   };
 }
 
-let cachedProfileData: UserProfile | null = null;
+let cachedProfileByUserId: Record<string, UserProfile> = {};
 
 export function clearCachedProfile() {
-  cachedProfileData = null;
+  cachedProfileByUserId = {};
 }
 
 export function useProfile() {
   const { session, user, getToken } = useAuth();
-
-  const [profile, setProfile] = useState<UserProfile | null>(() => cachedProfileData);
-  const [loading, setLoading] = useState<boolean>(!cachedProfileData);
-  const [updating, setUpdating] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-
   const userId = user?.id || session?.user?.id || '';
-
-  useEffect(() => {
-    if (!userId) {
-      cachedProfileData = null;
-      setProfile(null);
-    }
-  }, [userId]);
   const userEmail = user?.email || session?.user?.email || '';
   const userFullName = user?.fullName || '';
+
+  const [profile, setProfile] = useState<UserProfile | null>(() => (userId ? cachedProfileByUserId[userId] : null));
+  const [loading, setLoading] = useState<boolean>(() => !Boolean(userId && cachedProfileByUserId[userId]));
+  const [updating, setUpdating] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
@@ -97,23 +89,25 @@ export function useProfile() {
 
   const fetchProfile = useCallback(async () => {
     const activeToken = await getActiveToken();
-    if (!activeToken) {
+    if (!activeToken || !userId) {
       setProfile(null);
       setLoading(false);
       return;
     }
 
     try {
-      if (!cachedProfileData) {
+      if (!cachedProfileByUserId[userId]) {
         setLoading(true);
       }
       setError(null);
       const data = await getProfileApi(activeToken);
       const mapped = mapBackendToUserProfile(data);
-      cachedProfileData = mapped;
+      if (userId) {
+        cachedProfileByUserId[userId] = mapped;
+      }
       setProfile(mapped);
     } catch (err) {
-      if (!cachedProfileData) {
+      if (!cachedProfileByUserId[userId]) {
         setProfile({
           id: userId,
           email: userEmail,
@@ -209,7 +203,9 @@ export function useProfile() {
 
         const updated = await updateProfileApi(activeToken, payload);
         const mapped = mapBackendToUserProfile(updated);
-        cachedProfileData = mapped;
+        if (userId) {
+          cachedProfileByUserId[userId] = mapped;
+        }
         setProfile(mapped);
         return mapped;
       }
@@ -245,7 +241,9 @@ export function useProfile() {
         ...updates,
         updatedAt: new Date().toISOString(),
       };
-      cachedProfileData = fallbackProfile;
+      if (userId) {
+        cachedProfileByUserId[userId] = fallbackProfile;
+      }
       setProfile(fallbackProfile);
       return fallbackProfile;
     } catch (err) {
@@ -269,7 +267,9 @@ export function useProfile() {
 
       const updated = await autofillProfileApi(activeToken, resumeId);
       const mapped = mapBackendToUserProfile(updated);
-      cachedProfileData = mapped;
+      if (userId) {
+        cachedProfileByUserId[userId] = mapped;
+      }
       setProfile(mapped);
       return mapped;
     } catch (err) {
@@ -282,8 +282,14 @@ export function useProfile() {
   };
 
   useEffect(() => {
+    if (!userId) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+    setProfile(cachedProfileByUserId[userId] || null);
     fetchProfile();
-  }, [fetchProfile]);
+  }, [userId, fetchProfile]);
 
   return {
     profile,

@@ -24,15 +24,20 @@ function mapBackendToResume(b: BackendResumeItem): Resume {
   };
 }
 
-let cachedResumesData: Resume[] | null = null;
+let cachedResumesByUserId: Record<string, Resume[]> = {};
+
+export function clearCachedResumes() {
+  cachedResumesByUserId = {};
+}
 
 export function useResumes() {
   const { session, getToken } = useAuth();
+  const userId = session?.user?.id || '';
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
-  const [resumes, setResumes] = useState<Resume[]>(() => cachedResumesData || []);
-  const [loading, setLoading] = useState<boolean>(!cachedResumesData);
+  const [resumes, setResumes] = useState<Resume[]>(() => (userId && cachedResumesByUserId[userId]) || []);
+  const [loading, setLoading] = useState<boolean>(() => !Boolean(userId && cachedResumesByUserId[userId]));
   const [error, setError] = useState<string | null>(null);
 
   const getActiveToken = useCallback(async (): Promise<string | null> => {
@@ -41,30 +46,30 @@ export function useResumes() {
 
   const fetchResumes = useCallback(async () => {
     const activeToken = await getActiveToken();
-    if (!activeToken) {
+    if (!activeToken || !userId) {
       setResumes([]);
       setLoading(false);
       return;
     }
 
     try {
-      if (!cachedResumesData) {
+      if (!cachedResumesByUserId[userId]) {
         setLoading(true);
       }
       setError(null);
       const data = await listResumesApi(activeToken);
       const mapped = (data.resumes || []).map(mapBackendToResume);
-      cachedResumesData = mapped;
+      cachedResumesByUserId[userId] = mapped;
       setResumes(mapped);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch candidate resumes');
-      if (!cachedResumesData) {
+      if (!cachedResumesByUserId[userId]) {
         setResumes([]);
       }
     } finally {
       setLoading(false);
     }
-  }, [getActiveToken]);
+  }, [getActiveToken, userId]);
 
   const uploadResume = async (file: File, isDefault = true): Promise<BackendResumeUploadResponse> => {
     const activeToken = await getActiveToken();
@@ -80,7 +85,9 @@ export function useResumes() {
       setResumes((prev) => {
         const updated = isDefault ? prev.map((r) => ({ ...r, isDefault: false })) : [...prev];
         const nextList = [mapped, ...updated];
-        cachedResumesData = nextList;
+        if (userId) {
+          cachedResumesByUserId[userId] = nextList;
+        }
         return nextList;
       });
 
@@ -104,7 +111,9 @@ export function useResumes() {
           ...r,
           isDefault: r.id === id,
         }));
-        cachedResumesData = nextList;
+        if (userId) {
+          cachedResumesByUserId[userId] = nextList;
+        }
         return nextList;
       });
     } catch (err) {
@@ -123,7 +132,9 @@ export function useResumes() {
       await deleteResumeApi(activeToken, id);
       setResumes((prev) => {
         const nextList = prev.filter((r) => r.id !== id);
-        cachedResumesData = nextList;
+        if (userId) {
+          cachedResumesByUserId[userId] = nextList;
+        }
         return nextList;
       });
     } catch (err) {
@@ -141,8 +152,14 @@ export function useResumes() {
   };
 
   useEffect(() => {
+    if (!userId) {
+      setResumes([]);
+      setLoading(false);
+      return;
+    }
+    setResumes(cachedResumesByUserId[userId] || []);
     fetchResumes();
-  }, [fetchResumes]);
+  }, [userId, fetchResumes]);
 
   const defaultResume = resumes.find((r) => r.isDefault) || (resumes.length > 0 ? resumes[0] : null);
 

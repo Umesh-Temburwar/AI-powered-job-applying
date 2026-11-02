@@ -399,15 +399,32 @@ export const ProfilePage: React.FC = () => {
       setBotConfigLoading(true);
       const cfg = await configService.fetchConfig();
       if (cfg) {
-        if (cfg.resume_name) {
-          setLocalResumeName(cfg.resume_name);
+        const isUserAdmin = Boolean(
+          user?.isAdmin ||
+          (user?.email && ['umeshtemburwar2002@gmail.com', 'utemburwar2002@gmail.com'].includes(user.email.toLowerCase()))
+        );
+
+        if (isUserAdmin) {
+          if (cfg.resume_name) {
+            setLocalResumeName(cfg.resume_name);
+          } else {
+            setLocalResumeName(null);
+          }
+          if (cfg.firstname) setFirstname(cfg.firstname);
+          if (cfg.lastname) setLastname(cfg.lastname);
+          if (cfg.email) setEmail(cfg.email);
+          if (cfg.phone) setPhone(cfg.phone);
         } else {
           setLocalResumeName(null);
+          if (user?.fullName) {
+            const parts = user.fullName.trim().split(' ');
+            setFirstname(parts[0] || '');
+            setLastname(parts.slice(1).join(' ') || '');
+          }
+          if (user?.email) {
+            setEmail(user.email);
+          }
         }
-        if (cfg.firstname) setFirstname(cfg.firstname);
-        if (cfg.lastname) setLastname(cfg.lastname);
-        if (cfg.email) setEmail(cfg.email);
-        if (cfg.phone) setPhone(cfg.phone);
         if (cfg.gender) setGender(cfg.gender);
         if (cfg.location) {
           const locs = cfg.location.split(',').map((s) => s.trim()).filter(Boolean);
@@ -442,14 +459,25 @@ export const ProfilePage: React.FC = () => {
         if (cfg.github_url) setGithubUrl(cfg.github_url);
         if (cfg.portfolio_url) setPortfolioUrl(cfg.portfolio_url);
         if (cfg.cover_letter) setCoverLetter(cfg.cover_letter);
-        if (cfg.naukri_email) setNaukriEmail(cfg.naukri_email);
-        if (cfg.naukri_password) setNaukriPassword(cfg.naukri_password);
-        if (cfg.internshala_email) setInternshalaEmail(cfg.internshala_email);
-        if (cfg.internshala_password) setInternshalaPassword(cfg.internshala_password);
-        if (cfg.indeed_email) setIndeedEmail(cfg.indeed_email);
-        if (cfg.indeed_password) setIndeedPassword(cfg.indeed_password);
-        if (cfg.linkedin_email) setLinkedinEmail(cfg.linkedin_email);
-        if (cfg.linkedin_password) setLinkedinPassword(cfg.linkedin_password);
+        if (isUserAdmin) {
+          if (cfg.naukri_email) setNaukriEmail(cfg.naukri_email);
+          if (cfg.naukri_password) setNaukriPassword(cfg.naukri_password);
+          if (cfg.internshala_email) setInternshalaEmail(cfg.internshala_email);
+          if (cfg.internshala_password) setInternshalaPassword(cfg.internshala_password);
+          if (cfg.indeed_email) setIndeedEmail(cfg.indeed_email);
+          if (cfg.indeed_password) setIndeedPassword(cfg.indeed_password);
+          if (cfg.linkedin_email) setLinkedinEmail(cfg.linkedin_email);
+          if (cfg.linkedin_password) setLinkedinPassword(cfg.linkedin_password);
+        } else {
+          setNaukriEmail('');
+          setNaukriPassword('');
+          setInternshalaEmail('');
+          setInternshalaPassword('');
+          setIndeedEmail('');
+          setIndeedPassword('');
+          setLinkedinEmail('');
+          setLinkedinPassword('');
+        }
         if (cfg.max_applications) setMaxApplications(Number(cfg.max_applications) || 50);
         if (cfg.keywords) {
           const kws = cfg.keywords.split(',').map((s) => s.trim()).filter(Boolean);
@@ -469,8 +497,32 @@ export const ProfilePage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!user) {
+      setLocalResumeName(null);
+      setFirstname('');
+      setLastname('');
+      setEmail('');
+      setPhone('');
+      setCurrentCity('');
+      setHeadline('');
+      setSummary('');
+      setEducation([]);
+      setExperience([]);
+      setProjects([]);
+      setCertifications([]);
+      setSkills([]);
+      setNaukriEmail('');
+      setNaukriPassword('');
+      setInternshalaEmail('');
+      setInternshalaPassword('');
+      setIndeedEmail('');
+      setIndeedPassword('');
+      setLinkedinEmail('');
+      setLinkedinPassword('');
+    } else {
+      loadData();
+    }
+  }, [user?.id]);
 
   // Sync Supabase profile data if available
   useEffect(() => {
@@ -727,7 +779,7 @@ export const ProfilePage: React.FC = () => {
         fileSize: activeSbResume.fileSizeBytes,
         uploadedAt: activeSbResume.uploadedAt,
       }
-    : localResumeName
+    : (user?.isAdmin && localResumeName)
     ? {
         id: null,
         fileName: localResumeName,

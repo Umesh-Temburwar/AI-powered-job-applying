@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.security import HTTPAuthorizationCredentials
 
-from core.auth import AuthenticatedUser, get_current_user, security_bearer
+from core.auth import AuthenticatedUser, get_current_user, security_bearer, is_admin_email
 from core.config import Settings, get_settings
 from services.config_service import (
     get_full_configuration,
@@ -48,9 +48,16 @@ async def get_optional_user(
 )
 async def get_env_config(
     user: Annotated[AuthenticatedUser, Depends(get_optional_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     """Return all configured bot parameters."""
-    return get_full_configuration()
+    is_admin = (
+        is_admin_email(user.email, settings)
+        or user.role == "admin"
+        or user.claims.get("role") == "admin"
+        or user.claims.get("app_metadata", {}).get("role") == "admin"
+    )
+    return get_full_configuration(user_id=user.id, user_email=user.email, is_admin=is_admin)
 
 
 @router.post(
@@ -131,10 +138,21 @@ async def autofill_from_active_resume(
 )
 async def get_active_resume_file(
     user: Annotated[AuthenticatedUser, Depends(get_optional_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ):
     """Serve active candidate resume file inline with PDF/document viewing headers."""
     try:
-        return get_active_resume_file_response(user_id=user.id if user else None)
+        is_admin = (
+            is_admin_email(user.email, settings)
+            or user.role == "admin"
+            or user.claims.get("role") == "admin"
+            or user.claims.get("app_metadata", {}).get("role") == "admin"
+        )
+        return get_active_resume_file_response(
+            user_id=user.id if user else None,
+            user_email=user.email if user else None,
+            is_admin=is_admin,
+        )
     except HTTPException:
         raise
     except Exception as exc:
