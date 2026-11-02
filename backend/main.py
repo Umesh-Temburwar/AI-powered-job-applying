@@ -40,7 +40,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         docs_url=docs_url,
         redoc_url=redoc_url,
         openapi_url=openapi_url,
-        description="RESTful API backend for the Universal Job Apply Bot platform",
+        description="RESTful API backend for the AI-powered-job-applying platform",
         lifespan=lifespan,
     )
     app.state.settings = settings

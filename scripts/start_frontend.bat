@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 > nul
-title Universal Job Bot - React Frontend (Port 5173)
+title AI-powered-job-applying - React Frontend (Port 5173)
 cd /d "%~dp0..\frontend"
 
 echo ===============================================================================
-echo       UNIVERSAL JOB AUTO APPLY BOT - REACT FRONTEND (PORT 5173)
+echo       AI-POWERED-JOB-APPLYING - REACT FRONTEND (PORT 5173)
 echo ===============================================================================
 echo.
 

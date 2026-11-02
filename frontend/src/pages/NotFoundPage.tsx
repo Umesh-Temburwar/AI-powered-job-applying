@@ -17,7 +17,7 @@ export const NotFoundPage: React.FC = () => {
         Page Not Found
       </h1>
       <p className="text-sm text-theme-secondary max-w-md mb-8">
-        The destination you requested does not exist or has been relocated within the Universal Job Bot platform.
+        The destination you requested does not exist or has been relocated within the AI-powered-job-applying platform.
       </p>
 
       <div className="flex flex-wrap items-center justify-center gap-3">

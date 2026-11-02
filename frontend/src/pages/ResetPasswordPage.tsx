@@ -98,7 +98,7 @@ export const ResetPasswordPage: React.FC = () => {
               <Bot className="w-6 h-6" />
             </div>
             <span className="font-extrabold text-xl text-theme-primary tracking-tight">
-              Universal Job Bot
+              AI-powered-job-applying
             </span>
           </Link>
           <h2 className="text-2xl font-bold text-theme-primary">

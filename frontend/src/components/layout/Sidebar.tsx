@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
           className="font-mono font-bold text-[14px] tracking-tight hover:text-emerald-600 transition-colors duration-150 flex items-center gap-2"
         >
           <span className="w-2.5 h-2.5 bg-emerald-600 inline-block" />
-          UNIVERSAL_JOB_BOT
+          AI-POWERED-JOB-APPLYING
         </RouterNavLink>
         <button
           onClick={onCloseMobile}

@@ -1184,7 +1184,7 @@ export const DashboardPage: React.FC = () => {
                   Grant Automation Permission
                 </span>
                 <span className="text-[11px] text-[var(--text-secondary)] leading-relaxed block mt-0.5">
-                  I authorize Universal Job Apply Bot to discover vacancies and submit applications on my behalf on {connectModalPortal?.display_name || connectModalPortal?.platform}.
+                  I authorize AI-powered-job-applying to discover vacancies and submit applications on my behalf on {connectModalPortal?.display_name || connectModalPortal?.platform}.
                 </span>
               </div>
             </label>

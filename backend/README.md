@@ -1,4 +1,4 @@
-# Universal Job Apply Bot - Backend
+# AI-powered-job-applying - Backend
 
-FastAPI backend service powering the Universal Job Apply Bot.
+FastAPI backend service powering the AI-powered-job-applying.
 Handles API routing, authentication token verification, portal registry, and automation scheduling.

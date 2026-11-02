@@ -1,11 +1,11 @@
 @echo off
 chcp 65001 > nul
-title Universal Job Auto Apply Bot (2026 Edition)
+title AI-powered-job-applying (2026 Edition)
 cd /d "%~dp0"
 
 cls
 echo ===============================================================================
-echo            UNIVERSAL JOB AUTO APPLY BOT (2026 PRO EDITION)
+echo            AI-POWERED-JOB-APPLYING (2026 PRO EDITION)
 echo ===============================================================================
 echo.
 
@@ -14,10 +14,10 @@ if "%1"=="--cli" goto launch_cli
 if "%1"=="-c" goto launch_cli
 
 echo [1/3] Starting FastAPI Backend on http://127.0.0.1:8001 ...
-start "Universal Job Bot - FastAPI Backend (Port 8001)" cmd /k call "%~dp0scripts\start_backend.bat"
+start "AI-powered-job-applying - FastAPI Backend (Port 8001)" cmd /k call "%~dp0scripts\start_backend.bat"
 
 echo [2/3] Starting Vite React Frontend on http://localhost:5173 ...
-start "Universal Job Bot - React Frontend (Port 5173)" cmd /k call "%~dp0scripts\start_frontend.bat"
+start "AI-powered-job-applying - React Frontend (Port 5173)" cmd /k call "%~dp0scripts\start_frontend.bat"
 
 echo.
 echo [3/3] Initializing servers and waiting for ports...
@@ -28,7 +28,7 @@ start http://localhost:5173/
 
 echo.
 echo ===============================================================================
-echo [SUCCESS] Universal Job Bot Application is running!
+echo [SUCCESS] AI-powered-job-applying Application is running!
 echo ===============================================================================
 echo   - Frontend:      http://localhost:5173
 echo   - Backend API:   http://127.0.0.1:8001

@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 > nul
-title Universal Job Bot - FastAPI Backend (Port 8001)
+title AI-powered-job-applying - FastAPI Backend (Port 8001)
 cd /d "%~dp0.."
 
 echo ===============================================================================
-echo       UNIVERSAL JOB AUTO APPLY BOT - FASTAPI BACKEND (PORT 8001)
+echo       AI-POWERED-JOB-APPLYING - FASTAPI BACKEND (PORT 8001)
 echo ===============================================================================
 echo.
 

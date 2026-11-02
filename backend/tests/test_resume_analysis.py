@@ -16,7 +16,7 @@ from services.resume_parser import extract_raw_text, extract_structured_data
 @pytest.fixture
 def test_client() -> TestClient:
     settings = Settings(
-        APP_NAME="Universal Job Apply Bot API",
+        APP_NAME="AI-powered-job-applying API",
         ENVIRONMENT="test",
         DEBUG=True,
         API_V1_PREFIX="/api/v1",

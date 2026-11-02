@@ -9,9 +9,12 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Button, Input, Card } from '../components/ui';
+import { useTheme } from '../context/ThemeContext';
+import { Input } from '../components/ui';
 import { getEmailProviderInfo } from '../utils/emailProviders';
 import {
   getRemainingCooldown,
@@ -22,6 +25,7 @@ import {
 
 export const VerifyEmailPage: React.FC = () => {
   const { user, resendVerificationEmail } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -129,24 +133,76 @@ export const VerifyEmailPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-theme-base flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
-      {/* Subtle ambient gradient glow background */}
-      <div
-        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-tr from-cyan-500/10 via-blue-600/10 to-indigo-500/5 rounded-full blur-3xl pointer-events-none motion-safe:animate-pulse"
-        aria-hidden="true"
-      />
+    <div
+      className={`min-h-screen ${
+        theme === 'dark'
+          ? 'retro-grid-dark bg-[#0B0E14] text-[#F4F4F5]'
+          : 'retro-grid-light bg-[#F5F3EC] text-[#09090B]'
+      } flex flex-col items-center justify-center p-4 font-sans transition-colors duration-150`}
+    >
+      {/* Top Bar Navigation: Return link + GitHub Badge + Theme Toggle */}
+      <div className="w-full max-w-md mb-4 flex items-center justify-between font-mono text-[12px]">
+        <Link
+          to="/"
+          className={`inline-flex items-center gap-1.5 font-bold uppercase hover:underline ${
+            theme === 'dark' ? 'text-[#10B981]' : 'text-[#15803D]'
+          }`}
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          [RETURN_TO_HOMEPAGE]
+        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href="https://github.com/Umesh-Temburwar/AI-powered-job-applying"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 border-2 ${
+              theme === 'dark'
+                ? 'border-[#2E384D] bg-[#141A26] text-emerald-400 hover:border-emerald-400'
+                : 'border-[#18181B] bg-white text-zinc-800 hover:bg-zinc-50'
+            } retro-shadow-sm text-[11px] font-bold`}
+            title="View AI-powered-job-applying on GitHub"
+          >
+            <span>GitHub</span>
+            <ExternalLink className="w-3 h-3 text-emerald-600" />
+          </a>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`p-1.5 border-2 ${
+              theme === 'dark'
+                ? 'border-[#2E384D] bg-[#141A26] text-amber-300'
+                : 'border-[#18181B] bg-white text-zinc-800'
+            } retro-shadow-sm cursor-pointer`}
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} theme`}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </div>
 
-      <div className="w-full max-w-lg space-y-6 relative z-10">
-        {/* Brand header */}
-        <div className="text-center">
-          <Link to="/" className="inline-flex items-center gap-2.5 mb-2 group">
-            <div className="w-10 h-10 rounded-xl bg-theme-accent-muted border border-[var(--accent)] flex items-center justify-center text-[var(--accent)] group-hover:scale-105 transition-transform duration-200">
-              <Bot className="w-6 h-6" />
-            </div>
-            <span className="font-extrabold text-xl text-theme-primary tracking-tight">
-              Universal Job Bot
-            </span>
-          </Link>
+      {/* Main Retro Window Container */}
+      <div
+        className={`w-full max-w-md border-2 ${
+          theme === 'dark' ? 'border-[#2E384D] bg-[#111520]' : 'border-[#18181B] bg-white'
+        } retro-shadow-lg`}
+      >
+        {/* Retro Window Titlebar */}
+        <div
+          className={`h-9 border-b-2 ${
+            theme === 'dark'
+              ? 'border-[#2E384D] bg-[#141A26] text-emerald-400'
+              : 'border-[#18181B] bg-[#18181B] text-[#F5F3EC]'
+          } px-4 flex items-center justify-between font-mono text-[12px] font-bold select-none`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 bg-red-500 inline-block border border-black/40" />
+            <span className="w-2.5 h-2.5 bg-amber-400 inline-block border border-black/40" />
+            <span className="w-2.5 h-2.5 bg-emerald-500 inline-block border border-black/40" />
+            <span className="ml-2 font-mono">AUTH_SESSION // VERIFY_EMAIL.EXE</span>
+          </div>
+          <span className="text-[10px] font-mono opacity-80">PORT: 5173</span>
         </div>
 
         {/* Live region for accessibility announcements */}
@@ -154,144 +210,178 @@ export const VerifyEmailPage: React.FC = () => {
           {statusMessage}
         </div>
 
-        {/* Verification Card */}
-        <Card className="p-6 sm:p-8 bg-[#101935]/90 border border-[#223561] shadow-[0_10px_35px_-5px_rgba(0,0,0,0.5)] backdrop-blur-md">
-          <div className="text-center space-y-5">
-            {/* Mail Icon with animated ring glow */}
-            <div className="relative mx-auto w-16 h-16 flex items-center justify-center">
-              <div
-                className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 opacity-20 blur-md"
-                aria-hidden="true"
-              />
-              <div className="relative w-16 h-16 rounded-2xl bg-[#0B132B] border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-inner">
-                <Mail className="w-8 h-8" />
-              </div>
+        {/* Window Body */}
+        <div className="p-6 sm:p-8 space-y-6">
+          {/* Brand header with link to GitHub repository */}
+          <div className="text-center">
+            <a
+              href="https://github.com/Umesh-Temburwar/AI-powered-job-applying"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex items-center gap-2 px-3 py-1 font-mono text-[11px] font-bold uppercase border-2 ${
+                theme === 'dark'
+                  ? 'border-emerald-500/60 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-950/80'
+                  : 'border-[#18181B] bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+              } retro-shadow-sm transition-all group`}
+            >
+              <Bot className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+              <span>AI-powered-job-applying</span>
+              <ExternalLink className="w-3 h-3 text-emerald-600 opacity-70" />
+            </a>
+          </div>
+
+          {/* Mail Icon & Heading */}
+          <div className="text-center space-y-3">
+            <div
+              className={`w-14 h-14 border-2 ${
+                theme === 'dark'
+                  ? 'border-emerald-500 bg-emerald-950/40 text-emerald-400'
+                  : 'border-[#18181B] bg-emerald-100 text-emerald-900'
+              } mx-auto flex items-center justify-center retro-shadow-sm`}
+            >
+              <Mail className="w-7 h-7" />
             </div>
 
-            {/* Title & Copy */}
-            <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-theme-primary tracking-tight">
-                Verify your email
-              </h1>
-              <p className="text-sm text-theme-secondary leading-relaxed">
+            <div>
+              <h1 className="text-[22px] font-black uppercase tracking-tight">Verify your email</h1>
+              <p
+                className={`text-[13px] font-mono mt-1 ${
+                  theme === 'dark' ? 'text-[#A1A1AA]' : 'text-[#52525B]'
+                }`}
+              >
                 We've sent a confirmation link to your email address. Verify your account to get started.
               </p>
-              {email ? (
-                <div className="pt-1">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0B132B] border border-[#223561] text-xs font-mono text-cyan-300">
-                    <span className="truncate max-w-[280px] sm:max-w-xs">{email}</span>
-                  </div>
-                  <p className="text-[11px] text-theme-muted mt-2 italic">
-                    If this address can be used, a link is on its way.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-xs text-theme-muted pt-1">
-                  Didn't receive an email or used another device? Enter your email address below to resend.
-                </p>
-              )}
             </div>
 
-            {/* Status alerts */}
-            {resendStatus === 'success' && statusMessage && (
-              <div
-                ref={statusAlertRef}
-                tabIndex={-1}
-                className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-xs text-left flex items-start gap-2.5 outline-none"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span>{statusMessage}</span>
-              </div>
-            )}
-
-            {resendStatus === 'error' && statusMessage && (
-              <div
-                ref={errorAlertRef}
-                tabIndex={-1}
-                className="p-3.5 rounded-xl bg-red-950/50 border border-red-500/40 text-red-300 text-xs text-left flex items-start gap-2.5 outline-none"
-              >
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <span>{statusMessage}</span>
-              </div>
-            )}
-
-            {/* Manual email input if email is not available from state */}
-            {!email && (
-              <form onSubmit={handleResend} className="text-left space-y-3 pt-2">
-                <Input
-                  label="Registered Email Address"
-                  type="email"
-                  value={manualEmail}
-                  onChange={(e) => setManualEmail(e.target.value)}
-                  placeholder="candidate@example.com"
-                  leftIcon={<Mail className="w-4 h-4" />}
-                  required
-                />
-              </form>
-            )}
-
-            {/* Action buttons */}
-            <div className="space-y-3 pt-2">
-              {/* Allowlist-only Webmail button */}
-              {providerInfo && (
-                <a
-                  href={providerInfo.webmailUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full"
+            {/* Email Address Display Pill */}
+            {email ? (
+              <div className="pt-1">
+                <div
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 border-2 ${
+                    theme === 'dark'
+                      ? 'border-cyan-500/50 bg-[#141A26] text-cyan-300'
+                      : 'border-[#18181B] bg-emerald-50 text-emerald-900 font-bold'
+                  } font-mono text-xs retro-shadow-sm`}
                 >
-                  <Button
-                    type="button"
-                    variant="primary"
-                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold shadow-lg shadow-cyan-500/20"
-                    rightIcon={<ExternalLink className="w-4 h-4" />}
-                  >
-                    {providerInfo.buttonLabel}
-                  </Button>
-                </a>
-              )}
+                  <span className="truncate max-w-[280px] sm:max-w-xs">{email}</span>
+                </div>
+                <p className="text-[11px] font-mono text-zinc-500 mt-2">
+                  If this address can be used, a link is on its way.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs font-mono text-zinc-500 pt-1">
+                Didn't receive an email or used another device? Enter your email address below to resend.
+              </p>
+            )}
+          </div>
 
-              {/* Resend confirmation button */}
-              <Button
-                type="button"
-                variant={providerInfo ? 'outline' : 'primary'}
-                className="w-full"
-                onClick={() => handleResend()}
-                disabled={isResending || secondsRemaining > 0 || (!email && !manualEmail.trim())}
-                isLoading={isResending}
-                leftIcon={
-                  secondsRemaining > 0 ? (
-                    <Clock className="w-4 h-4 text-theme-muted" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )
-                }
+          {/* Status Alert Banners */}
+          {resendStatus === 'success' && statusMessage && (
+            <div
+              ref={statusAlertRef}
+              tabIndex={-1}
+              className={`p-3.5 border-2 ${
+                theme === 'dark'
+                  ? 'border-emerald-500 bg-emerald-950/60 text-emerald-300'
+                  : 'border-emerald-700 bg-emerald-100 text-emerald-950'
+              } font-mono text-xs text-left flex items-start gap-2.5 outline-none retro-shadow-sm`}
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <span className="font-semibold">{statusMessage}</span>
+            </div>
+          )}
+
+          {resendStatus === 'error' && statusMessage && (
+            <div
+              ref={errorAlertRef}
+              tabIndex={-1}
+              className="p-3.5 border-2 border-red-600 bg-red-500/10 text-red-600 dark:text-red-400 font-mono text-xs text-left flex items-start gap-2.5 outline-none retro-shadow-sm"
+            >
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <span className="font-semibold">{statusMessage}</span>
+            </div>
+          )}
+
+          {/* Manual Email Input if state has no email */}
+          {!email && (
+            <form onSubmit={handleResend} className="text-left space-y-3 pt-2">
+              <Input
+                label="Registered Email Address"
+                type="email"
+                value={manualEmail}
+                onChange={(e) => setManualEmail(e.target.value)}
+                placeholder="candidate@example.com"
+                leftIcon={<Mail className="w-4 h-4" />}
+                required
+              />
+            </form>
+          )}
+
+          {/* Action Buttons */}
+          <div className="space-y-3 pt-1">
+            {/* Direct Webmail Launch Button */}
+            {providerInfo && (
+              <a
+                href={providerInfo.webmailUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full"
               >
+                <button
+                  type="button"
+                  className="w-full py-2.5 px-4 font-mono font-bold text-[13px] uppercase tracking-wide bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-2 border-[#18181B] dark:border-emerald-500 retro-shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all active:translate-x-[1px] active:translate-y-[1px]"
+                >
+                  <span>{providerInfo.buttonLabel}</span>
+                  <ExternalLink className="w-4 h-4" />
+                </button>
+              </a>
+            )}
+
+            {/* Resend Confirmation Button with Cooldown */}
+            <button
+              type="button"
+              onClick={() => handleResend()}
+              disabled={isResending || secondsRemaining > 0 || (!email && !manualEmail.trim())}
+              className={`w-full py-2.5 px-4 font-mono font-bold text-[13px] uppercase tracking-wide border-2 ${
+                theme === 'dark'
+                  ? 'border-[#2E384D] bg-[#141A26] text-zinc-200 hover:border-emerald-500'
+                  : 'border-[#18181B] bg-white text-zinc-900 hover:bg-zinc-50'
+              } retro-shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all active:translate-x-[1px] active:translate-y-[1px]`}
+            >
+              {isResending ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />
+              ) : secondsRemaining > 0 ? (
+                <Clock className="w-4 h-4 text-zinc-400" />
+              ) : (
+                <RefreshCw className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              )}
+              <span>
                 {secondsRemaining > 0
                   ? `Resend confirmation (${secondsRemaining}s)`
                   : 'Resend confirmation email'}
-              </Button>
-            </div>
-
-            {/* Help & Navigation */}
-            <div className="pt-4 border-t border-theme/50 flex flex-col sm:flex-row items-center justify-between text-xs text-theme-secondary gap-2">
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-1.5 text-theme-secondary hover:text-theme-primary transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to sign in</span>
-              </Link>
-
-              <Link
-                to="/register"
-                className="text-[var(--accent)] hover:underline inline-flex items-center gap-1"
-              >
-                <span>Need a new account?</span>
-              </Link>
-            </div>
+              </span>
+            </button>
           </div>
-        </Card>
+
+          {/* Footer Links */}
+          <div className="pt-4 border-t-2 border-dashed border-zinc-300 dark:border-zinc-800 flex items-center justify-between text-xs font-mono">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 font-bold hover:underline text-zinc-700 dark:text-zinc-300"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to sign in</span>
+            </Link>
+
+            <Link
+              to="/register"
+              className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              <span>Need a new account?</span>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

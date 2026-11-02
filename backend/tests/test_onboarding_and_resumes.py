@@ -11,7 +11,7 @@ from services.resume_service import validate_resume_file
 @pytest.fixture
 def test_client() -> TestClient:
     settings = Settings(
-        APP_NAME="Universal Job Apply Bot API",
+        APP_NAME="AI-powered-job-applying API",
         ENVIRONMENT="test",
         DEBUG=True,
         API_V1_PREFIX="/api/v1",
@@ -62,7 +62,7 @@ def test_resume_parser_structured_extraction():
     Python, React, TypeScript, FastAPI, PostgreSQL, Docker, Git, REST API
 
     PROJECTS
-    Universal Job Apply Bot
+    AI-powered-job-applying
     Automated candidate application bot with React and FastAPI.
 
     WORK EXPERIENCE

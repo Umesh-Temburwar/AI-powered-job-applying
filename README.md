@@ -1,5 +1,5 @@
-# 🚀 Universal Job Auto Apply Bot (2026 All-in-One Edition)
-> The Ultimate All-in-One Multi-Platform Automated Job Application & Profile Synchronization Engine for Indian & Global Portals.
+# 🚀 [AI-powered-job-applying](https://github.com/Umesh-Temburwar/AI-powered-job-applying) (2026 Edition)
+> The Ultimate AI-Powered Multi-Platform Automated Job Application & Profile Synchronization Engine for Indian & Global Portals.
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue?style=flat-square&logo=python)
 ![Selenium](https://img.shields.io/badge/Selenium-4.x-green?style=flat-square&logo=selenium)
@@ -210,7 +210,7 @@ py Universal_Job_Auto_Apply.py --report
 
 ## 🌐 Phase 4: Modern Web Platform Architecture (React + FastAPI + Supabase)
 
-The Universal Job Apply Bot now includes a multi-user web application powered by **React 19 + TypeScript**, **FastAPI**, and **Supabase (PostgreSQL + Auth + Storage)** with strict Row Level Security (RLS).
+The [AI-powered-job-applying](https://github.com/Umesh-Temburwar/AI-powered-job-applying) platform now includes a multi-user web application powered by **React 19 + TypeScript**, **FastAPI**, and **Supabase (PostgreSQL + Auth + Storage)** with strict Row Level Security (RLS).
 
 ### Architecture Highlights
 - **Frontend** (`frontend/`): React + Vite + TypeScript + Tailwind CSS v4 + Supabase Auth JS SDK (`@supabase/supabase-js`).
@@ -239,7 +239,7 @@ VITE_API_BASE_URL=http://localhost:8000
 
 **Backend** (`backend/.env`):
 ```env
-APP_NAME=Universal Job Apply Bot API
+APP_NAME=AI-powered-job-applying API
 ENVIRONMENT=development
 API_V1_PREFIX=/api/v1
 FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173

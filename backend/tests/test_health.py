@@ -7,7 +7,7 @@ def test_root_health_check(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
-    assert data["service"] == "Universal Job Apply Bot API"
+    assert data["service"] == "AI-powered-job-applying API"
 
 
 def test_versioned_health_check(client: TestClient):
@@ -16,4 +16,4 @@ def test_versioned_health_check(client: TestClient):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
-    assert data["service"] == "Universal Job Apply Bot API"
+    assert data["service"] == "AI-powered-job-applying API"

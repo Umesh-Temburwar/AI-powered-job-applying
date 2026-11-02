@@ -257,7 +257,7 @@ export const AuthCallbackPage: React.FC = () => {
               <Bot className="w-6 h-6" />
             </div>
             <span className="font-extrabold text-xl text-theme-primary tracking-tight">
-              Universal Job Bot
+              AI-powered-job-applying
             </span>
           </Link>
         </div>

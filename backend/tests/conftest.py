@@ -27,7 +27,7 @@ def configure_test_environment(monkeypatch):
 def test_settings() -> Settings:
     """Fixture providing standard development settings for unit tests."""
     return Settings(
-        APP_NAME="Universal Job Apply Bot API",
+        APP_NAME="AI-powered-job-applying API",
         ENVIRONMENT="test",
         DEBUG=True,
         API_V1_PREFIX="/api/v1",
@@ -47,7 +47,7 @@ def client(test_settings: Settings) -> TestClient:
 def prod_client() -> TestClient:
     """Fixture providing TestClient configured in strict production mode."""
     prod_settings = Settings(
-        APP_NAME="Universal Job Apply Bot API",
+        APP_NAME="AI-powered-job-applying API",
         ENVIRONMENT="production",
         DEBUG=False,
         API_V1_PREFIX="/api/v1",

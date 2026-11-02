@@ -228,7 +228,7 @@ export const LandingPage: React.FC = () => {
             </div>
             <div className="flex flex-col">
               <span className="font-mono font-bold text-[14px] tracking-tight uppercase flex items-center gap-2">
-                UNIVERSAL_JOB_BOT
+                AI-POWERED-JOB-APPLYING
                 <span className={`text-[10px] font-mono px-1.5 py-0.2 border ${theme === 'dark' ? 'border-emerald-500 bg-emerald-950/40 text-emerald-400' : 'border-[#18181B] bg-[#DCFCE7] text-[#15803D]'}`}>
                   v3.4_STABLE
                 </span>
@@ -805,7 +805,7 @@ export const LandingPage: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-[11px]">
                       <div className={`p-2.5 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-[#F5F3EC]'}`}>
-                        <div className="font-bold text-emerald-600">Universal Job Apply Bot</div>
+                        <div className="font-bold text-emerald-600">AI-powered-job-applying</div>
                         <div className="text-[10px] mt-0.5 opacity-80">Autonomous multi-portal runner with zero fake data.</div>
                       </div>
                       <a
@@ -942,7 +942,7 @@ export const LandingPage: React.FC = () => {
                   <span>EXEC_PID: 28412 // RUNNER.PY // ISOLATED CHROMIUM PROCESS</span>
                   <span className="text-emerald-400 font-bold">STATUS: DAEMON_RUNNING ▋</span>
                 </div>
-                <div className="text-zinc-500">[2026-11-01 16:15:02] <span className="text-sky-400">[INIT]</span> Universal Job Automation Suite v3.4 initialized by Umesh Temburwar</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:02] <span className="text-sky-400">[INIT]</span> AI-powered-job-applying Suite v3.4 initialized by Umesh Temburwar</div>
                 <div className="text-zinc-500">[2026-11-01 16:15:03] <span className="text-emerald-400">[PROFILE]</span> Loaded verified profile for Umesh Temburwar (Full Stack Engineer)</div>
                 <div className="text-zinc-500">[2026-11-01 16:15:05] <span className="text-purple-400">[STEALTH]</span> Injected undetected_chromedriver flags + randomized viewport [1440x900]</div>
                 <div className="text-zinc-500">[2026-11-01 16:15:08] <span className="text-amber-400">[NAUKRI]</span> Querying: "Full Stack Developer" in "Pune" — 38 active postings detected</div>

@@ -1,6 +1,6 @@
 """
 ================================================================================
-Universal Job Auto Apply Bot - Unified Application Launcher
+AI-powered-job-applying - Unified Application Launcher
 ================================================================================
 Simultaneously starts:
   1. Backend API (FastAPI + Automation Engine) on http://127.0.0.1:8001
@@ -30,7 +30,7 @@ processes = []
 
 
 def cleanup(signum=None, frame=None):
-    print("\n🛑 Shutting down Universal Job Bot application...")
+    print("\n🛑 Shutting down AI-powered-job-applying application...")
     for p in processes:
         if p.poll() is None:
             try:
@@ -62,7 +62,7 @@ def is_backend_ready(port: int = BACKEND_PORT) -> bool:
 
 def main():
     print("=" * 75)
-    print("🚀 LAUNCHING UNIVERSAL JOB AUTO APPLY BOT (2026 EDITION)")
+    print("🚀 LAUNCHING AI-POWERED-JOB-APPLYING (2026 EDITION)")
     print("   • Backend:  FastAPI + Automation Runner (http://127.0.0.1:8001)")
     print("   • Frontend: React 18 + Vite UI (http://localhost:5173)")
     print("   • Database: Supabase Cloud (Live Tasks, CRM, Multi-Portal Auth)")

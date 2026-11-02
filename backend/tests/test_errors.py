@@ -61,7 +61,7 @@ def test_500_unhandled_exception_production_mode():
         raise RuntimeError("Secret internal database password database_pwd_xyz")
 
     prod_settings = Settings(
-        APP_NAME="Universal Job Apply Bot API",
+        APP_NAME="AI-powered-job-applying API",
         ENVIRONMENT="production",
         DEBUG=False,
     )

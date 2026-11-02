@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application configuration settings parsed from environment variables."""
 
-    APP_NAME: str = "Universal Job Apply Bot API"
+    APP_NAME: str = "AI-powered-job-applying API"
     ENVIRONMENT: str = "development"  # development | production | test
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
