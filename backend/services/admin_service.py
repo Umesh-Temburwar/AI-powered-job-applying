@@ -333,7 +333,7 @@ class AdminService:
         # 1b. Fallback: If client query failed or returned empty, fetch directly via Supabase PostgREST HTTP
         if not profs_data:
             settings = get_settings()
-            url = getattr(settings, "SUPABASE_URL", "") or "https://zhazioldgvjwodzjurzy.supabase.co"
+            url = getattr(settings, "SUPABASE_URL", "") or "https://rwtimhnxghgzkgrdymmq.supabase.co"
             key = (
                 getattr(settings, "SUPABASE_SERVICE_ROLE_KEY", "")
                 or getattr(settings, "SUPABASE_ANON_KEY", "")

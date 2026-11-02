@@ -16,7 +16,7 @@ def get_supabase_client():
         return _client
 
     settings = get_settings()
-    url = getattr(settings, "SUPABASE_URL", "") or "https://zhazioldgvjwodzjurzy.supabase.co"
+    url = getattr(settings, "SUPABASE_URL", "") or "https://rwtimhnxghgzkgrdymmq.supabase.co"
     key = (
         getattr(settings, "SUPABASE_SERVICE_ROLE_KEY", "")
         or getattr(settings, "SUPABASE_SECRET_KEY", "")

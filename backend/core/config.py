@@ -19,7 +19,7 @@ class Settings(BaseSettings):
         "https://universal-job-apply-bot.vercel.app",
     ]
 
-    # Supabase Configuration (zhazioldgvjwodzjurzy). Set SERVICE_ROLE_KEY in backend/.env.
+    # Supabase Configuration. Set SERVICE_ROLE_KEY in backend/.env.
     SUPABASE_URL: str = "https://rwtimhnxghgzkgrdymmq.supabase.co"
     SUPABASE_ANON_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3dGltaG54Z2hnemtncmR5bW1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NzE0NjksImV4cCI6MjEwODI0NzQ2OX0.cEeA6EsSxd2egW0V1ipH5tjUn3n-CchWpeze18_Z46w"
     SUPABASE_PUBLISHABLE_KEY: str = "sb_publishable_EUzd4legD4ozbD-KEedciw_-OQVyCJc"
