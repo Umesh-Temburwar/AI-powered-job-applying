@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ThemeProvider } from '../context/ThemeContext';
-import {
-  SiteAccessGate,
-} from '../components/common/SiteAccessGate';
+import { SiteAccessGate } from '../components/common/SiteAccessGate';
+
+const CANONICAL_HASH = '1ab3384539470876f7b2ed061d9705ffeda83e7a512e5b5dd01b945b9a9b4720';
 
 describe('SiteAccessGate Component Tests', () => {
   beforeEach(() => {
@@ -21,7 +21,7 @@ describe('SiteAccessGate Component Tests', () => {
       </ThemeProvider>
     );
 
-    expect(screen.getByText(/Website Access Password/i)).toBeInTheDocument();
+    expect(screen.getByText(/Website Access Gate/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Enter access password/i)).toBeInTheDocument();
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
   });
@@ -42,14 +42,14 @@ describe('SiteAccessGate Component Tests', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Galat password! Access denied/i)).toBeInTheDocument();
+      expect(screen.getByText(/Access Denied! Incorrect password/i)).toBeInTheDocument();
     });
 
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-    expect(localStorage.getItem('site_access_granted')).toBeNull();
+    expect(localStorage.getItem('site_access_auth_token')).toBeNull();
   });
 
-  it('unlocks website when "Umesh" is entered and reveals protected content', async () => {
+  it('unlocks website when "Umesh" is entered and stores cryptographic token', async () => {
     render(
       <ThemeProvider>
         <SiteAccessGate>
@@ -68,8 +68,8 @@ describe('SiteAccessGate Component Tests', () => {
       expect(screen.getByTestId('protected-content')).toBeInTheDocument();
     });
 
-    expect(screen.queryByText(/Website Access Password/i)).not.toBeInTheDocument();
-    expect(localStorage.getItem('site_access_granted')).toBe('true');
+    expect(screen.queryByText(/Website Access Gate/i)).not.toBeInTheDocument();
+    expect(localStorage.getItem('site_access_auth_token')).toBe(CANONICAL_HASH);
   });
 
   it('case-insensitively accepts "umesh"', async () => {
@@ -91,11 +91,11 @@ describe('SiteAccessGate Component Tests', () => {
       expect(screen.getByTestId('protected-content')).toBeInTheDocument();
     });
 
-    expect(localStorage.getItem('site_access_granted')).toBe('true');
+    expect(localStorage.getItem('site_access_auth_token')).toBe(CANONICAL_HASH);
   });
 
-  it('immediately renders children if access was already granted in localStorage', () => {
-    localStorage.setItem('site_access_granted', 'true');
+  it('immediately renders children if cryptographic token is already present', () => {
+    localStorage.setItem('site_access_auth_token', CANONICAL_HASH);
 
     render(
       <ThemeProvider>
@@ -106,6 +106,6 @@ describe('SiteAccessGate Component Tests', () => {
     );
 
     expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-    expect(screen.queryByText(/Website Access Password/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Website Access Gate/i)).not.toBeInTheDocument();
   });
 });

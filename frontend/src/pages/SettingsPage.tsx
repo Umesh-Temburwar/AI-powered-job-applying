@@ -358,7 +358,7 @@ export const SettingsPage: React.FC = () => {
               </div>
               <div>
                 <p className="font-bold text-theme-primary">Website Access Gatekeeper</p>
-                <p className="text-theme-muted mt-0.5">Password protection is active (Password: Umesh)</p>
+                <p className="text-theme-muted mt-0.5">Private Gatekeeper Active • SHA-256 Protected</p>
               </div>
             </div>
             <Button
