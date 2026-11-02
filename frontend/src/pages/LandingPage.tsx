@@ -321,7 +321,7 @@ export const LandingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleLoginTrigger}
-                className={`font-mono text-[12px] font-bold uppercase px-3 py-1.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-[#10B981]' : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#F5F3EC]'
+                className={`font-mono text-[12px] font-bold uppercase px-3.5 py-1.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-[#10B981]' : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#F5F3EC]'
                   } retro-shadow-sm cursor-pointer`}
                 data-sound="slide"
               >
@@ -334,11 +334,23 @@ export const LandingPage: React.FC = () => {
                 </span>
                 <button
                   type="button"
+                  onClick={handleDashboardTrigger}
+                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 font-mono text-[12px] font-bold uppercase border-2 ${theme === 'dark'
+                    ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                    : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
+                    } retro-shadow transition-all cursor-pointer`}
+                  data-sound="nav"
+                >
+                  DASHBOARD
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
                   onClick={async () => {
                     playRetroSound('toggle');
                     await logout();
                   }}
-                  className={`font-mono text-[11px] font-bold uppercase px-2 py-1 border-2 ${
+                  className={`font-mono text-[11px] font-bold uppercase px-2 py-1.5 border-2 ${
                     theme === 'dark'
                       ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
                       : 'border-red-300 text-red-600 hover:bg-red-50'
@@ -349,19 +361,6 @@ export const LandingPage: React.FC = () => {
                 </button>
               </div>
             )}
-
-            <button
-              type="button"
-              onClick={handleDashboardTrigger}
-              className={`inline-flex items-center gap-2 px-3.5 py-1.5 font-mono text-[12px] font-bold uppercase border-2 ${theme === 'dark'
-                ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
-                : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
-                } retro-shadow transition-all cursor-pointer`}
-              data-sound="nav"
-            >
-              DASHBOARD
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
       </header>
