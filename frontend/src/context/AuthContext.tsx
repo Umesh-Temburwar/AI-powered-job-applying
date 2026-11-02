@@ -30,6 +30,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
+  updateEmail?: (newEmail: string) => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
   signInWithGithub: () => Promise<void>;
   getToken: () => Promise<string | null>;
@@ -197,12 +198,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Supabase client is not configured.');
     }
 
-    const redirectUrl = `${getAppOrigin()}/`;
     const { data, error: regErr } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        emailRedirectTo: redirectUrl,
+        emailRedirectTo: `${window.location.origin}/`,
         data: {
           full_name: fullName.trim(),
         },
@@ -245,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: `${getAppOrigin()}/auth/confirm`,
+        redirectTo: `${window.location.origin}/auth/confirm`,
       },
     });
 
@@ -261,12 +261,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Supabase client is not configured.');
     }
 
-    const redirectUrl = `${getAppOrigin()}/`;
     const { error: resendErr } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim(),
       options: {
-        emailRedirectTo: redirectUrl,
+        emailRedirectTo: `${window.location.origin}/`,
       },
     });
 
@@ -285,7 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Supabase is not configured.');
     }
 
-    const redirectUrl = `${getAppOrigin()}/reset-password`;
+    const redirectUrl = `${window.location.origin}/reset-password`;
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: redirectUrl,
     });
@@ -319,6 +318,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateEmail = async (newEmail: string) => {
+    setError(null);
+    setIsLoading(true);
+
+    if (!isSupabaseConfigured) {
+      setIsLoading(false);
+      throw new Error('Supabase is not configured.');
+    }
+
+    const { error: updateErr } = await supabase.auth.updateUser(
+      { email: newEmail.trim() },
+      { emailRedirectTo: `${window.location.origin}/` }
+    );
+
+    setIsLoading(false);
+
+    if (updateErr) {
+      setError(updateErr.message);
+      throw updateErr;
+    }
+  };
+
   const getToken = async (): Promise<string | null> => {
     if (!isSupabaseConfigured) return null;
     const { data } = await supabase.auth.getSession();
@@ -338,6 +359,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         resetPassword,
         updatePassword,
+        updateEmail,
         resendVerificationEmail,
         signInWithGithub,
         getToken,
