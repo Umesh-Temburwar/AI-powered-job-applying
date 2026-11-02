@@ -189,21 +189,47 @@ def _launch_single_browser(browser_name):
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--remote-allow-origins=*")
+        options.add_argument("--remote-debugging-port=0")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-default-browser-check")
+        options.add_argument("--ignore-certificate-errors")
         if is_headless:
             options.add_argument("--headless=new")
             options.add_argument("--window-size=1920,1080")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
         options.add_experimental_option("useAutomationExtension", False)
         chrome_bin = find_chrome_binary()
         if chrome_bin:
             options.binary_location = chrome_bin
+
+        # Strategy 1: Selenium 4 built-in manager
+        try:
+            return webdriver.Chrome(options=options)
+        except Exception:
+            pass
+
+        # Strategy 2: Custom CHROME_DRIVER_PATH
+        if CHROME_DRIVER_PATH and os.path.exists(CHROME_DRIVER_PATH):
+            try:
+                return webdriver.Chrome(service=ChromeService(executable_path=CHROME_DRIVER_PATH), options=options)
+            except Exception:
+                pass
+
+        # Strategy 3: webdriver_manager
         if WEBDRIVER_MANAGER_AVAILABLE:
-            service = ChromeService(ChromeDriverManager().install())
-        elif CHROME_DRIVER_PATH:
-            service = ChromeService(executable_path=CHROME_DRIVER_PATH)
-        else:
-            service = ChromeService()
-        return webdriver.Chrome(service=service, options=options)
+            try:
+                driver_path = ChromeDriverManager().install()
+                if driver_path and not driver_path.endswith('.exe') and os.path.isdir(os.path.dirname(driver_path)):
+                    cand = os.path.join(os.path.dirname(driver_path), 'chromedriver.exe')
+                    if os.path.exists(cand):
+                        driver_path = cand
+                return webdriver.Chrome(service=ChromeService(executable_path=driver_path), options=options)
+            except Exception:
+                pass
+
+        return webdriver.Chrome(service=ChromeService(), options=options)
 
     elif b == 'brave':
         brave_bin = find_brave_binary()
@@ -235,6 +261,17 @@ def _launch_single_browser(browser_name):
 
 
 def create_browser_driver(target=None):
+    """
+    Create and return a WebDriver instance.
+    Auto-detects the system default browser first (Chrome, Edge, Brave, Firefox),
+    and falls back to any other available browser gracefully.
+    """
+    try:
+        from platforms.browser_manager import create_driver as bm_create_driver
+        return bm_create_driver(target=target or BROWSER_CHOICE or 'auto', headless=is_headless_environment())
+    except Exception as bm_err:
+        logger.info(f"Using local browser driver factory (note: {bm_err})")
+
     target = (target or BROWSER_CHOICE or 'auto').lower()
     default_browser = get_default_browser()
 

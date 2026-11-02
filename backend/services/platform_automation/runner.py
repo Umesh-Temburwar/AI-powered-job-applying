@@ -155,8 +155,9 @@ def is_browser_launch_supported() -> bool:
 
 
 def launch_isolated_driver(user_id: str, platform: str, headless: Optional[bool] = None):
-    """Launch WebDriver with candidate's isolated user-data-dir using Selenium native manager.
-    Defaults to headless=False so a visible browser window opens on screen when bot starts.
+    """Launch WebDriver with candidate's isolated user-data-dir.
+    Intelligently auto-detects the user's default browser (Chrome, Edge, Brave, Firefox)
+    and starts the automation directly on that browser with Selenium Manager.
     """
     if not is_browser_launch_supported():
         logger.info(
@@ -165,146 +166,28 @@ def launch_isolated_driver(user_id: str, platform: str, headless: Optional[bool]
         )
         return None
 
-    from selenium import webdriver
-    from selenium.webdriver.edge.service import Service as EdgeService
-    from selenium.webdriver.chrome.service import Service as ChromeService
-
     if headless is None:
         headless_env = os.getenv("HEADLESS", "false").lower()
         headless = headless_env in ("true", "1", "yes")
 
     session_dir = _get_user_session_dir(user_id, platform)
 
-    edge_bin = find_edge_binary()
-    chrome_bin = find_chrome_binary()
-    brave_bin = find_brave_binary()
-
-    base_args = [
-        "--disable-blink-features=AutomationControlled",
-        "--disable-notifications",
-        "--no-sandbox",
-        "--disable-dev-shm-usage",
-        "--start-maximized",
-        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0",
-    ]
-
-    # 1. Try Microsoft Edge with user session
-    try:
-        options = webdriver.EdgeOptions()
-        if edge_bin:
-            options.binary_location = edge_bin
-        for a in base_args:
-            options.add_argument(a)
-        options.add_argument(f"--user-data-dir={session_dir}")
-        if headless:
-            options.add_argument("--headless=new")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-
-        try:
-            driver = webdriver.Edge(options=options)
-        except Exception:
-            service = EdgeService()
-            driver = webdriver.Edge(service=service, options=options)
-
-        driver.set_page_load_timeout(45)
-        return driver
-    except Exception as edge_err:
-        logger.info("Direct Edge launch with session_dir failed: %s. Trying clean profile...", edge_err)
-
-    # 1b. Try Microsoft Edge with a clean profile (avoids profile locking conflicts)
-    try:
-        options = webdriver.EdgeOptions()
-        if edge_bin:
-            options.binary_location = edge_bin
-        for a in base_args:
-            options.add_argument(a)
-        if headless:
-            options.add_argument("--headless=new")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-
-        try:
-            driver = webdriver.Edge(options=options)
-        except Exception:
-            service = EdgeService()
-            driver = webdriver.Edge(service=service, options=options)
-
-        driver.set_page_load_timeout(45)
-        return driver
-    except Exception as edge_clean_err:
-        logger.info("Clean Edge launch failed: %s. Trying Chrome...", edge_clean_err)
-
-    # 2. Try Google Chrome with user session
-    try:
-        options = webdriver.ChromeOptions()
-        if chrome_bin:
-            options.binary_location = chrome_bin
-        for a in base_args:
-            options.add_argument(a)
-        options.add_argument(f"--user-data-dir={session_dir}")
-        if headless:
-            options.add_argument("--headless=new")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-
-        try:
-            driver = webdriver.Chrome(options=options)
-        except Exception:
-            service = ChromeService()
-            driver = webdriver.Chrome(service=service, options=options)
-
-        driver.set_page_load_timeout(45)
-        return driver
-    except Exception as chrome_err:
-        logger.info("Local Chrome launch with session_dir failed: %s. Trying clean Chrome...", chrome_err)
-
-    # 2b. Try Chrome with clean profile
-    try:
-        options = webdriver.ChromeOptions()
-        if chrome_bin:
-            options.binary_location = chrome_bin
-        for a in base_args:
-            options.add_argument(a)
-        if headless:
-            options.add_argument("--headless=new")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option("useAutomationExtension", False)
-
-        try:
-            driver = webdriver.Chrome(options=options)
-        except Exception:
-            service = ChromeService()
-            driver = webdriver.Chrome(service=service, options=options)
-
-        driver.set_page_load_timeout(45)
-        return driver
-    except Exception as chrome_clean_err:
-        logger.info("Clean Chrome launch failed: %s. Trying Brave / BrowserManager...", chrome_clean_err)
-
-    # 3. Try Brave
-    if brave_bin:
-        try:
-            options = webdriver.ChromeOptions()
-            options.binary_location = brave_bin
-            for a in base_args:
-                options.add_argument(a)
-            if headless:
-                options.add_argument("--headless=new")
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option("useAutomationExtension", False)
-            driver = webdriver.Chrome(options=options)
-            driver.set_page_load_timeout(45)
-            return driver
-        except Exception as brave_err:
-            logger.info("Brave launch failed: %s", brave_err)
-
-    # 4. Fallback to platforms.browser_manager
     try:
         from platforms.browser_manager import create_driver
-        return create_driver(headless=headless, user_data_dir=None)
-    except Exception as bm_err:
-        logger.warning("Browser manager fallback failed: %s", bm_err)
+        driver = create_driver(headless=headless, user_data_dir=session_dir)
+        if driver:
+            driver.set_page_load_timeout(45)
+            return driver
+    except Exception as session_err:
+        logger.info("Session driver creation note: %s. Trying clean browser session...", session_err)
+        try:
+            from platforms.browser_manager import create_driver
+            driver = create_driver(headless=headless, user_data_dir=None)
+            if driver:
+                driver.set_page_load_timeout(45)
+                return driver
+        except Exception as clean_err:
+            logger.error("Clean browser session failed: %s", clean_err)
 
     return None
 

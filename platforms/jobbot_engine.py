@@ -309,32 +309,15 @@ def load_cookies(driver, platform, domain):
 
 def find_profile_path(browser_name):
     """
-    Windows pe existing browser profile dhundo automatically.
-    Yahi profile use hogi — jisme LinkedIn pehle se logged in hai.
+    Windows pe safe automation browser profile provide karta hai.
+    Agar user ka regular browser (Chrome/Edge/Brave) background me running hai
+    ya locked hai, toh persistent dedicated bot profile use hoti hai taaki
+    automation freeze ya crash na ho aur cookies/sessions persist rahein.
     """
-    username = os.environ.get("USERNAME", "User")
-    base = f"C:\\Users\\{username}\\AppData"
-
-    candidates = {
-        "edge": [
-            f"{base}\\Local\\Microsoft\\Edge\\User Data",
-        ],
-        "chrome": [
-            f"{base}\\Local\\Google\\Chrome\\User Data",
-        ],
-        "brave": [
-            f"{base}\\Local\\BraveSoftware\\Brave-Browser\\User Data",
-        ],
-    }
-
-    paths = candidates.get(browser_name, [])
-    for p in paths:
-        if os.path.isdir(p):
-            log.info(f"✅ Profile found: {p}")
-            return p
-
-    log.warning(f"⚠️  Profile nahi mila for {browser_name}")
-    return None
+    bot_profile_dir = os.path.join(os.path.expanduser("~"), ".universal_job_bot", f"{browser_name.lower()}_profile")
+    os.makedirs(bot_profile_dir, exist_ok=True)
+    log.info(f"✅ Bot profile ready: {bot_profile_dir}")
+    return bot_profile_dir
 
 
 def make_driver(platform_name=""):
@@ -360,6 +343,13 @@ def make_driver(platform_name=""):
         "--disable-infobars",
         "--start-maximized",
         "--lang=en-US,en",
+        "--remote-allow-origins=*",
+        "--remote-debugging-port=0",
+        "--disable-gpu",
+        "--disable-software-rasterizer",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--ignore-certificate-errors",
         # Disable password manager popups
         "--disable-save-password-bubble",
     ]
@@ -453,34 +443,74 @@ def make_driver(platform_name=""):
                     opts.binary_location = p
                     break
 
+        if not brave:
+            try:
+                from platforms.browser_manager import find_chrome_binary
+                cbin = find_chrome_binary()
+                if cbin and os.path.exists(cbin):
+                    opts.binary_location = cbin
+            except Exception:
+                pass
+
+        def _launch_chrome_opts(o):
+            # Strategy 1: Selenium 4 built-in manager (fast, no rate limits)
+            try:
+                return webdriver.Chrome(options=o)
+            except Exception:
+                pass
+            # Strategy 2: ChromeDriverManager
+            try:
+                service = ChromeService(ChromeDriverManager().install())
+                return webdriver.Chrome(service=service, options=o)
+            except Exception:
+                pass
+            # Strategy 3: Standard ChromeService
+            return webdriver.Chrome(service=ChromeService(), options=o)
+
         try:
-            service = ChromeService(ChromeDriverManager().install())
-            d = webdriver.Chrome(service=service, options=opts)
+            d = _launch_chrome_opts(opts)
             name = "🦁 Brave" if brave else "🌐 Chrome"
             log.info(f"{name} launched ✅")
             return _patch(d)
         except Exception as e:
-            if "user data directory is already in use" in str(e).lower():
-                log.warning(f"{'Brave' if brave else 'Chrome'} already open — fresh window try kar raha hoon...")
-                # Profile ke bina try karo
+            err_msg = str(e).lower()
+            if any(k in err_msg for k in ["user data directory is already in use", "cannot create default profile directory", "session not created"]):
+                log.warning(f"{'Brave' if brave else 'Chrome'} profile locked / already open — fresh isolated session try kar raha hoon...")
+                import tempfile
+                isolated_dir = tempfile.mkdtemp(prefix="jobbot_chrome_iso_")
                 opts2 = ChromeOptions()
                 for a in common_args:
                     opts2.add_argument(a)
-                opts2.add_experimental_option("excludeSwitches", ["enable-automation"])
+                opts2.add_argument(f"--user-data-dir={isolated_dir}")
+                opts2.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
                 opts2.add_experimental_option("useAutomationExtension", False)
-                if brave and opts.binary_location:
+                if opts.binary_location:
                     opts2.binary_location = opts.binary_location
-                service2 = ChromeService(ChromeDriverManager().install())
-                d2 = webdriver.Chrome(service=service2, options=opts2)
+                d2 = _launch_chrome_opts(opts2)
                 return _patch(d2)
             raise
 
-    order = {
-        "edge":   [try_edge],
-        "chrome": [lambda: try_chrome(False)],
-        "brave":  [lambda: try_chrome(True)],
-        "auto":   [try_edge, lambda: try_chrome(False), lambda: try_chrome(True)],
-    }.get(browser, [try_edge])
+    try:
+        from platforms.browser_manager import get_default_browser
+        detected_default = get_default_browser()
+    except Exception:
+        detected_default = "chrome"
+
+    browser_map = {
+        "chrome": lambda: try_chrome(False),
+        "edge": try_edge,
+        "brave": lambda: try_chrome(True),
+    }
+
+    if browser == "auto":
+        primary = detected_default if detected_default in browser_map else "chrome"
+        order = [browser_map[primary]] + [browser_map[k] for k in ["chrome", "edge", "brave"] if k != primary]
+    else:
+        order = {
+            "edge":   [try_edge],
+            "chrome": [lambda: try_chrome(False)],
+            "brave":  [lambda: try_chrome(True)],
+        }.get(browser, [browser_map.get(detected_default, try_edge)])
 
     for fn in order:
         try:
