@@ -425,11 +425,8 @@ def sync_with_supabase(records: list = None) -> dict:
 
         candidate_id = os.getenv("CANDIDATE_USER_ID", "0ff8ac23-96d8-419e-9cff-ffd3b3430f17")
 
-        # Sync to all candidate accounts in Supabase
-        all_prof_res = client.table("profiles").select("id").execute()
-        all_uids = [p["id"] for p in all_prof_res.data] if all_prof_res.data else [candidate_id]
-        if candidate_id not in all_uids:
-            all_uids.append(candidate_id)
+        # Sync ONLY to target candidate account in Supabase
+        target_uid = candidate_id
 
         if records:
             for r in records:
@@ -450,24 +447,23 @@ def sync_with_supabase(records: list = None) -> dict:
                 except Exception:
                     applied_at = datetime.now(timezone.utc).isoformat()
 
-                for uid in all_uids:
-                    app_payload = {
-                        "user_id": uid,
-                        "platform": plat,
-                        "job_title": title,
-                        "company": comp,
-                        "location": loc,
-                        "salary": sal,
-                        "job_url": url,
-                        "status": st,
-                        "notes": f"Applied via Universal CLI Engine ({plat})",
-                        "applied_at": applied_at,
-                        "updated_at": applied_at,
-                    }
-                    try:
-                        client.table("applications").upsert(app_payload, on_conflict="user_id,job_url").execute()
-                    except Exception:
-                        pass
+                app_payload = {
+                    "user_id": target_uid,
+                    "platform": plat,
+                    "job_title": title,
+                    "company": comp,
+                    "location": loc,
+                    "salary": sal,
+                    "job_url": url,
+                    "status": st,
+                    "notes": f"Applied via Universal CLI Engine ({plat})",
+                    "applied_at": applied_at,
+                    "updated_at": applied_at,
+                }
+                try:
+                    client.table("applications").upsert(app_payload, on_conflict="user_id,job_url").execute()
+                except Exception:
+                    pass
 
         db_apps = client.table("applications").select("platform, status").eq("user_id", candidate_id).execute()
         return {"total_db_apps": len(db_apps.data) if db_apps.data else 0}

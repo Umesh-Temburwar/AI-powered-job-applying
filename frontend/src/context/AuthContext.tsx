@@ -3,6 +3,7 @@ import type { AuthUser, AuthSession } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { clearCachedProfile } from '../hooks/useProfile';
 import { clearCachedResumes } from '../hooks/useResumes';
+import { clearCachedApplications, clearCachedDashboard } from '../hooks/useApplications';
 
 /**
  * Safely resolves the environment-aware app origin for Supabase redirects:
@@ -51,6 +52,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!sbSession || !('user' in (sbSession as object))) {
       clearCachedProfile();
       clearCachedResumes();
+      clearCachedApplications();
+      clearCachedDashboard();
       setUser(null);
       setSession(null);
       return;
@@ -243,6 +246,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     clearCachedProfile();
     clearCachedResumes();
+    clearCachedApplications();
+    clearCachedDashboard();
     if (!isSupabaseConfigured) {
       setUser(null);
       setSession(null);

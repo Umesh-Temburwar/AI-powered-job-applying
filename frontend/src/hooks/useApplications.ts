@@ -56,7 +56,11 @@ interface CachedApplicationsData {
   timestamp: number;
 }
 
-let cachedApplicationsData: CachedApplicationsData | null = null;
+let cachedApplicationsByUserId: Record<string, CachedApplicationsData> = {};
+
+export function clearCachedApplications() {
+  cachedApplicationsByUserId = {};
+}
 
 interface CachedDashboardData {
   metrics: DashboardMetrics;
@@ -65,10 +69,15 @@ interface CachedDashboardData {
   timestamp: number;
 }
 
-let cachedDashboardData: CachedDashboardData | null = null;
+let cachedDashboardByUserId: Record<string, CachedDashboardData> = {};
+
+export function clearCachedDashboard() {
+  cachedDashboardByUserId = {};
+}
 
 export function useApplications(initialParams?: ApplicationFilterParams) {
-  const { session, getToken } = useAuth();
+  const { session, user, getToken } = useAuth();
+  const userId = user?.id || session?.user?.id || '';
   const token = session?.token;
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
@@ -77,20 +86,20 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
   const [pageSize] = useState<number>(initialParams?.pageSize || 10);
   const [filters, setFilters] = useState<ApplicationFilterParams>(initialParams || {});
 
-  const currentCacheKey = `${filters.status || ''}-${filters.platform || ''}-${filters.query || ''}-${page}-${pageSize}`;
-  const hasMatchedCache = cachedApplicationsData && cachedApplicationsData.key === currentCacheKey;
+  const currentCacheKey = `${userId}-${filters.status || ''}-${filters.platform || ''}-${filters.query || ''}-${page}-${pageSize}`;
+  const userCached = userId ? cachedApplicationsByUserId[userId] : null;
+  const hasMatchedCache = Boolean(userCached && userCached.key === currentCacheKey);
 
   const [applications, setApplications] = useState<Application[]>(() =>
-    hasMatchedCache ? cachedApplicationsData!.items : (cachedApplicationsData?.items || [])
+    hasMatchedCache ? userCached!.items : []
   );
   const [total, setTotal] = useState<number>(() =>
-    hasMatchedCache ? cachedApplicationsData!.total : (cachedApplicationsData?.total || 0)
+    hasMatchedCache ? userCached!.total : 0
   );
   const [totalPages, setTotalPages] = useState<number>(() =>
-    hasMatchedCache ? cachedApplicationsData!.totalPages : (cachedApplicationsData?.totalPages || 1)
+    hasMatchedCache ? userCached!.totalPages : 1
   );
-  // Never block UI with full skeleton if we already have any cached items
-  const [loading, setLoading] = useState<boolean>(!cachedApplicationsData);
+  const [loading, setLoading] = useState<boolean>(() => !Boolean(hasMatchedCache));
   const [error, setError] = useState<string | null>(null);
 
   const isMountedRef = useRef(true);
@@ -103,10 +112,18 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
 
   const fetchApplications = useCallback(async () => {
     const activeToken = (await getTokenRef.current?.()) || token;
-    // Active token optional; backend defaults to candidate profile if omitted
+    if (!userId || !activeToken) {
+      if (isMountedRef.current) {
+        setApplications([]);
+        setTotal(0);
+        setTotalPages(1);
+        setLoading(false);
+      }
+      return;
+    }
 
     try {
-      if (!cachedApplicationsData && isMountedRef.current) {
+      if (!userCached && isMountedRef.current) {
         setLoading(true);
       }
       if (isMountedRef.current) setError(null);
@@ -116,13 +133,15 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
         pageSize,
       });
       const mapped = res.items.map(mapBackendToApplication);
-      cachedApplicationsData = {
-        key: currentCacheKey,
-        items: mapped,
-        total: res.total,
-        totalPages: res.total_pages,
-        timestamp: Date.now(),
-      };
+      if (userId) {
+        cachedApplicationsByUserId[userId] = {
+          key: currentCacheKey,
+          items: mapped,
+          total: res.total,
+          totalPages: res.total_pages,
+          timestamp: Date.now(),
+        };
+      }
       if (isMountedRef.current && typeof window !== 'undefined') {
         setApplications(mapped);
         setTotal(res.total);
@@ -131,7 +150,7 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
     } catch (err) {
       if (isMountedRef.current && typeof window !== 'undefined') {
         setError(err instanceof Error ? err.message : 'Failed to fetch applications');
-        if (!cachedApplicationsData) {
+        if (!userCached) {
           setApplications([]);
           setTotal(0);
         }
@@ -141,11 +160,28 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
         setLoading(false);
       }
     }
-  }, [token, filters, page, pageSize, currentCacheKey]);
+  }, [token, userId, filters, page, pageSize, currentCacheKey]);
 
   useEffect(() => {
+    if (!userId) {
+      setApplications([]);
+      setTotal(0);
+      setTotalPages(1);
+      setLoading(false);
+      return;
+    }
+    const cached = cachedApplicationsByUserId[userId];
+    if (cached && cached.key === currentCacheKey) {
+      setApplications(cached.items);
+      setTotal(cached.total);
+      setTotalPages(cached.totalPages);
+    } else {
+      setApplications([]);
+      setTotal(0);
+      setTotalPages(1);
+    }
     fetchApplications();
-  }, [fetchApplications]);
+  }, [userId, fetchApplications]);
 
   const updateFilters = (newFilters: Partial<ApplicationFilterParams>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -190,26 +226,37 @@ export function useApplications(initialParams?: ApplicationFilterParams) {
 }
 
 export function useDashboard() {
-  const { session, getToken } = useAuth();
+  const { session, user, getToken } = useAuth();
+  const userId = user?.id || session?.user?.id || '';
   const token = session?.token;
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
+  const userDashboardCached = userId ? cachedDashboardByUserId[userId] : null;
+
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(() =>
-    cachedDashboardData ? cachedDashboardData.metrics : null
+    userDashboardCached ? userDashboardCached.metrics : null
   );
   const [apiSummary, setApiSummary] = useState<DashboardSummaryApiResponse | null>(() =>
-    cachedDashboardData ? cachedDashboardData.apiSummary : null
+    userDashboardCached ? userDashboardCached.apiSummary : null
   );
   const [activities, setActivities] = useState<ActivityItem[]>(() =>
-    cachedDashboardData ? cachedDashboardData.activities : []
+    userDashboardCached ? userDashboardCached.activities : []
   );
-  const [loading, setLoading] = useState<boolean>(!cachedDashboardData);
+  const [loading, setLoading] = useState<boolean>(() => !Boolean(userDashboardCached));
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
+    if (!userId) {
+      setMetrics(null);
+      setApiSummary(null);
+      setActivities([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      if (!cachedDashboardData) {
+      if (!userDashboardCached) {
         setLoading(true);
       }
       setError(null);
@@ -228,12 +275,14 @@ export function useDashboard() {
         dailyStreak: 0,
       };
 
-      cachedDashboardData = {
-        metrics: computedMetrics,
-        apiSummary: summary,
-        activities: mappedActivities,
-        timestamp: Date.now(),
-      };
+      if (userId) {
+        cachedDashboardByUserId[userId] = {
+          metrics: computedMetrics,
+          apiSummary: summary,
+          activities: mappedActivities,
+          timestamp: Date.now(),
+        };
+      }
 
       setApiSummary(summary);
       setActivities(mappedActivities);
@@ -243,11 +292,28 @@ export function useDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, userId]);
 
   useEffect(() => {
+    if (!userId) {
+      setMetrics(null);
+      setApiSummary(null);
+      setActivities([]);
+      setLoading(false);
+      return;
+    }
+    const cached = cachedDashboardByUserId[userId];
+    if (cached) {
+      setMetrics(cached.metrics);
+      setApiSummary(cached.apiSummary);
+      setActivities(cached.activities);
+    } else {
+      setMetrics(null);
+      setApiSummary(null);
+      setActivities([]);
+    }
     fetchDashboardData();
-  }, [fetchDashboardData]);
+  }, [userId, fetchDashboardData]);
 
   return {
     metrics,

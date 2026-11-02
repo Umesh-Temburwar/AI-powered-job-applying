@@ -275,37 +275,26 @@ def record_application(
             if status_val not in ('applied', 'review_needed', 'interview', 'rejected', 'saved', 'failed', 'under_review'):
                 status_val = 'applied'
 
-            # Sync across all registered candidate accounts
-            all_uids = [user_id]
+            # Record ONLY for target candidate user_id (Never broadcast across all accounts)
+            supabase_row = {
+                "user_id": user_id,
+                "job_title": job_title,
+                "company": company or "N/A",
+                "job_url": valid_url,
+                "platform": platform,
+                "status": status_val,
+                "location": location or "Not specified",
+                "salary": salary or "Not disclosed",
+                "notes": notes or None,
+                "applied_at": iso_applied_at,
+            }
             try:
-                prof_res = client.table("profiles").select("id").execute()
-                if prof_res.data:
-                    for p in prof_res.data:
-                        if p["id"] not in all_uids:
-                            all_uids.append(p["id"])
+                client.table("applications").upsert(
+                    supabase_row,
+                    on_conflict="user_id,job_url"
+                ).execute()
             except Exception:
                 pass
-
-            for uid in all_uids:
-                supabase_row = {
-                    "user_id": uid,
-                    "job_title": job_title,
-                    "company": company or "N/A",
-                    "job_url": valid_url,
-                    "platform": platform,
-                    "status": status_val,
-                    "location": location or "Not specified",
-                    "salary": salary or "Not disclosed",
-                    "notes": notes or None,
-                    "applied_at": iso_applied_at,
-                }
-                try:
-                    client.table("applications").upsert(
-                        supabase_row,
-                        on_conflict="user_id,job_url"
-                    ).execute()
-                except Exception:
-                    pass
             logger.info(f"☁️ Synced Application to Supabase: [{platform}] {job_title} @ {company}")
     except Exception as e:
         logger.debug(f"Sync to Supabase notice: {e}")

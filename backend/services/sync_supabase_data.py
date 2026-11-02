@@ -219,33 +219,24 @@ if csv_path.exists():
 
     unique_apps = list(latest_by_url.values())
 
-    # Sync to all candidate accounts so UI displays identically regardless of login
-    all_profiles_res = client.table("profiles").select("id").execute()
-    candidate_uids = [p["id"] for p in all_profiles_res.data] if all_profiles_res.data else [target_user_id]
-    if target_user_id not in candidate_uids:
-        candidate_uids.append(target_user_id)
-
-    total_synced = 0
-    for c_uid in candidate_uids:
-        batch = []
-        for item in unique_apps:
-            app_row = dict(item)
-            app_row["user_id"] = c_uid
-            batch.append(app_row)
-            if len(batch) >= 50:
-                try:
-                    client.table("applications").upsert(batch, on_conflict="user_id,job_url").execute()
-                except Exception as ex:
-                    print(f"Batch upsert error for user {c_uid[:8]}: {ex}")
-                batch = []
-        if batch:
+    # Sync ONLY to target candidate account (isolated per user)
+    batch = []
+    for item in unique_apps:
+        app_row = dict(item)
+        app_row["user_id"] = target_user_id
+        batch.append(app_row)
+        if len(batch) >= 50:
             try:
                 client.table("applications").upsert(batch, on_conflict="user_id,job_url").execute()
             except Exception as ex:
-                print(f"Final batch upsert error for user {c_uid[:8]}: {ex}")
+                print(f"Batch upsert error for user {target_user_id[:8]}: {ex}")
+            batch = []
+    if batch:
+        try:
+            client.table("applications").upsert(batch, on_conflict="user_id,job_url").execute()
+        except Exception as ex:
+            print(f"Final batch upsert error for user {target_user_id[:8]}: {ex}")
 
-        total_synced += len(unique_apps)
-
-    print(f"[OK] Synced {len(unique_apps)} unique applications to {len(candidate_uids)} candidate profiles in public.applications")
+    print(f"[OK] Synced {len(unique_apps)} unique applications to candidate profile {target_user_id} in public.applications")
 
 print(f"All Supabase data successfully synchronized for candidate: {user_name} ({target_user_id})")
