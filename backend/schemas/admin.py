@@ -39,6 +39,17 @@ class PortalConfigUpdateRequest(BaseModel):
     notes: Optional[str] = None
 
 
+class CandidateResumeAdminItem(BaseModel):
+    id: str
+    user_id: str
+    file_name: str
+    file_size: int
+    mime_type: str = "application/pdf"
+    created_at: str
+    is_default: bool = False
+    download_url: Optional[str] = None
+
+
 class CandidateAdminItem(BaseModel):
     id: str
     email: str
@@ -49,6 +60,12 @@ class CandidateAdminItem(BaseModel):
     applications_count: int
     connected_portals: list[str]
     target_titles: list[str] = Field(default_factory=list)
+    has_resume: bool = False
+    resume_id: Optional[str] = None
+    resume_name: Optional[str] = None
+    resume_size: Optional[int] = None
+    resume_uploaded_at: Optional[str] = None
+    resumes_count: int = 0
 
 
 class CandidateListAdminResponse(BaseModel):

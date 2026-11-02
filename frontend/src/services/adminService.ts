@@ -30,6 +30,17 @@ export interface PortalAdminConfig {
   notes?: string | null;
 }
 
+export interface CandidateResumeAdminItem {
+  id: string;
+  user_id: string;
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  created_at: string;
+  is_default: boolean;
+  download_url?: string;
+}
+
 export interface CandidateAdminItem {
   id: string;
   email: string;
@@ -40,6 +51,12 @@ export interface CandidateAdminItem {
   applications_count: number;
   connected_portals: string[];
   target_titles: string[];
+  has_resume?: boolean;
+  resume_id?: string | null;
+  resume_name?: string | null;
+  resume_size?: number | null;
+  resume_uploaded_at?: string | null;
+  resumes_count?: number;
 }
 
 export interface CandidateListAdminResponse {
@@ -197,6 +214,11 @@ const FALLBACK_CANDIDATES: CandidateAdminItem[] = [
     applications_count: 5,
     connected_portals: ['Naukri.com', 'Internshala', 'LinkedIn', 'Indeed'],
     target_titles: ['Full Stack Developer', 'React.js Developer'],
+    has_resume: true,
+    resume_name: 'Umesh-Temburwar-OCT.pdf',
+    resume_size: 82039,
+    resume_uploaded_at: '2026-11-03T01:50:00Z',
+    resumes_count: 1,
   },
   {
     id: '976be0cd-85a2-4274-9a87-598328337d7a',
@@ -208,6 +230,11 @@ const FALLBACK_CANDIDATES: CandidateAdminItem[] = [
     applications_count: 0,
     connected_portals: ['Internshala', 'Naukri.com'],
     target_titles: ['AI Full-stack Developer', 'Python Developer'],
+    has_resume: true,
+    resume_name: 'df223301-0904-48e1-8f51-de267566d433.pdf',
+    resume_size: 277545,
+    resume_uploaded_at: '2026-10-23T08:11:19Z',
+    resumes_count: 1,
   },
   {
     id: 'b05bf266-80c7-49e0-9ebd-cf43f92e17d5',
@@ -219,6 +246,11 @@ const FALLBACK_CANDIDATES: CandidateAdminItem[] = [
     applications_count: 4,
     connected_portals: ['Naukri.com'],
     target_titles: ['Full Stack Developer', 'Software Engineer'],
+    has_resume: true,
+    resume_name: '1621aabd-fb61-4b2e-ae8b-3274aebe8f3e.pdf',
+    resume_size: 82039,
+    resume_uploaded_at: '2026-11-01T12:27:06Z',
+    resumes_count: 1,
   },
 ];
 
@@ -620,6 +652,94 @@ export async function fetchAuditLogsApi(limit: number = 50): Promise<AdminAuditL
       logs: FALLBACK_LOGS,
       total: FALLBACK_LOGS.length,
     };
+  }
+}
+
+export async function fetchCandidateResumesList(
+  candidateId: string
+): Promise<CandidateResumeAdminItem[]> {
+  const authHeader = await getAuthHeader();
+  try {
+    return await apiClient<CandidateResumeAdminItem[]>(
+      `api/v1/admin/candidates/${candidateId}/resumes`,
+      { headers: authHeader }
+    );
+  } catch (err) {
+    console.warn('Candidate resumes list API unavailable, using fallback:', err);
+    return [
+      {
+        id: 'default',
+        user_id: candidateId,
+        file_name: 'resume.pdf',
+        file_size: 82039,
+        mime_type: 'application/pdf',
+        created_at: new Date().toISOString(),
+        is_default: true,
+        download_url: `/api/v1/admin/candidates/${candidateId}/resume`,
+      },
+    ];
+  }
+}
+
+export async function fetchCandidateResumeBlob(
+  candidateId: string,
+  resumeId?: string
+): Promise<{ blob: Blob; fileName: string }> {
+  const authHeader = await getAuthHeader();
+  const query = resumeId ? `?resume_id=${encodeURIComponent(resumeId)}` : '';
+  const url = `/api/v1/admin/candidates/${candidateId}/resume${query}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        ...authHeader,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to load resume PDF (${response.status} ${response.statusText})`);
+    }
+
+    const disposition = response.headers.get('content-disposition') || '';
+    let fileName = 'resume.pdf';
+    const match = disposition.match(/filename=["']?([^"';]+)["']?/i);
+    if (match && match[1]) {
+      fileName = match[1];
+    }
+
+    const blob = await response.blob();
+    return { blob, fileName };
+  } catch (err) {
+    console.warn('Failed streaming resume from backend endpoint, attempting direct fallback:', err);
+    if (isSupabaseConfigured) {
+      try {
+        const targetPath = resumeId && !resumeId.startsWith('local-')
+          ? `${candidateId}/${resumeId}`
+          : null;
+
+        if (targetPath) {
+          const { data, error } = await supabase.storage.from('resumes').download(targetPath);
+          if (!error && data) {
+            return { blob: data, fileName: resumeId || 'resume.pdf' };
+          }
+        } else {
+          const { data: files } = await supabase.storage.from('resumes').list(candidateId);
+          if (files && files.length > 0) {
+            const latestFile = files[files.length - 1];
+            const { data: fileData, error: dlErr } = await supabase.storage
+              .from('resumes')
+              .download(`${candidateId}/${latestFile.name}`);
+            if (!dlErr && fileData) {
+              return { blob: fileData, fileName: latestFile.name };
+            }
+          }
+        }
+      } catch (sbErr) {
+        console.warn('Supabase storage fallback error:', sbErr);
+      }
+    }
+    throw err;
   }
 }
 

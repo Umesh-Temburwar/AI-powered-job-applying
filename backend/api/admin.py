@@ -5,7 +5,9 @@ from core.auth import AuthenticatedUser, require_admin_user
 from schemas.admin import (
     AdminAuditLogsResponse,
     AdminSystemStats,
+    CandidateAdminItem,
     CandidateListAdminResponse,
+    CandidateResumeAdminItem,
     CandidateStatusUpdateRequest,
     PortalAdminConfig,
     PortalConfigUpdateRequest,
@@ -86,6 +88,32 @@ def update_candidate_status(
         return {"status": "success", "user_id": user_id, "account_status": payload.status}
     except ValueError as err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err))
+
+
+@router.get(
+    "/candidates/{user_id}/resume",
+    summary="View Candidate Resume PDF",
+    description="Stream candidate resume PDF directly inline for viewing in browser or iframe.",
+)
+def view_candidate_resume(
+    user_id: str,
+    current_user: Annotated[AuthenticatedUser, Depends(require_admin_user)],
+    resume_id: Optional[str] = Query(None, description="Specific resume ID or file name"),
+):
+    return admin_service.stream_candidate_resume(user_id, resume_id)
+
+
+@router.get(
+    "/candidates/{user_id}/resumes",
+    response_model=list[CandidateResumeAdminItem],
+    summary="List Candidate Resumes",
+    description="List all resumes uploaded by a specific candidate.",
+)
+def list_candidate_resumes(
+    user_id: str,
+    current_user: Annotated[AuthenticatedUser, Depends(require_admin_user)],
+) -> list[CandidateResumeAdminItem]:
+    return admin_service.get_candidate_resumes(user_id)
 
 
 @router.get(

@@ -78,6 +78,23 @@ def test_admin_candidates_endpoints(client: TestClient):
     assert status_res_reactivate.json()["account_status"] == "active"
 
 
+def test_admin_candidate_resume_endpoints(client: TestClient):
+    """Verify admin can list and stream candidate resumes."""
+    cand_res = client.get("/api/v1/admin/candidates?page=1&page_size=10")
+    assert cand_res.status_code == 200
+    candidates = cand_res.json()["candidates"]
+    assert len(candidates) >= 1
+    cand_id = candidates[0]["id"]
+
+    resumes_res = client.get(f"/api/v1/admin/candidates/{cand_id}/resumes")
+    assert resumes_res.status_code == 200
+    assert isinstance(resumes_res.json(), list)
+
+    stream_res = client.get(f"/api/v1/admin/candidates/{cand_id}/resume")
+    assert stream_res.status_code == 200
+    assert "application/pdf" in stream_res.headers.get("content-type", "")
+
+
 def test_admin_audit_logs_endpoint(client: TestClient):
     """Verify admin audit logs retrieval."""
     response = client.get("/api/v1/admin/logs?limit=25")
