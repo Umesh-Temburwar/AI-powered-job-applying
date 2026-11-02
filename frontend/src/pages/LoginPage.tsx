@@ -109,14 +109,14 @@ export const LoginPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
               <label className="block font-mono text-[12px] font-bold uppercase">
-                [EMAIL_ADDRESS]
+                [USERNAME / EMAIL]
               </label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="umeshtemburwar2002@gmail.com"
-                autoComplete="email"
+                placeholder="Umesh or your email"
+                autoComplete="username"
                 aria-label="Email Address"
                 required
                 className={`w-full px-3.5 py-2.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#0B0E14] text-white focus:border-emerald-500' : 'border-[#18181B] bg-white text-[#18181B] focus:border-emerald-700'} font-mono text-[13px] outline-none transition-colors`}
@@ -147,10 +147,28 @@ export const LoginPage: React.FC = () => {
               />
             </div>
 
-            {/* Admin Notice */}
-            <div className={`p-2.5 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-emerald-300' : 'border-[#18181B] bg-[#F5F3EC] text-[#15803D]'} font-mono text-[11px] flex items-center gap-1.5`}>
-              <KeyRound className="w-3.5 h-3.5 shrink-0" />
-              <span>Admin: <strong className="underline">umeshtemburwar2002@gmail.com</strong></span>
+            {/* Public Login Notice with Auto-Fill */}
+            <div className={`p-3 border-2 ${theme === 'dark' ? 'border-emerald-500/50 bg-emerald-950/30 text-emerald-300' : 'border-emerald-600/50 bg-emerald-50 text-emerald-800'} font-mono text-[11px] space-y-1.5`}>
+              <div className="flex items-center justify-between">
+                <span className="font-bold flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+                  PUBLIC LOGIN CREDENTIALS:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('Umesh');
+                    setPassword('Umesh@123');
+                  }}
+                  className="px-2 py-0.5 border border-emerald-500/60 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] uppercase font-bold cursor-pointer transition-colors"
+                >
+                  ⚡ Auto-Fill
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                <span>Username: <strong className="text-white dark:text-emerald-200">Umesh</strong></span>
+                <span>Password: <strong className="text-white dark:text-emerald-200">Umesh@123</strong></span>
+              </div>
             </div>
 
             <button

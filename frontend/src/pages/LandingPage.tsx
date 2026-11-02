@@ -537,11 +537,29 @@ export const LandingPage: React.FC = () => {
                           Enter candidate or admin credentials.
                         </p>
 
-                        {/* Admin Notice (Zero Autofill Button) */}
-                        <div className={`mt-3 p-2 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-emerald-300' : 'border-[#18181B] bg-[#F5F3EC] text-[#15803D]'
-                          } text-[11px] flex items-center gap-1.5`}>
-                          <KeyRound className="w-3.5 h-3.5 shrink-0" />
-                          <span>Admin: <strong className="underline">umeshtemburwar2002@gmail.com</strong></span>
+                        {/* Public Login Notice with Auto-Fill */}
+                        <div className={`mt-3 p-2.5 border-2 ${theme === 'dark' ? 'border-emerald-500/50 bg-emerald-950/30 text-emerald-300' : 'border-emerald-600/50 bg-emerald-50 text-emerald-800'
+                          } text-[11px] space-y-1`}>
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold flex items-center gap-1.5">
+                              <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+                              PUBLIC LOGIN:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoginEmail('Umesh');
+                                setLoginPassword('Umesh@123');
+                              }}
+                              className="px-1.5 py-0.5 border border-emerald-500/60 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] uppercase font-bold cursor-pointer transition-colors"
+                            >
+                              ⚡ Auto-Fill
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 text-[10px]">
+                            <span>User: <strong className="text-white dark:text-emerald-200">Umesh</strong></span>
+                            <span>Pass: <strong className="text-white dark:text-emerald-200">Umesh@123</strong></span>
+                          </div>
                         </div>
 
                         {/* Error Notice */}
@@ -556,14 +574,14 @@ export const LandingPage: React.FC = () => {
                         <form onSubmit={handleInPlaceLogin} className="space-y-3 mt-3">
                           <div>
                             <label className="block text-[10px] font-bold uppercase mb-1">
-                              Email Address:
+                              Username or Email:
                             </label>
                             <input
-                              type="email"
+                              type="text"
                               required
                               value={loginEmail}
                               onChange={(e) => setLoginEmail(e.target.value)}
-                              placeholder="umeshtemburwar2002@gmail.com"
+                              placeholder="Umesh or your email"
                               className={`w-full h-9 px-2.5 border-2 text-[12px] ${theme === 'dark'
                                 ? 'border-[#2E384D] bg-[#0E121B] text-white focus:border-[#10B981]'
                                 : 'border-[#18181B] bg-[#FFFFFF] text-black focus:border-[#15803D]'
