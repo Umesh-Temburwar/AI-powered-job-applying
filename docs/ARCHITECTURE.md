@@ -33,3 +33,25 @@ graph TD
 - **Platform Adapters**: Dedicated scrapers and form automators for Naukri, LinkedIn, Internshala, and Indeed.
 - **AI Answerer**: Natural language processing utility for answering common application screening questions (e.g. CTC, notice period, relocation preferences).
 - **Tracker DB**: Local SQLite engine for persistent tracking and deduplication of applied job IDs.
+- **Data Resolver (`platforms/data_paths.py`)**: Canonical file path resolver prioritizing `data/` directory with transparent root fallback.
+
+---
+
+## 3. Directory & File Organization
+
+The repository follows a clean separation of concerns:
+
+```
+Universal-Job-Auto-Apply/
+├── frontend/                # Client layer: React 19, Vite 6, Tailwind CSS, Vitest
+├── backend/                 # API & server layer: FastAPI, Supabase JWT, worker, migrations
+├── platforms/               # Platform automation layer: Browser engine, AI Q&A, scrapers
+├── data/                    # Data layer: SQLite DB, CSV ledgers, profile JSON, resumes
+├── scripts/                 # Process management: Dedicated background startup batch files
+├── docs/                    # Documentation: Architecture, API, Training, Troubleshooting
+├── web_dashboard/           # Standalone Python HTTP web interface
+├── run.bat                  # 1-Click root launcher (FastAPI + Vite + Browser)
+├── start_app.py             # Cross-platform multi-process application manager
+└── Universal_Job_Auto_Apply.py  # Master CLI automation runner
+```
+

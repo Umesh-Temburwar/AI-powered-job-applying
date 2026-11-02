@@ -44,47 +44,81 @@
 
 ---
 
-## 📁 Clean Project Structure
+## 📁 Clean & Modular Project Structure
 
 ```
 Universal-Job-Auto-Apply/
 │
-├── Universal_Job_Auto_Apply.py       # 🚀 Master All-in-One CLI & Interactive Launcher
-├── universal_bot.py                 # Convenience redirect alias to Universal_Job_Auto_Apply.py
-├── run.bat                          # 1-Click Windows Batch Launcher
+├── frontend/                            # ⚛️ React 19 + Vite 6 + Tailwind CSS Web Client
+│   ├── src/
+│   │   ├── pages/                       # Dashboard, Onboarding Wizard, Profile, Resumes, Applications, Admin
+│   │   ├── components/                  # UI components, layout, common modals
+│   │   ├── context/                     # AuthContext, Supabase auth providers
+│   │   ├── services/                    # API clients, configService, adminService
+│   │   ├── tests/                       # Vitest integration test suites (11 suites, 60 tests)
+│   │   └── types/                       # TypeScript interfaces & domain models
+│   ├── vite.config.ts                   # Vite configuration
+│   └── package.json                     # Frontend dependencies & build scripts
 │
-├── platforms/                       # 🌐 Core Platform Modules
-│   ├── __init__.py
-│   ├── browser_manager.py           # Multi-browser engine (Edge, Chrome, Brave, Firefox)
-│   ├── naukri_platform.py           # Naukri automation module
-│   ├── internshala_platform.py      # Internshala automation module
-│   ├── indeed_platform.py           # Indeed easily apply module
-│   ├── linkedin_platform.py         # LinkedIn easy apply runner
-│   ├── jobbot_engine.py             # 9-Portal extended apply engine
-│   └── linkedin/                    # LinkedIn Easy Apply core & configs
-│       ├── easyapplybot.py
-│       ├── config.yaml
-│       ├── qa.csv
-│       └── out.csv
+├── backend/                             # 🐍 FastAPI Async Backend & Automation API
+│   ├── api/                             # REST API routers (auth, applications, config, profile, tasks)
+│   ├── core/                            # Auth (Supabase JWT), Database, Settings, Security
+│   ├── migrations/                      # PostgreSQL/Supabase schema migrations
+│   ├── schemas/                         # Pydantic request/response schemas
+│   ├── services/                        # Business logic, platform automation, sync engines
+│   ├── tests/                           # Backend pytest test suites
+│   ├── main.py                          # FastAPI application factory & CORS setup
+│   └── worker.py                        # Asynchronous background task execution worker
 │
-├── Naukri-Edge.py                   # Standalone Naukri Keyword Multi-Tab Apply
-├── Naukri-Recommended.py            # Standalone Naukri Recommended Jobs Apply
-├── Naukri-UpdateProfile.py          # Standalone Naukri Profile Freshness & Skills Updater
-├── Internshala-UpdateProfile.py     # Standalone Internshala Resume & Projects Updater
+├── platforms/                           # 🌐 Core Automation & Scraper Engines
+│   ├── browser_manager.py               # Multi-browser engine (Edge, Chrome, Brave, Firefox) with stealth
+│   ├── ai_engine.py                     # AI screening Q&A auto-answerer (fuzzy & semantic match)
+│   ├── tracker_db.py                    # Local SQLite application deduplication engine
+│   ├── data_paths.py                    # Centralized data resolver (prioritizes data/ with root fallback)
+│   ├── naukri_platform.py               # Naukri search, recommended & profile updater
+│   ├── internshala_platform.py          # Internshala auto-apply & resume updater
+│   ├── indeed_platform.py               # Indeed easily-apply automation
+│   ├── linkedin_platform.py             # LinkedIn easy-apply runner
+│   └── linkedin/                        # LinkedIn easy-apply bot implementation
 │
-├── profile_data.json                # Master Candidate Profile (Skills, Summary, Projects)
-├── application_answers.csv          # 50+ Auto-Fill Question & Answer Database
-├── resume.ini                       # Internshala resume formatted config
-├── Umesh-Temburwar-OCT.pdf          # Candidate PDF Resume
+├── data/                                # 🔒 Centralized Secure Candidate Data (Gitignored)
+│   ├── jobs_tracker.db                  # Local SQLite database for application tracking
+│   ├── profile_data.json                # Master candidate profile (skills, summary, experience)
+│   ├── resume.ini                       # Candidate project & certificate descriptions
+│   ├── application_answers.csv          # 200+ trained screening form Q&A pairs
+│   ├── universal_applied_jobs.csv       # Consolidated master applied jobs ledger (8 columns)
+│   ├── internshala_applied.csv          # Internshala specific application ledger
+│   ├── naukriapplied.csv                # Naukri specific application ledger
+│   ├── resumes/                         # Candidate PDF & Word resumes
+│   └── assets/                          # Personal candidate identity assets
 │
-├── universal_applied_jobs.csv       # Consolidated Master Applied Jobs Tracker
-├── naukriapplied.csv                # Naukri specific log
-├── internshala_applied.csv          # Internshala specific log
+├── scripts/                             # 🛠️ Automation & Startup Scripts
+│   ├── start_backend.bat                # Dedicated persistent launcher for FastAPI on :8001
+│   └── start_frontend.bat               # Dedicated persistent launcher for Vite on :5173
 │
-├── .env                             # Private credentials & settings (gitignored)
-├── .env.example                     # Example configuration template
-├── requirements.txt                 # Python dependencies
-└── README.md                        # Documentation
+├── docs/                                # 📚 Comprehensive Documentation
+│   ├── ARCHITECTURE.md                  # Detailed architectural design & data flow
+│   ├── API.md                           # Backend REST API endpoint references
+│   ├── PLATFORMS.md                     # Platform bot configurations & strategies
+│   ├── BOT_TRAINING.md                  # AI Q&A dataset training & benchmarking guide
+│   ├── DEPLOYMENT.md                    # Vercel & Render production deployment guide
+│   ├── DEVELOPMENT.md                   # Local development setup & contribution guide
+│   └── TROUBLESHOOTING.md               # Common errors & step-by-step solutions
+│
+├── web_dashboard/                       # 💻 Lightweight Local Python HTTP Dashboard
+│   ├── app.py                           # Single-process HTTP server with live log streaming
+│   └── index.html                       # Standalone single-file analytics dashboard
+│
+├── run.bat                              # ⚡ 1-Click Windows Launcher (starts backend + frontend + browser)
+├── start_app.py                         # Unified cross-platform Python process manager
+├── Universal_Job_Auto_Apply.py          # Master CLI orchestrator & interactive console
+├── universal_bot.py                     # CLI alias redirecting to Universal_Job_Auto_Apply.py
+├── train_bot.py                         # AI Q&A dataset evaluator & benchmark CLI
+│
+├── .env                                 # Environment variables (gitignored)
+├── .env.example                         # Environment template with dummy values
+├── requirements.txt                     # Python dependencies
+└── README.md                            # Main project documentation
 ```
 
 ---
