@@ -820,6 +820,17 @@ def parse_and_save_user_resume(
     edu_score = str(edu_first.get("score") or edu_first.get("cgpa") or "")
 
     tot_years = str(len(experience)) if experience else "0"
+    is_fresher = True if (not experience or tot_years == "0" or "coordinator" in str(experience).lower()) else False
+
+    summary = structured.get("summary") or f"Dedicated and detail-oriented {headline or 'Full Stack Developer'} with strong practical skills in {', '.join(skills[:5]) if skills else 'React, Node.js and modern web architecture'}. Passionate about building robust, high-performance web applications and automated workflows."
+    cover_letter = structured.get("cover_letter") or (
+        f"Dear Hiring Team,\n\n"
+        f"I am writing to express my strong enthusiasm for engineering roles at your organization. "
+        f"With hands-on experience in {', '.join(skills[:6]) if skills else 'Full Stack development and modern web technologies'}, "
+        f"I have designed, implemented, and deployed responsive applications with clean architecture and seamless API integrations.\n\n"
+        f"I am eager to contribute my technical foundation, quick learning capabilities, and problem-solving skills to your team's objectives.\n\n"
+        f"Sincerely,\n{full_name or 'Candidate'}"
+    )
 
     # Update profile_data.json
     prof = get_current_profile_data()
@@ -834,11 +845,14 @@ def parse_and_save_user_resume(
         "linkedin_url": linkedin_url or prof["personal"].get("linkedin_url", ""),
         "github_url": github_url or prof["personal"].get("github_url", ""),
         "portfolio_url": portfolio_url or prof["personal"].get("portfolio_url", ""),
-        "total_experience_years": tot_years if tot_years != "0" else prof["personal"].get("total_experience_years", "0"),
+        "total_experience_years": "0" if is_fresher else (tot_years if tot_years != "0" else "1"),
+        "is_fresher": is_fresher,
     })
     prof["resume_path"] = safe_path
     if headline:
         prof["naukri_headline"] = headline
+    prof["profile_summary"] = summary
+    prof["cover_letter"] = cover_letter
     if skills:
         prof["key_skills"] = skills
     edu_clean = {
@@ -876,6 +890,8 @@ def parse_and_save_user_resume(
         "PHONE": phone,
         "LOCATION": city,
         "KEYWORDS": keywords_str,
+        "IS_FRESHER": "True" if is_fresher else "False",
+        "COVER_LETTER": cover_letter,
     }
     if email:
         env_updates["NAUKRI_EMAIL"] = email
@@ -902,7 +918,8 @@ def parse_and_save_user_resume(
             "phone": phone,
             "email": email,
             "location": city,
-            "total_experience_years": tot_years,
+            "total_experience_years": "0" if is_fresher else tot_years,
+            "is_fresher": is_fresher,
             "education_degree": edu_degree,
             "education_college": edu_college,
             "education_passing_year": edu_year,
@@ -910,6 +927,11 @@ def parse_and_save_user_resume(
             "linkedin_url": linkedin_url,
             "github_url": github_url,
             "portfolio_url": portfolio_url,
+            "cover_letter": cover_letter,
+            "notice_period": "Immediate (0 Days)",
+            "work_mode": "Remote / Hybrid",
+            "willing_to_relocate": "Yes",
+            "work_authorization": "Authorized to work in India",
         })
     except Exception as e:
         logger.debug("Auto-train on resume upload note: %s", e)
@@ -924,6 +946,8 @@ def parse_and_save_user_resume(
         "phone": phone,
         "city": city,
         "headline": headline,
+        "summary": summary,
+        "cover_letter": cover_letter,
         "keywords": keywords_str,
         "skills": skills,
         "education": education,
@@ -937,8 +961,74 @@ def parse_and_save_user_resume(
         "education_college": edu_college,
         "education_passing_year": edu_year,
         "education_score": edu_score,
-        "total_experience_years": tot_years,
+        "total_experience_years": "0" if is_fresher else tot_years,
+        "is_fresher": is_fresher,
+        "notice_period": "Immediate (0 Days)",
+        "work_mode": "Remote / Hybrid",
+        "willing_to_relocate": "Yes",
+        "work_authorization": "Authorized to work in India",
     }
+
+
+def reparse_active_candidate_resume(user_id: Optional[str] = None) -> dict[str, Any]:
+    """Locate the candidate's active resume file from local storage, frontend assets,
+    or Supabase storage, re-parse all structured fields, update databases and training banks."""
+    # 1. Search in local data/resumes directory
+    candidate_file_bytes: Optional[bytes] = None
+    candidate_file_name: Optional[str] = None
+
+    if os.path.exists(RESUMES_DIR):
+        files = [
+            f for f in os.listdir(RESUMES_DIR)
+            if f.lower().endswith((".pdf", ".docx", ".txt"))
+        ]
+        if files:
+            files.sort(key=lambda x: os.path.getmtime(os.path.join(RESUMES_DIR, x)), reverse=True)
+            candidate_file_name = files[0]
+            with open(os.path.join(RESUMES_DIR, candidate_file_name), "rb") as f:
+                candidate_file_bytes = f.read()
+
+    # 2. Check frontend public or dist assets if not found
+    if not candidate_file_bytes:
+        public_candidates = [
+            os.path.join(BASE_DIR, "frontend", "public", "Umesh-Temburwar-Resume.pdf"),
+            os.path.join(BASE_DIR, "frontend", "dist", "Umesh-Temburwar-Resume.pdf"),
+            os.path.join(BASE_DIR, "Umesh-Temburwar-Resume.pdf"),
+            os.path.join(BASE_DIR, "Umesh-Temburwar-OCT.pdf"),
+        ]
+        for p in public_candidates:
+            if os.path.exists(p):
+                with open(p, "rb") as f:
+                    candidate_file_bytes = f.read()
+                candidate_file_name = os.path.basename(p)
+                break
+
+    # 3. Check Supabase storage if client available
+    if not candidate_file_bytes and user_id:
+        try:
+            from services.profile_service import _get_supabase_client
+            client = _get_supabase_client()
+            if client:
+                res = client.table("resumes").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
+                if res.data and len(res.data) > 0:
+                    storage_path = res.data[0].get("storage_path")
+                    if storage_path:
+                        candidate_file_bytes = client.storage.from_("resumes").download(storage_path)
+                        candidate_file_name = res.data[0].get("file_name") or "resume.pdf"
+        except Exception as sb_err:
+            logger.debug("Supabase resume download in reparse: %s", sb_err)
+
+    if not candidate_file_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No candidate resume file found on disk or storage. Please upload a resume first.",
+        )
+
+    return parse_and_save_user_resume(
+        file_bytes=candidate_file_bytes,
+        file_name=candidate_file_name or "resume.pdf",
+        user_id=user_id,
+    )
 
 def delete_user_resume_file() -> dict[str, Any]:
     """Physically remove all uploaded resume files from data/resumes/, clear resume_path,

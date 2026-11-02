@@ -10,6 +10,7 @@ from core.config import Settings, get_settings
 from services.config_service import (
     get_full_configuration,
     parse_and_save_user_resume,
+    reparse_active_candidate_resume,
     save_user_configuration,
     delete_user_resume_file,
     reset_all_candidate_data,
@@ -95,6 +96,33 @@ async def upload_resume_and_autofill(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Failed to process and extract details from resume: {exc}",
         )
+
+
+@router.post(
+    "/resume/autofill",
+    summary="Auto-extract candidate details from active resume",
+    description="Analyze candidate's active resume file and return full structured profile data while updating training banks.",
+)
+async def autofill_from_active_resume(
+    user: Annotated[AuthenticatedUser, Depends(get_optional_user)],
+) -> dict[str, Any]:
+    """Parse active resume file and return structured profile details."""
+    try:
+        extracted = reparse_active_candidate_resume(user_id=user.id if user else None)
+        return {
+            "status": "success",
+            "message": "Resume analyzed and candidate profile auto-filled successfully!",
+            "data": extracted,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Error autofilling from active resume: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Failed to auto-fill details from active resume: {exc}",
+        )
+
 
 @router.get(
     "/resume/file",

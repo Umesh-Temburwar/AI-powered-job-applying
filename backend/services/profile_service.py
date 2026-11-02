@@ -500,11 +500,57 @@ async def autofill_profile_from_user_resume(user_id: str, resume_id: str | None 
     if not file_bytes and not parsed_structured:
         import os
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        local_pdf = os.path.join(base_dir, "Umesh-Temburwar-OCT.pdf")
-        if os.path.exists(local_pdf):
-            with open(local_pdf, "rb") as f:
-                file_bytes = f.read()
-            file_name = "Umesh-Temburwar-OCT.pdf"
+        resumes_dir = os.path.join(base_dir, "data", "resumes")
+        if os.path.exists(resumes_dir):
+            r_files = [f for f in os.listdir(resumes_dir) if f.lower().endswith((".pdf", ".docx", ".txt"))]
+            if r_files:
+                r_files.sort(key=lambda x: os.path.getmtime(os.path.join(resumes_dir, x)), reverse=True)
+                file_name = r_files[0]
+                with open(os.path.join(resumes_dir, file_name), "rb") as f:
+                    file_bytes = f.read()
+
+        if not file_bytes:
+            local_candidates = [
+                os.path.join(base_dir, "frontend", "public", "Umesh-Temburwar-Resume.pdf"),
+                os.path.join(base_dir, "frontend", "dist", "Umesh-Temburwar-Resume.pdf"),
+                os.path.join(base_dir, "Umesh-Temburwar-Resume.pdf"),
+                os.path.join(base_dir, "Umesh-Temburwar-OCT.pdf"),
+            ]
+            for p in local_candidates:
+                if os.path.exists(p):
+                    with open(p, "rb") as f:
+                        file_bytes = f.read()
+                    file_name = os.path.basename(p)
+                    break
+
+    if not file_bytes and not parsed_structured:
+        # Fallback to current profile_data.json if present
+        import os, json
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        p_json = os.path.join(base_dir, "data", "profile_data.json")
+        if os.path.exists(p_json):
+            try:
+                with open(p_json, "r", encoding="utf-8") as f:
+                    pj = json.load(f)
+                    pers = pj.get("personal", {})
+                    parsed_structured = {
+                        "full_name": pers.get("name") or f"{pers.get('firstname', '')} {pers.get('lastname', '')}".strip(),
+                        "email": pers.get("email"),
+                        "phone": pers.get("phone"),
+                        "city": pers.get("current_location"),
+                        "headline": pj.get("naukri_headline"),
+                        "summary": pj.get("profile_summary"),
+                        "skills": pj.get("key_skills", []),
+                        "education": [pj.get("education")] if pj.get("education") else [],
+                        "experience": pj.get("experience", []),
+                        "projects": pj.get("projects", []),
+                        "certifications": pj.get("certifications", []),
+                        "linkedin_url": pers.get("linkedin_url"),
+                        "github_url": pers.get("github_url"),
+                        "portfolio_url": pers.get("portfolio_url"),
+                    }
+            except Exception:
+                pass
 
     if not file_bytes and not parsed_structured:
         raise HTTPException(
@@ -542,6 +588,34 @@ async def autofill_profile_from_user_resume(user_id: str, resume_id: str | None 
 
     cleaned_updates = {k: v for k, v in updates_dict.items() if v is not None}
     cleaned_updates["updated_at"] = now_iso
+
+    # Train bot screening Q&A answer bank immediately
+    try:
+        from services.config_service import train_bot_with_candidate_details
+        names = (parsed_structured.get("full_name") or "").split()
+        fname = names[0] if names else ""
+        lname = " ".join(names[1:]) if len(names) > 1 else ""
+        edu_list = parsed_structured.get("education") or []
+        first_edu = edu_list[0] if isinstance(edu_list, list) and edu_list else (edu_list if isinstance(edu_list, dict) else {})
+        exp_list = parsed_structured.get("experience") or []
+        train_bot_with_candidate_details({
+            "user_id": user_id,
+            "firstname": fname,
+            "lastname": lname,
+            "email": parsed_structured.get("email"),
+            "phone": parsed_structured.get("phone"),
+            "location": parsed_structured.get("city") or "Pune",
+            "total_experience_years": str(len(exp_list)) if exp_list else "0",
+            "education_degree": first_edu.get("degree") or "Bachelor of Technology (B.Tech)",
+            "education_college": first_edu.get("institution") or first_edu.get("college") or "",
+            "education_passing_year": str(first_edu.get("year") or first_edu.get("passing_year") or "2025"),
+            "education_score": str(first_edu.get("score") or first_edu.get("cgpa") or ""),
+            "linkedin_url": parsed_structured.get("linkedin_url") or "",
+            "github_url": parsed_structured.get("github_url") or "",
+            "portfolio_url": parsed_structured.get("portfolio_url") or "",
+        })
+    except Exception as train_err:
+        logger.debug("Could not train bot in autofill_profile_from_user_resume: %s", train_err)
 
     if client:
         try:

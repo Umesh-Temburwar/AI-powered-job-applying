@@ -248,10 +248,131 @@ export const OnboardingPage: React.FC = () => {
   const [selectedPlatforms, setSelectedPlatforms] = useState<PlatformName[]>(['Naukri', 'Internshala']);
   const [dailyLimit, setDailyLimit] = useState(25);
 
+  const [autofillingResume, setAutofillingResume] = useState(false);
+
+  // Helper to populate all form fields across all 8 wizard steps
+  const applyOnboardingProfile = (d: any) => {
+    if (!d) return;
+    const resolvedName = d.full_name || d.name || (d.firstname && d.lastname ? `${d.firstname} ${d.lastname}` : '');
+    if (resolvedName && resolvedName !== 'Candidate') setFullName(resolvedName);
+    if (d.email) setEmail(d.email);
+    if (d.phone) setPhone(d.phone);
+    const loc = d.city || d.location || d.currentLocation || d.current_location;
+    if (loc) {
+      setCity(loc);
+      setTargetLocations((prev) => (prev.includes(loc) ? prev : [loc, ...prev]));
+    }
+    if (d.headline || d.naukri_headline) setHeadline(d.headline || d.naukri_headline);
+    if (d.summary || d.profile_summary) setSummary(d.summary || d.profile_summary);
+    if (d.linkedin_url || d.linkedinUrl) setLinkedinUrl(d.linkedin_url || d.linkedinUrl);
+    if (d.github_url || d.githubUrl) setGithubUrl(d.github_url || d.githubUrl);
+    if (d.portfolio_url !== undefined || d.portfolioUrl !== undefined) {
+      setPortfolioUrl(d.portfolio_url || d.portfolioUrl || '');
+    }
+    const sk = d.skills || d.key_skills;
+    if (sk && Array.isArray(sk) && sk.length > 0) {
+      setSkills(sk);
+      suggestRoles(sk).then((titles) => {
+        if (titles && titles.length > 0) setTargetTitles(titles);
+      });
+    }
+    if (d.keywords) {
+      const kws = typeof d.keywords === 'string'
+        ? d.keywords.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : d.keywords;
+      if (Array.isArray(kws) && kws.length > 0) setTargetTitles(kws);
+    }
+    if (d.education && Array.isArray(d.education) && d.education.length > 0) {
+      setEducationList(
+        d.education.map((e: any, idx: number) => ({
+          id: String(e.id || idx + 1),
+          degree: e.degree || 'Bachelor of Technology (B.Tech)',
+          institution: e.institution || e.college || '',
+          year: String(e.year || e.passing_year || '2025'),
+          score: e.score ? String(e.score) : (e.cgpa ? String(e.cgpa) : ''),
+        }))
+      );
+    } else if (d.education_degree || d.education_college) {
+      setEducationList([
+        {
+          id: '1',
+          degree: d.education_degree || 'Bachelor of Technology (B.Tech)',
+          institution: d.education_college || '',
+          year: d.education_passing_year || '2025',
+          score: d.education_score || '',
+        },
+      ]);
+    }
+    if (typeof d.is_fresher === 'boolean') {
+      setIsFresher(d.is_fresher);
+    }
+    if (d.experience && Array.isArray(d.experience) && d.experience.length > 0) {
+      setExperienceList(
+        d.experience.map((x: any, idx: number) => ({
+          id: String(x.id || idx + 1),
+          role: x.role || '',
+          company: x.company || x.organization || '',
+          duration: x.duration || '',
+          description: x.description || (Array.isArray(x.highlights) ? x.highlights.join('; ') : ''),
+        }))
+      );
+      if (d.is_fresher === undefined) setIsFresher(false);
+    }
+    if (d.projects && Array.isArray(d.projects) && d.projects.length > 0) {
+      setProjectsList(
+        d.projects.map((proj: any, idx: number) => ({
+          id: String(proj.id || idx + 1),
+          title: proj.title || '',
+          description: proj.description || '',
+          technologies: Array.isArray(proj.technologies) ? proj.technologies : ['React.js'],
+          url: proj.url || '',
+        }))
+      );
+    }
+    if (d.certifications && Array.isArray(d.certifications) && d.certifications.length > 0) {
+      setCertificationsList(
+        d.certifications.map((c: any, idx: number) => ({
+          id: String(c.id || idx + 1),
+          name: c.name || '',
+          issuer: c.issuer || '',
+          date: String(c.date || '2024'),
+          url: c.url || '',
+        }))
+      );
+    }
+    if (d.resume_name) setUploadedResumeName(d.resume_name);
+  };
+
+  const handleAutofillFromExistingResume = async () => {
+    try {
+      setAutofillingResume(true);
+      let applied = false;
+      try {
+        const res = await configService.autofillActiveResume();
+        if (res?.data) {
+          applyOnboardingProfile(res.data);
+          applied = true;
+        }
+      } catch (localErr) {
+        console.warn('Local bot autofill note:', localErr);
+      }
+      if (applied) {
+        showToast('✓ All fields auto-filled from your resume!', 'success');
+      } else {
+        showToast('Please upload a resume first to auto-fill details.', 'warning');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Autofill failed', 'error');
+    } finally {
+      setAutofillingResume(false);
+    }
+  };
+
   // Initialize or resume saved onboarding progress
   useEffect(() => {
+    // 1. Load from Supabase profile
     if (profile) {
-      if (profile.fullName) setFullName(profile.fullName);
+      if (profile.fullName && profile.fullName !== 'Candidate') setFullName(profile.fullName);
       if (profile.email) setEmail(profile.email);
       if (profile.phone) setPhone(profile.phone);
       if (profile.city || profile.currentLocation) setCity(profile.city || profile.currentLocation);
@@ -281,6 +402,46 @@ export const OnboardingPage: React.FC = () => {
         setCurrentStep(profile.onboardingStep);
       }
     }
+
+    // 2. Also check configService for parsed candidate fields from local bot configuration
+    configService.fetchConfig().then((cfg) => {
+      if (cfg) {
+        if (cfg.resume_name) setUploadedResumeName(cfg.resume_name);
+        const fullNameFromCfg = `${cfg.firstname || ''} ${cfg.lastname || ''}`.trim();
+        if (fullNameFromCfg && (!profile?.fullName || profile.fullName === 'Candidate')) {
+          setFullName(fullNameFromCfg);
+        }
+        if (cfg.phone && !profile?.phone) setPhone(cfg.phone);
+        if (cfg.location && !profile?.city) {
+          const loc = cfg.location.split(',')[0].trim();
+          setCity(loc);
+          setTargetLocations((prev) => (prev.includes(loc) ? prev : [loc, ...prev]));
+        }
+        if (cfg.naukri_headline && !profile?.headline) setHeadline(cfg.naukri_headline);
+        if (cfg.profile_summary && !profile?.summary) setSummary(cfg.profile_summary);
+        if (cfg.linkedin_url && !profile?.linkedinUrl) setLinkedinUrl(cfg.linkedin_url);
+        if (cfg.github_url && !profile?.githubUrl) setGithubUrl(cfg.github_url);
+        if (cfg.portfolio_url && !profile?.portfolioUrl) setPortfolioUrl(cfg.portfolio_url);
+        if (cfg.key_skills && cfg.key_skills.length > 0 && (!profile?.skills || profile.skills.length === 0)) {
+          setSkills(cfg.key_skills);
+          suggestRoles(cfg.key_skills).then((t) => {
+            if (t && t.length > 0) setTargetTitles(t);
+          });
+        }
+        if (cfg.education_degree || cfg.education_college) {
+          setEducationList((prev) => {
+            if (prev.length > 0 && prev[0].institution) return prev;
+            return [{
+              id: '1',
+              degree: cfg.education_degree || 'Bachelor of Technology (B.Tech)',
+              institution: cfg.education_college || '',
+              year: cfg.education_passing_year || '2025',
+              score: cfg.education_score || '',
+            }];
+          });
+        }
+      }
+    }).catch(() => {});
   }, [profile]);
 
   // Sync preferences
@@ -313,86 +474,23 @@ export const OnboardingPage: React.FC = () => {
       setUploadingResume(true);
       const res = await uploadResume(file, true);
       setUploadedResumeName(file.name);
-      configService.uploadResumeAutofill(file).catch(() => {});
+
+      // Async sync to local bot resume parser
+      configService.uploadResumeAutofill(file).then((localRes) => {
+        if (localRes?.data) {
+          applyOnboardingProfile(localRes.data);
+        }
+      }).catch(() => {});
 
       if (res.ocr_needed) {
         setOcrWarning('Scanned document detected. Digital text was limited, so please review fields in the next steps.');
       }
 
-      const p = res.parsed_profile;
-      if (p.full_name) setFullName(p.full_name);
-      if (p.email) setEmail(p.email);
-      if (p.phone) setPhone(p.phone);
-      if (p.city) setCity(p.city);
-      if (p.headline) setHeadline(p.headline);
-      if (p.summary) setSummary(p.summary);
-      if (p.linkedin_url !== undefined) setLinkedinUrl(p.linkedin_url || '');
-      if (p.github_url !== undefined) setGithubUrl(p.github_url || '');
-      setPortfolioUrl(p.portfolio_url || '');
-      if (p.skills && p.skills.length > 0) {
-        setSkills(p.skills);
-        // Suggest roles from extracted skills
-        suggestRoles(p.skills).then((titles) => {
-          if (titles.length > 0) setTargetTitles(titles);
-        });
-      }
-      if (p.education && p.education.length > 0) {
-        setEducationList(
-          p.education.map((e, idx) => ({
-            id: String(idx + 1),
-            degree: e.degree || 'Bachelor of Technology (B.Tech)',
-            institution: e.institution || '',
-            year: e.year || '2025',
-            score: e.score || '',
-          }))
-        );
-      } else {
-        setEducationList([
-          {
-            id: '1',
-            degree: 'Bachelor of Technology (B.Tech)',
-            institution: '',
-            year: '2025',
-            score: '',
-          },
-        ]);
-      }
-      if (p.experience && p.experience.length > 0) {
-        setExperienceList(
-          p.experience.map((x, idx) => ({
-            id: String(idx + 1),
-            role: x.role,
-            company: x.company,
-            duration: x.duration || '',
-            description: x.description || '',
-          }))
-        );
-        setIsFresher(false);
-      }
-      if (p.projects && p.projects.length > 0) {
-        setProjectsList(
-          p.projects.map((proj, idx) => ({
-            id: String(idx + 1),
-            title: proj.title,
-            description: proj.description,
-            technologies: proj.technologies || [],
-            url: proj.url,
-          }))
-        );
-      }
-      if (p.certifications && p.certifications.length > 0) {
-        setCertificationsList(
-          p.certifications.map((c, idx) => ({
-            id: String(idx + 1),
-            name: c.name,
-            issuer: c.issuer,
-            date: c.date,
-            url: c.url,
-          }))
-        );
+      if (res.parsed_profile) {
+        applyOnboardingProfile(res.parsed_profile);
       }
 
-      showToast(`Resume parsed successfully! Extracted ${res.extracted_skills_count || (p.skills ? p.skills.length : 0)} skills.`, 'success');
+      showToast(`Resume "${file.name}" uploaded and parsed successfully!`, 'success');
       goToStep(1);
     } catch (err) {
       setValidationError(err instanceof Error ? err.message : 'Failed to parse resume file.');
@@ -506,6 +604,29 @@ export const OnboardingPage: React.FC = () => {
       } catch (profErr) {
         console.warn('Progress profile save notice:', profErr);
       }
+
+      // Intermediate sync to local bot config and training banks
+      const nameParts = (fullName || '').trim().split(' ');
+      const fname = nameParts[0] || '';
+      const lname = nameParts.slice(1).join(' ') || '';
+      configService.saveConfig({
+        firstname: fname,
+        lastname: lname,
+        phone,
+        email,
+        location: city,
+        naukri_headline: headline,
+        profile_summary: summary,
+        linkedin_url: linkedinUrl,
+        github_url: githubUrl,
+        portfolio_url: portfolioUrl,
+        education_degree: educationList[0]?.degree || '',
+        education_college: educationList[0]?.institution || '',
+        education_passing_year: educationList[0]?.year || '2025',
+        education_score: educationList[0]?.score || '',
+        key_skills: skills,
+        is_fresher: isFresher,
+      }).catch(() => {});
 
       if (nextStep <= 7) {
         goToStep(nextStep);
@@ -805,14 +926,26 @@ export const OnboardingPage: React.FC = () => {
                   <span className="font-semibold">{uploadedResumeName}</span>
                   <span className="text-emerald-400/80">— Parsed successfully</span>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs"
-                >
-                  Upload Different File
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAutofillFromExistingResume}
+                    disabled={autofillingResume}
+                    leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-400" />}
+                    className="text-xs bg-amber-500/10 border-amber-500/40 text-amber-300 hover:bg-amber-500/20"
+                  >
+                    {autofillingResume ? 'Analyzing...' : '⚡ Auto-Fill Fields'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-xs"
+                  >
+                    Upload Different File
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -847,10 +980,24 @@ export const OnboardingPage: React.FC = () => {
         {/* Step 1: Personal Information */}
         {currentStep === 1 && (
           <Card className="p-6 space-y-6">
-            <CardHeader
-              title="Personal Information"
-              subtitle="Contact coordinates used to introduce you to employer portals."
-            />
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/50">
+              <div>
+                <h2 className="text-lg font-semibold text-theme-primary">Personal Information</h2>
+                <p className="text-xs text-muted-foreground">Contact coordinates used to introduce you to employer portals.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAutofillFromExistingResume}
+                disabled={autofillingResume}
+                leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-400" />}
+                className="text-xs bg-amber-500/10 border-amber-500/40 text-amber-300 hover:bg-amber-500/20"
+                title="Re-extract and auto-fill details from your resume"
+              >
+                {autofillingResume ? 'Analyzing Resume...' : '⚡ Auto-Fill from Resume'}
+              </Button>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input

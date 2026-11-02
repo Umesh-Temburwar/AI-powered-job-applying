@@ -70,6 +70,8 @@ export interface ResumeAutofillData {
   phone: string;
   city: string;
   headline: string;
+  summary?: string;
+  cover_letter?: string;
   keywords: string;
   skills: string[];
   education: any[];
@@ -84,6 +86,11 @@ export interface ResumeAutofillData {
   education_passing_year?: string;
   education_score?: string;
   total_experience_years?: string;
+  is_fresher?: boolean;
+  notice_period?: string;
+  work_mode?: string;
+  willing_to_relocate?: string;
+  work_authorization?: string;
 }
 
 async function getAuthHeader(): Promise<Record<string, string>> {
@@ -124,6 +131,14 @@ export const configService = {
       method: 'POST',
       headers,
       body: formData,
+    });
+  },
+
+  async autofillActiveResume(): Promise<{ status: string; message: string; data: ResumeAutofillData }> {
+    const headers = await getAuthHeader();
+    return apiClient<{ status: string; message: string; data: ResumeAutofillData }>('/api/v1/config/resume/autofill', {
+      method: 'POST',
+      headers,
     });
   },
 

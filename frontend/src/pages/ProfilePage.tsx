@@ -254,6 +254,137 @@ export const ProfilePage: React.FC = () => {
   const [certModalOpen, setCertModalOpen] = useState(false);
   const [newCert, setNewCert] = useState({ name: '', issuer: '', date: '', url: '' });
 
+  // Comprehensive Auto-Fill: Updates all candidate form fields across the entire profile page
+  const applyExtractedProfile = (d: any) => {
+    if (!d) return;
+    if (d.firstname) setFirstname(d.firstname);
+    if (d.lastname) setLastname(d.lastname);
+    if (d.full_name && (!d.firstname || !d.lastname)) {
+      const parts = d.full_name.trim().split(' ');
+      setFirstname(parts[0] || '');
+      setLastname(parts.slice(1).join(' ') || '');
+    }
+    if (d.email) setEmail(d.email);
+    if (d.phone) setPhone(d.phone);
+    if (d.gender) setGender(d.gender);
+
+    const cityLoc = d.city || d.currentLocation || d.current_location;
+    if (cityLoc) {
+      setCurrentCity(cityLoc);
+      setLocationList((prev) => (prev.includes(cityLoc) ? prev : [cityLoc, ...prev]));
+    }
+
+    if (d.headline) setHeadline(d.headline);
+    if (d.summary) setSummary(d.summary);
+    if (d.cover_letter) setCoverLetter(d.cover_letter);
+
+    if (d.linkedin_url || d.linkedinUrl) setLinkedinUrl(d.linkedin_url || d.linkedinUrl);
+    if (d.github_url || d.githubUrl) setGithubUrl(d.github_url || d.githubUrl);
+    if (d.portfolio_url !== undefined || d.portfolioUrl !== undefined) {
+      setPortfolioUrl(d.portfolio_url || d.portfolioUrl || '');
+    }
+
+    if (d.skills && Array.isArray(d.skills) && d.skills.length > 0) {
+      setSkills(d.skills);
+      suggestRoles(d.skills).then((roles) => {
+        if (roles && roles.length > 0) {
+          setKeywordList((prev) => Array.from(new Set([...prev, ...roles])));
+        }
+      });
+    }
+
+    if (d.keywords) {
+      const kws = typeof d.keywords === 'string'
+        ? d.keywords.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : d.keywords;
+      if (Array.isArray(kws) && kws.length > 0) {
+        setKeywordList((prev) => Array.from(new Set([...prev, ...kws])));
+      }
+    }
+
+    if (d.education_degree) setEducationDegree(d.education_degree);
+    if (d.education_college) setEducationCollege(d.education_college);
+    if (d.education_passing_year) setEducationPassingYear(String(d.education_passing_year));
+    if (d.education_score) setEducationScore(String(d.education_score));
+
+    if (d.education && Array.isArray(d.education) && d.education.length > 0) {
+      const mappedEdu: EducationItem[] = d.education.map((e: any, idx: number) => ({
+        id: String(e.id || idx + 1),
+        degree: e.degree || 'Bachelor of Technology (B.Tech)',
+        institution: e.institution || e.college || '',
+        year: String(e.year || e.passing_year || '2025'),
+        score: e.score ? String(e.score) : (e.cgpa ? String(e.cgpa) : ''),
+      }));
+      setEducation(mappedEdu);
+      if (!d.education_degree && mappedEdu[0]?.degree) setEducationDegree(mappedEdu[0].degree);
+      if (!d.education_college && mappedEdu[0]?.institution) setEducationCollege(mappedEdu[0].institution);
+      if (!d.education_passing_year && mappedEdu[0]?.year) setEducationPassingYear(mappedEdu[0].year);
+      if (!d.education_score && mappedEdu[0]?.score) setEducationScore(mappedEdu[0].score);
+    }
+
+    if (typeof d.is_fresher === 'boolean') {
+      setIsFresher(d.is_fresher);
+      if (d.is_fresher) {
+        setTotalExperience('0');
+        setRelevantExperience('0');
+      }
+    } else if (d.experience && Array.isArray(d.experience)) {
+      const fresherCheck = d.experience.length === 0;
+      setIsFresher(fresherCheck);
+      if (fresherCheck) {
+        setTotalExperience('0');
+        setRelevantExperience('0');
+      }
+    }
+
+    if (d.total_experience_years !== undefined) setTotalExperience(String(d.total_experience_years));
+    if (d.relevant_experience_years !== undefined) setRelevantExperience(String(d.relevant_experience_years));
+
+    if (d.experience && Array.isArray(d.experience) && d.experience.length > 0) {
+      const mappedExp: ExperienceItem[] = d.experience.map((x: any, idx: number) => ({
+        id: String(x.id || idx + 1),
+        role: x.role || '',
+        company: x.company || x.organization || '',
+        duration: x.duration || '',
+        description: x.description || (Array.isArray(x.highlights) ? x.highlights.join('; ') : ''),
+      }));
+      setExperience(mappedExp);
+    }
+
+    if (d.projects && Array.isArray(d.projects) && d.projects.length > 0) {
+      const mappedProj: ProjectItem[] = d.projects.map((proj: any, idx: number) => ({
+        id: String(proj.id || idx + 1),
+        title: proj.title || '',
+        description: proj.description || '',
+        technologies: Array.isArray(proj.technologies)
+          ? proj.technologies
+          : (typeof proj.technologies === 'string'
+              ? proj.technologies.split(',').map((s: string) => s.trim())
+              : ['React.js']),
+        url: proj.url || '',
+      }));
+      setProjects(mappedProj);
+    }
+
+    if (d.certifications && Array.isArray(d.certifications) && d.certifications.length > 0) {
+      const mappedCert: CertificationItem[] = d.certifications.map((c: any, idx: number) => ({
+        id: String(c.id || idx + 1),
+        name: c.name || '',
+        issuer: c.issuer || '',
+        date: String(c.date || '2024'),
+        url: c.url || '',
+      }));
+      setCertifications(mappedCert);
+    }
+
+    if (d.notice_period) setNoticePeriod(d.notice_period);
+    if (d.work_mode) setWorkMode(d.work_mode);
+    if (d.willing_to_relocate) setWillingToRelocate(d.willing_to_relocate);
+    if (d.work_authorization) setWorkAuthorization(d.work_authorization);
+
+    setIsDirty(true);
+  };
+
   // Initial load from bot .env config and Supabase profile
   const loadData = async () => {
     try {
@@ -336,10 +467,12 @@ export const ProfilePage: React.FC = () => {
   // Sync Supabase profile data if available
   useEffect(() => {
     if (profile) {
-      if (profile.fullName && (!firstname || !lastname)) {
+      if (profile.fullName && (!firstname || !lastname || firstname === 'Candidate')) {
         const parts = profile.fullName.trim().split(' ');
-        if (!firstname) setFirstname(parts[0] || '');
-        if (!lastname) setLastname(parts.slice(1).join(' ') || '');
+        if (parts[0] && parts[0] !== 'Candidate') {
+          setFirstname(parts[0] || '');
+          setLastname(parts.slice(1).join(' ') || '');
+        }
       }
       if (profile.email && !email) setEmail(profile.email);
       if (profile.phone && !phone) setPhone(profile.phone);
@@ -350,8 +483,10 @@ export const ProfilePage: React.FC = () => {
       }
       if (profile.headline && !headline) setHeadline(profile.headline);
       if (profile.summary && !summary) setSummary(profile.summary);
-      if (profile.skills && profile.skills.length > 0 && skills.length === 0) setSkills(profile.skills);
-      if (profile.education && profile.education.length > 0) {
+      if (profile.skills && profile.skills.length > 0 && (skills.length === 0 || profile.skills.length > skills.length)) {
+        setSkills(profile.skills);
+      }
+      if (profile.education && profile.education.length > 0 && (education.length === 0 || profile.education.length > education.length)) {
         setEducation(profile.education);
         if (!educationCollege && profile.education[0]?.institution) {
           setEducationCollege(profile.education[0].institution);
@@ -359,12 +494,24 @@ export const ProfilePage: React.FC = () => {
         if (!educationDegree && profile.education[0]?.degree) {
           setEducationDegree(profile.education[0].degree);
         }
+        if (!educationPassingYear && profile.education[0]?.year) {
+          setEducationPassingYear(profile.education[0].year);
+        }
+        if (!educationScore && profile.education[0]?.score) {
+          setEducationScore(profile.education[0].score);
+        }
       }
-      if (profile.experience && profile.experience.length > 0) setExperience(profile.experience);
-      if (profile.projects && profile.projects.length > 0) setProjects(profile.projects);
-      if (profile.certifications && profile.certifications.length > 0) setCertifications(profile.certifications);
+      if (profile.experience && profile.experience.length > 0 && (experience.length === 0 || profile.experience.length > experience.length)) {
+        setExperience(profile.experience);
+      }
+      if (profile.projects && profile.projects.length > 0 && (projects.length === 0 || profile.projects.length > projects.length)) {
+        setProjects(profile.projects);
+      }
+      if (profile.certifications && profile.certifications.length > 0 && (certifications.length === 0 || profile.certifications.length > certifications.length)) {
+        setCertifications(profile.certifications);
+      }
       if (profile.additionalInfo) {
-        if (profile.additionalInfo.work_authorization) {
+        if (profile.additionalInfo.work_authorization && !workAuthorization) {
           setWorkAuthorization(profile.additionalInfo.work_authorization);
         }
         if (typeof profile.additionalInfo.is_fresher === 'boolean') {
@@ -629,29 +776,19 @@ export const ProfilePage: React.FC = () => {
       setUploadProgress(100);
 
       // 3. Extract and autofill candidate profile
+      if (autofillRes?.data) {
+        applyExtractedProfile(autofillRes.data);
+      }
+      if (sbRes?.parsed_profile) {
+        applyExtractedProfile(sbRes.parsed_profile);
+      }
       if (sbRes?.resume?.id) {
         try {
-          await autofillProfile(sbRes.resume.id);
+          const upProf = await autofillProfile(sbRes.resume.id);
+          if (upProf) applyExtractedProfile(upProf);
         } catch {
           // ignore
         }
-      } else if (autofillRes?.data) {
-        const d = autofillRes.data;
-        if (d.firstname) setFirstname(d.firstname);
-        if (d.lastname) setLastname(d.lastname);
-        if (d.email) setEmail(d.email);
-        if (d.phone) setPhone(d.phone);
-        if (d.city) {
-          setCurrentCity(d.city);
-          setLocationList((prev) => (prev.includes(d.city) ? prev : [d.city, ...prev]));
-        }
-        if (d.headline) setHeadline(d.headline);
-        if (d.skills && d.skills.length > 0) setSkills(d.skills);
-        if (d.linkedin_url) setLinkedinUrl(d.linkedin_url);
-        if (d.github_url) setGithubUrl(d.github_url);
-        if (d.portfolio_url) setPortfolioUrl(d.portfolio_url);
-        if (d.education_degree) setEducationDegree(d.education_degree);
-        if (d.education_college) setEducationCollege(d.education_college);
       }
 
       setLocalResumeName(file.name);
@@ -917,40 +1054,37 @@ export const ProfilePage: React.FC = () => {
     try {
       setAutofilling(true);
       playRetroSound('click');
-      const updated = await autofillProfile();
-      if (updated) {
-        if (updated.fullName) {
-          const parts = updated.fullName.trim().split(' ');
-          setFirstname(parts[0] || '');
-          setLastname(parts.slice(1).join(' ') || '');
+      let applied = false;
+
+      // 1. Deep extraction from local bot resume parser & sync
+      try {
+        const res = await configService.autofillActiveResume();
+        if (res?.data) {
+          applyExtractedProfile(res.data);
+          applied = true;
         }
-        if (updated.email) setEmail(updated.email);
-        if (updated.phone) setPhone(updated.phone);
-        if (updated.city || updated.currentLocation) {
-          const loc = updated.city || updated.currentLocation;
-          setCurrentCity(loc);
-          if (loc && !locationList.includes(loc)) setLocationList((prev) => [loc, ...prev]);
-        }
-        if (updated.headline) setHeadline(updated.headline);
-        if (updated.summary) setSummary(updated.summary);
-        if (updated.skills && updated.skills.length > 0) setSkills(updated.skills);
-        if (updated.education && updated.education.length > 0) {
-          setEducation(updated.education);
-          if (updated.education[0]?.institution) setEducationCollege(updated.education[0].institution);
-          if (updated.education[0]?.degree) setEducationDegree(updated.education[0].degree);
-          if (updated.education[0]?.year) setEducationPassingYear(updated.education[0].year);
-        }
-        if (updated.experience && updated.experience.length > 0) setExperience(updated.experience);
-        if (updated.projects && updated.projects.length > 0) setProjects(updated.projects);
-        if (updated.certifications && updated.certifications.length > 0) setCertifications(updated.certifications);
-        if (updated.linkedinUrl) setLinkedinUrl(updated.linkedinUrl);
-        if (updated.githubUrl) setGithubUrl(updated.githubUrl);
-        if (updated.portfolioUrl) setPortfolioUrl(updated.portfolioUrl);
-        setIsDirty(true);
+      } catch (localErr) {
+        console.warn('Local bot autofill note:', localErr);
       }
-      playRetroSound('success');
-      showToast('✓ Profile successfully autofilled from resume!', 'success');
-    } catch (err) {
+
+      // 2. Also run Supabase profile autofill
+      try {
+        const updated = await autofillProfile();
+        if (updated) {
+          applyExtractedProfile(updated);
+          applied = true;
+        }
+      } catch (sbErr) {
+        console.warn('Supabase profile autofill note:', sbErr);
+      }
+
+      if (applied) {
+        playRetroSound('success');
+        showToast('✓ Candidate profile auto-filled from resume and trained into bot!', 'success');
+      } else {
+        showToast('Please upload a resume first to auto-fill details.', 'warning');
+      }
+    } catch (err: any) {
       playRetroSound('error');
       showToast(err instanceof Error ? err.message : 'Autofill failed', 'error');
     } finally {
@@ -1312,7 +1446,7 @@ export const ProfilePage: React.FC = () => {
 
       {/* SECTION 1: CANDIDATE IDENTITY & CONTACT */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 bg-black text-white text-xs font-mono font-bold flex items-center justify-center">
               1
@@ -1321,7 +1455,21 @@ export const ProfilePage: React.FC = () => {
               Personal & Contact Details (Syncs to .env & Profiles)
             </h2>
           </div>
-          <span className="text-[11px] text-[var(--text-secondary)] font-mono">Application Identity</span>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAutofillFromResume}
+              disabled={autofilling}
+              leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-400" />}
+              className="text-xs font-mono bg-amber-500/10 border-amber-500/40 text-amber-300 hover:bg-amber-500/20"
+              title="Auto-Fill all form fields from uploaded resume"
+            >
+              {autofilling ? 'Analyzing Resume...' : '⚡ Auto-Fill from Resume'}
+            </Button>
+            <span className="text-[11px] text-[var(--text-secondary)] font-mono hidden sm:inline">Application Identity</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
