@@ -15,12 +15,10 @@ import {
   Code2,
   BookOpen,
   ShieldAlert,
-  Volume2,
-  VolumeX,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { isSoundEnabled, toggleSound, playRetroSound } from '../utils/soundEffects';
+import { playRetroSound } from '../utils/soundEffects';
 
 export const LandingPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -34,7 +32,6 @@ export const LandingPage: React.FC = () => {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [soundOn, setSoundOn] = useState(() => isSoundEnabled());
 
   // Forward incoming email verification, recovery code, or OAuth callback directly to AuthCallbackPage
   useEffect(() => {
@@ -53,10 +50,7 @@ export const LandingPage: React.FC = () => {
     }
   }, [navigate]);
 
-  const handleSoundToggle = () => {
-    const next = toggleSound();
-    setSoundOn(next);
-  };
+
 
   // Called when user clicks "Sign In" or "Dashboard" on home page
   const handleLoginTrigger = () => {
@@ -258,52 +252,7 @@ export const LandingPage: React.FC = () => {
 
           {/* Navigation Controls */}
           <div className="flex items-center gap-3">
-            <a
-              href="#architect"
-              className={`hidden sm:inline-block font-mono text-[13px] uppercase font-bold hover:underline ${theme === 'dark' ? 'text-[#10B981]' : 'text-[#15803D]'}`}
-            >
-              [Creator]
-            </a>
 
-            <a
-              href="#console"
-              className={`hidden md:inline-block font-mono text-[13px] uppercase hover:underline ${theme === 'dark' ? 'text-[#A1A1AA]' : 'text-[#52525B]'}`}
-            >
-              [Terminal]
-            </a>
-
-            <a
-              href="#guide"
-              className={`hidden sm:inline-block font-mono text-[13px] uppercase font-bold hover:underline ${theme === 'dark' ? 'text-[#10B981]' : 'text-[#15803D]'}`}
-            >
-              [Guide]
-            </a>
-
-            <a
-              href="#portals"
-              className={`hidden md:inline-block font-mono text-[13px] uppercase hover:underline ${theme === 'dark' ? 'text-[#A1A1AA]' : 'text-[#52525B]'}`}
-            >
-              [Portals]
-            </a>
-
-            {/* Retro Sound FX Toggle */}
-            <button
-              type="button"
-              onClick={handleSoundToggle}
-              className={`p-2 border-2 ${soundOn
-                ? theme === 'dark'
-                  ? 'border-[#10B981] bg-[#141A26] text-[#10B981]'
-                  : 'border-[#18181B] bg-emerald-50 text-emerald-800'
-                : theme === 'dark'
-                  ? 'border-[#2E384D] bg-[#141A26] text-zinc-500'
-                  : 'border-[#18181B] bg-zinc-100 text-zinc-500'
-                } retro-shadow-sm transition-all cursor-pointer`}
-              title={`Sound Effects: ${soundOn ? 'ACTIVE (Click to mute)' : 'MUTED (Click to activate)'}`}
-              aria-label="Toggle audio effects"
-              data-sound="toggle"
-            >
-              {soundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
 
             {/* High-Contrast Theme Toggle */}
             <button
@@ -640,18 +589,12 @@ export const LandingPage: React.FC = () => {
                       </div>
 
                       {/* Direct Navigation Links */}
-                      <div className="pt-2 border-t border-dashed border-current/20 flex items-center justify-between text-[10px]">
-                        <Link
-                          to="/login"
-                          className="hover:underline opacity-80 hover:opacity-100"
-                        >
-                          → Dedicated Login
-                        </Link>
+                      <div className="pt-2 border-t border-dashed border-current/20 flex items-center justify-end text-[10px]">
                         <Link
                           to="/register"
-                          className="hover:underline opacity-80 hover:opacity-100"
+                          className="hover:underline opacity-80 hover:opacity-100 font-bold text-emerald-600 dark:text-emerald-400"
                         >
-                          → Register New
+                          Need an account? Register New →
                         </Link>
                       </div>
                     </div>

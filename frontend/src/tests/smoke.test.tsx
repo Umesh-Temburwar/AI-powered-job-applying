@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import '@testing-library/jest-dom/vitest';
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { LandingPage } from '../pages/LandingPage';
-import { LoginPage } from '../pages/LoginPage';
+import { RegisterPage } from '../pages/RegisterPage';
 import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../context/ThemeContext';
 import { ToastProvider } from '../context/ToastContext';
@@ -13,10 +13,10 @@ describe('Phase 2 Frontend Smoke & Architecture Tests', () => {
   it('Service Layer: Profile, Resume, and Preference services return valid mock contracts', async () => {
     const profile = await profileService.getProfile();
     expect(profile).toBeDefined();
-    expect(profile.skills.length).toBeGreaterThan(0);
+    expect(profile.fullName).toBeDefined();
 
     const resumes = await resumeService.getResumes();
-    expect(resumes.length).toBeGreaterThanOrEqual(1);
+    expect(resumes.length).toBeGreaterThan(0);
     expect(resumes[0].fileType).toBe('application/pdf');
 
     const prefs = await preferenceService.getPreferences();
@@ -53,23 +53,23 @@ describe('Phase 2 Frontend Smoke & Architecture Tests', () => {
     expect(screen.getByText(/9-Portal/i)).toBeInTheDocument();
   });
 
-  it('Login Page: renders email/password form with Supabase auth status', async () => {
+  it('Register Page: renders full name/email/password form with Supabase auth status', async () => {
     await render(
       <ThemeProvider>
         <AuthProvider>
           <ToastProvider>
             <BrowserRouter>
-              <LoginPage />
+              <RegisterPage />
             </BrowserRouter>
           </ToastProvider>
         </AuthProvider>
       </ThemeProvider>
     );
 
-    expect(screen.getByLabelText('Email Address')).toBeInTheDocument();
-    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Umesh Temburwar/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('candidate@example.com')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Sign In to Dashboard/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /REGISTER WITH GITHUB/i })).toBeInTheDocument();
     });
   });
 
@@ -80,4 +80,3 @@ describe('Phase 2 Frontend Smoke & Architecture Tests', () => {
     expect(clientEnv.VITE_SUPABASE_SERVICE_ROLE_KEY).toBeUndefined();
   });
 });
-

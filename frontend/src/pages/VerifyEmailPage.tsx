@@ -367,7 +367,7 @@ export const VerifyEmailPage: React.FC = () => {
           {/* Footer Links */}
           <div className="pt-4 border-t-2 border-dashed border-zinc-300 dark:border-zinc-800 flex items-center justify-between text-xs font-mono">
             <Link
-              to="/login"
+              to="/"
               className="inline-flex items-center gap-1.5 font-bold hover:underline text-zinc-700 dark:text-zinc-300"
             >
               <ArrowLeft className="w-3.5 h-3.5" />

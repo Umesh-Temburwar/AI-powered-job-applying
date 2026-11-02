@@ -232,7 +232,7 @@ export const RegisterPage: React.FC = () => {
           <div className={`pt-4 border-t-2 ${theme === 'dark' ? 'border-[#2E384D]' : 'border-[#18181B]'} flex items-center justify-between font-mono text-[12px]`}>
             <span className="opacity-70">Already have an account?</span>
             <Link
-              to="/login"
+              to="/"
               className={`font-bold underline ${theme === 'dark' ? 'text-[#10B981]' : 'text-[#15803D]'}`}
             >
               [SIGN_IN_HERE]

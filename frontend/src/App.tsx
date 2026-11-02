@@ -7,7 +7,6 @@ import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 
 import { LandingPage } from './pages/LandingPage';
-import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
@@ -38,7 +37,7 @@ export function App() {
               <Routes>
                 {/* Public Marketing & Auth Routes */}
                 <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<LoginPage />} />
+                <Route path="/login" element={<Navigate to="/" replace />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/verify-email" element={<VerifyEmailPage />} />
                 <Route path="/auth/confirm" element={<AuthCallbackPage />} />

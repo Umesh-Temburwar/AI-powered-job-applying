@@ -403,7 +403,7 @@ export const AuthCallbackPage: React.FC = () => {
               </form>
 
               <div className="pt-3 border-t border-theme/50 text-xs text-theme-secondary">
-                <Link to="/login" className="text-[var(--accent)] hover:underline font-semibold">
+                <Link to="/" className="text-[var(--accent)] hover:underline font-semibold">
                   Back to sign in
                 </Link>
               </div>
@@ -431,7 +431,7 @@ export const AuthCallbackPage: React.FC = () => {
                     Go to email verification screen
                   </Button>
                 </Link>
-                <Link to="/login" className="block w-full">
+                <Link to="/" className="block w-full">
                   <Button variant="outline" className="w-full">
                     Back to sign in
                   </Button>
@@ -465,7 +465,7 @@ export const AuthCallbackPage: React.FC = () => {
                   Retry verification
                 </Button>
 
-                <Link to="/login" className="block w-full">
+                <Link to="/" className="block w-full">
                   <Button variant="outline" className="w-full">
                     Return to sign in
                   </Button>

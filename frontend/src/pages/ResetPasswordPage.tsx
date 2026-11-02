@@ -128,7 +128,7 @@ export const ResetPasswordPage: React.FC = () => {
                 <Button
                   variant="primary"
                   className="w-full"
-                  onClick={() => navigate(user ? '/dashboard' : '/login')}
+                  onClick={() => navigate(user ? '/dashboard' : '/')}
                 >
                   {user ? 'Continue to Dashboard' : 'Proceed to Sign In'}
                 </Button>
@@ -187,7 +187,7 @@ export const ResetPasswordPage: React.FC = () => {
 
               <div className="pt-2 text-center">
                 <Link
-                  to="/login"
+                  to="/"
                   className="inline-flex items-center gap-1.5 text-xs text-theme-secondary hover:text-theme-primary transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -209,7 +209,7 @@ export const ResetPasswordPage: React.FC = () => {
                 <span className="text-theme-primary font-medium">{email}</span>. Please check your inbox or spam folder.
               </p>
               <div className="pt-2">
-                <Link to="/login">
+                <Link to="/">
                   <Button variant="primary" className="w-full">
                     Return to Sign In
                   </Button>
@@ -246,7 +246,7 @@ export const ResetPasswordPage: React.FC = () => {
 
               <div className="pt-2 text-center">
                 <Link
-                  to="/login"
+                  to="/"
                   className="inline-flex items-center gap-1.5 text-xs text-theme-secondary hover:text-theme-primary transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />

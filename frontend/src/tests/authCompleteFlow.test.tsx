@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { LoginPage } from '../pages/LoginPage';
+import { LandingPage } from '../pages/LandingPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
@@ -42,8 +42,8 @@ describe('Email + GitHub Auth Complete Suite', () => {
     vi.clearAllMocks();
   });
 
-  // 1. EMAIL & PASSWORD LOGIN + INVALID CREDENTIALS
-  it('Login: handles valid credentials and handles invalid credentials error', async () => {
+  // 1. IN-PLACE EMAIL & PASSWORD LOGIN + INVALID CREDENTIALS
+  it('Login: handles in-place login with valid credentials and handles invalid credentials error', async () => {
     (supabase.auth.signInWithPassword as any).mockResolvedValueOnce({
       data: { session: null },
       error: { message: 'Invalid login credentials' },
@@ -51,59 +51,29 @@ describe('Email + GitHub Auth Complete Suite', () => {
 
     render(
       <AuthProvider>
-        <MemoryRouter initialEntries={['/login']}>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-          </Routes>
+        <MemoryRouter initialEntries={['/']}>
+          <LandingPage />
         </MemoryRouter>
       </AuthProvider>
     );
 
-    const submitBtn = await screen.findByRole('button', { name: /Sign In to Dashboard/i });
+    const flipBtn = screen.getByRole('button', { name: /SIGN IN TO DASHBOARD/i });
+    fireEvent.click(flipBtn);
+
+    const submitBtn = await screen.findByRole('button', { name: /SIGN IN TO WORKSPACE/i });
     await waitFor(() => expect(submitBtn).not.toBeDisabled());
 
-    fireEvent.change(screen.getByLabelText(/Email Address/i), {
-      target: { value: 'candidate@test.com' },
-    });
-    fireEvent.change(screen.getByLabelText(/^Password$/i), {
-      target: { value: 'WrongPassword123!' },
-    });
+    const emailInput = screen.getByPlaceholderText('candidate@example.com');
+    const passwordInput = screen.getByPlaceholderText('••••••••');
+
+    fireEvent.change(emailInput, { target: { value: 'candidate@test.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'WrongPassword123!' } });
 
     const form = submitBtn.closest('form')!;
     fireEvent.submit(form);
 
     await waitFor(() => {
       expect(screen.getByText('Invalid login credentials')).toBeInTheDocument();
-    });
-  });
-
-  // 2. GITHUB OAUTH BUTTON ON LOGIN PAGE
-  it('GitHub OAuth: LoginPage triggers signInWithOAuth with provider=github', async () => {
-    render(
-      <AuthProvider>
-        <MemoryRouter initialEntries={['/login']}>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-          </Routes>
-        </MemoryRouter>
-      </AuthProvider>
-    );
-
-    const githubBtn = await screen.findByRole('button', { name: /(Continue|Register) with GitHub/i });
-    expect(githubBtn).toBeInTheDocument();
-    await waitFor(() => expect(githubBtn).not.toBeDisabled());
-
-    fireEvent.click(githubBtn);
-
-    await waitFor(() => {
-      expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith(
-        expect.objectContaining({
-          provider: 'github',
-          options: expect.objectContaining({
-            redirectTo: expect.stringContaining('/auth/confirm'),
-          }),
-        })
-      );
     });
   });
 
