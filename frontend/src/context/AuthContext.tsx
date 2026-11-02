@@ -2,6 +2,19 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type { AuthUser, AuthSession } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
+/**
+ * Safely resolves the environment-aware app origin for Supabase redirects:
+ * - In local browser: 'http://localhost:5173' (or current local port)
+ * - In production: 'https://universal-job-apply-bot.vercel.app'
+ * - Fallback: canonical production origin
+ */
+export const getAppOrigin = (): string => {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return import.meta.env?.VITE_APP_URL || 'https://universal-job-apply-bot.vercel.app';
+};
+
 interface RegisterResult {
   needsEmailVerification: boolean;
 }
@@ -184,10 +197,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Supabase client is not configured.');
     }
 
+    const redirectUrl = `${getAppOrigin()}/`;
     const { data, error: regErr } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
+        emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName.trim(),
         },
@@ -230,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: `${window.location.origin}/auth/confirm`,
+        redirectTo: `${getAppOrigin()}/auth/confirm`,
       },
     });
 
@@ -246,9 +261,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Supabase client is not configured.');
     }
 
+    const redirectUrl = `${getAppOrigin()}/`;
     const { error: resendErr } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim(),
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
     });
 
     if (resendErr) {
@@ -266,7 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Supabase is not configured.');
     }
 
-    const redirectUrl = `${window.location.origin}/reset-password`;
+    const redirectUrl = `${getAppOrigin()}/reset-password`;
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: redirectUrl,
     });

@@ -134,6 +134,52 @@ describe('Email + GitHub Auth Complete Suite', () => {
     });
   });
 
+  // 3b. EMAIL SIGNUP: PASSES ENVIRONMENT-AWARE emailRedirectTo
+  it('Email Signup: invokes supabase.auth.signUp with environment-aware emailRedirectTo', async () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/register']}>
+          <Routes>
+            <Route path="/register" element={<RegisterPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    const submitBtn = await screen.findByRole('button', { name: /^CREATE ACCOUNT$/i });
+    await waitFor(() => expect(submitBtn).not.toBeDisabled());
+
+    fireEvent.change(screen.getByPlaceholderText('Umesh Temburwar'), {
+      target: { value: 'Alex Vance' },
+    });
+    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+      target: { value: 'alex@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Minimum 8 characters'), {
+      target: { value: 'SecretPassword123!' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Repeat password'), {
+      target: { value: 'SecretPassword123!' },
+    });
+
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(supabase.auth.signUp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'alex@example.com',
+          password: 'SecretPassword123!',
+          options: expect.objectContaining({
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              full_name: 'Alex Vance',
+            },
+          }),
+        })
+      );
+    });
+  });
+
   // 4. PASSWORD RESET FLOW: REQUEST RESET LINK
   it('Password Reset: sends password reset email successfully', async () => {
     render(

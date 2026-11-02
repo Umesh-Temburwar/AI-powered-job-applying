@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Terminal,
@@ -36,6 +36,23 @@ export const LandingPage: React.FC = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [soundOn, setSoundOn] = useState(() => isSoundEnabled());
+
+  // Forward incoming email verification, recovery code, or OAuth callback directly to AuthCallbackPage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const search = window.location.search || '';
+      const hash = window.location.hash || '';
+      if (
+        search.includes('code=') ||
+        search.includes('token_hash=') ||
+        search.includes('error=') ||
+        hash.includes('access_token=') ||
+        hash.includes('error=')
+      ) {
+        navigate(`/auth/confirm${search}${hash}`, { replace: true });
+      }
+    }
+  }, [navigate]);
 
   const handleSoundToggle = () => {
     const next = toggleSound();
