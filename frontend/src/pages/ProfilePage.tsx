@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
+import { useAuth } from '../context/AuthContext';
 import { usePreferences } from '../hooks/usePreferences';
 import { useResumes } from '../hooks/useResumes';
 import { useTasks } from '../hooks/useTasks';
@@ -137,6 +138,7 @@ const QUICK_COMMANDS = [
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { startTask } = useTasks();
   const { profile, loading: profileLoading, updateProfile, autofillProfile } = useProfile();
   const { preferences, updatePreferences, suggestRoles } = usePreferences();
@@ -193,14 +195,20 @@ export const ProfilePage: React.FC = () => {
 
 
   // 1. Identity & Contact Details
-  const [firstname, setFirstname] = useState('Umesh');
-  const [lastname, setLastname] = useState('Temburwar');
-  const [email, setEmail] = useState('umeshtemburwar2002@gmail.com');
-  const [phone, setPhone] = useState('+91 8856087984');
+  const [firstname, setFirstname] = useState(() => (user?.fullName ? user.fullName.split(' ')[0] : ''));
+  const [lastname, setLastname] = useState(() => {
+    if (user?.fullName) {
+      const parts = user.fullName.trim().split(' ');
+      return parts.slice(1).join(' ') || '';
+    }
+    return '';
+  });
+  const [email, setEmail] = useState(() => user?.email || '');
+  const [phone, setPhone] = useState('');
   const [gender, setGender] = useState('Male');
-  const [currentCity, setCurrentCity] = useState('Pune');
-  const [headline, setHeadline] = useState('Full Stack Software Engineer | React, Node.js, Python, TypeScript');
-  const [summary, setSummary] = useState('Dedicated Full Stack Developer experienced in React, TypeScript, Python, FastAPI, and autonomous web automation systems.');
+  const [currentCity, setCurrentCity] = useState('');
+  const [headline, setHeadline] = useState('');
+  const [summary, setSummary] = useState('');
 
   // 2. Job & Career Screening Details (Directly for Bot Applications)
   const [totalExperience, setTotalExperience] = useState('0');

@@ -65,6 +65,10 @@ function mapBackendToUserProfile(b: BackendProfileResponse): UserProfile {
 
 let cachedProfileData: UserProfile | null = null;
 
+export function clearCachedProfile() {
+  cachedProfileData = null;
+}
+
 export function useProfile() {
   const { session, user, getToken } = useAuth();
 
@@ -74,6 +78,13 @@ export function useProfile() {
   const [error, setError] = useState<string | null>(null);
 
   const userId = user?.id || session?.user?.id || '';
+
+  useEffect(() => {
+    if (!userId) {
+      cachedProfileData = null;
+      setProfile(null);
+    }
+  }, [userId]);
   const userEmail = user?.email || session?.user?.email || '';
   const userFullName = user?.fullName || '';
 

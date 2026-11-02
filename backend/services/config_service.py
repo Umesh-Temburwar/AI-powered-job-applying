@@ -159,22 +159,22 @@ def get_full_configuration() -> dict[str, Any]:
 
     return {
         # Personal details
-        "firstname": env.get("FIRSTNAME") or personal.get("firstname") or "Umesh",
-        "lastname": env.get("LASTNAME") or personal.get("lastname") or "Temburwar",
-        "phone": env.get("PHONE") or personal.get("phone") or "+91 8856087984",
-        "email": env.get("EMAIL") or env.get("NAUKRI_EMAIL") or personal.get("email") or "umeshtemburwar2002@gmail.com",
+        "firstname": env.get("FIRSTNAME") or personal.get("firstname") or "",
+        "lastname": env.get("LASTNAME") or personal.get("lastname") or "",
+        "phone": env.get("PHONE") or personal.get("phone") or "",
+        "email": env.get("EMAIL") or personal.get("email") or "",
         "gender": env.get("GENDER") or personal.get("gender") or "Male",
         # Search & Job Application Preferences
-        "keywords": env.get("KEYWORDS") or prof.get("naukri_headline") or "full stack developer, react developer, node.js developer, web developer, software engineer",
-        "location": env.get("LOCATION") or personal.get("current_location") or "pune",
+        "keywords": env.get("KEYWORDS") or prof.get("naukri_headline") or "",
+        "location": env.get("LOCATION") or personal.get("current_location") or "",
         "pages_per_keyword": int(env.get("PAGES_PER_KEYWORD", 2)),
         "max_applications": int(env.get("MAX_APPLICATIONS", 50)),
         "browser": env.get("BROWSER") or "auto",
         # Career & Screening Details for all portals
         "total_experience_years": env.get("TOTAL_EXPERIENCE_YEARS") or str(personal.get("total_experience_years", "0")),
-        "relevant_experience_years": env.get("RELEVANT_EXPERIENCE_YEARS") or str(personal.get("relevant_experience_years", "1")),
-        "current_ctc": env.get("CURRENT_CTC") or personal.get("current_ctc", "0 (Fresher)"),
-        "expected_ctc": env.get("EXPECTED_CTC") or personal.get("expected_ctc", "4.5 Lakhs"),
+        "relevant_experience_years": env.get("RELEVANT_EXPERIENCE_YEARS") or str(personal.get("relevant_experience_years", "0")),
+        "current_ctc": env.get("CURRENT_CTC") or personal.get("current_ctc", ""),
+        "expected_ctc": env.get("EXPECTED_CTC") or personal.get("expected_ctc", ""),
         "notice_period": env.get("NOTICE_PERIOD") or personal.get("notice_period", "Immediate (0 Days)"),
         "work_mode": env.get("WORK_MODE") or personal.get("work_mode", "Remote / Hybrid"),
         "willing_to_relocate": env.get("WILLING_TO_RELOCATE") or personal.get("willing_to_relocate", "Yes"),
@@ -182,9 +182,9 @@ def get_full_configuration() -> dict[str, Any]:
         "is_fresher": env.get("IS_FRESHER", "").lower() in ("true", "1", "yes") or personal.get("is_fresher", False),
         "selected_platforms": prof.get("selected_platforms") or ["Naukri", "Internshala", "Indeed", "LinkedIn"],
         # Highest Education Details
-        "education_degree": env.get("EDUCATION_DEGREE") or edu.get("degree", "Bachelor of Technology (B.Tech)"),
+        "education_degree": env.get("EDUCATION_DEGREE") or edu.get("degree", ""),
         "education_college": env.get("EDUCATION_COLLEGE") or edu.get("institution") or edu.get("college", ""),
-        "education_passing_year": env.get("EDUCATION_PASSING_YEAR") or str(edu.get("year") or edu.get("passing_year", "2025")),
+        "education_passing_year": env.get("EDUCATION_PASSING_YEAR") or str(edu.get("year") or edu.get("passing_year", "")),
         "education_score": env.get("EDUCATION_SCORE") or str(edu.get("score") or edu.get("cgpa", "")),
         # Social & Portfolio Links
         "linkedin_url": env.get("LINKEDIN_URL") or personal.get("linkedin_url", ""),

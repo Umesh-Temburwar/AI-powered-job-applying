@@ -322,7 +322,7 @@ def sync_candidate_details_to_env():
     full_name = personal.get("name") or "Umesh Temburwar"
     first_name = personal.get("firstname") or (full_name.split()[0] if full_name else "Umesh")
     last_name = personal.get("lastname") or (full_name.split()[-1] if len(full_name.split()) > 1 else "Temburwar")
-    email = personal.get("email") or "umeshtemburwar2002@gmail.com"
+    email = personal.get("email") or ""
     phone = personal.get("phone") or "+91 8856087984"
 
     if not os.getenv("CANDIDATE_NAME"):

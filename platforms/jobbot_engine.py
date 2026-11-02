@@ -100,7 +100,7 @@ if not resume_pdf or not resume_pdf.exists():
 CONFIG = {
     # --- Personal info ---
     "name":         personal.get("name", "Umesh Temburwar"),
-    "email":        personal.get("email", os.getenv("NAUKRI_EMAIL", "umeshtemburwar2002@gmail.com")),
+    "email":        personal.get("email", os.getenv("NAUKRI_EMAIL", "")),
     "phone":        personal.get("phone", os.getenv("PHONE", "+918856087984")),
     "experience":   str(personal.get("total_experience_years", "0")),
     "current_ctc":  "0",
