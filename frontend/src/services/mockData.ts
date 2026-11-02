@@ -9,9 +9,9 @@ import type {
 
 export const INITIAL_MOCK_PROFILE: UserProfile = {
   id: 'usr_demo_01',
-  email: 'alex.developer@example.com',
-  fullName: 'Alex Vance',
-  phone: '+91 98765 43210',
+  email: 'umeshtemburwar2002@gmail.com',
+  fullName: 'Umesh Temburwar',
+  phone: '+91 8856087984',
   currentLocation: 'Pune, Maharashtra',
   headline: 'Full Stack Engineer | React, TypeScript, Python, Node.js',
   summary:

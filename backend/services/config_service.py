@@ -159,10 +159,10 @@ def get_full_configuration() -> dict[str, Any]:
 
     return {
         # Personal details
-        "firstname": env.get("FIRSTNAME") or personal.get("firstname") or "",
-        "lastname": env.get("LASTNAME") or personal.get("lastname") or "",
-        "phone": env.get("PHONE") or personal.get("phone") or "",
-        "email": env.get("NAUKRI_EMAIL") or personal.get("email") or "",
+        "firstname": env.get("FIRSTNAME") or personal.get("firstname") or "Umesh",
+        "lastname": env.get("LASTNAME") or personal.get("lastname") or "Temburwar",
+        "phone": env.get("PHONE") or personal.get("phone") or "+91 8856087984",
+        "email": env.get("EMAIL") or env.get("NAUKRI_EMAIL") or personal.get("email") or "umeshtemburwar2002@gmail.com",
         "gender": env.get("GENDER") or personal.get("gender") or "Male",
         # Search & Job Application Preferences
         "keywords": env.get("KEYWORDS") or prof.get("naukri_headline") or "full stack developer, react developer, node.js developer, web developer, software engineer",

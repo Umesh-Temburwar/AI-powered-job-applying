@@ -193,14 +193,14 @@ export const ProfilePage: React.FC = () => {
 
 
   // 1. Identity & Contact Details
-  const [firstname, setFirstname] = useState('');
-  const [lastname, setLastname] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [firstname, setFirstname] = useState('Umesh');
+  const [lastname, setLastname] = useState('Temburwar');
+  const [email, setEmail] = useState('umeshtemburwar2002@gmail.com');
+  const [phone, setPhone] = useState('+91 8856087984');
   const [gender, setGender] = useState('Male');
-  const [currentCity, setCurrentCity] = useState('');
-  const [headline, setHeadline] = useState('');
-  const [summary, setSummary] = useState('');
+  const [currentCity, setCurrentCity] = useState('Pune');
+  const [headline, setHeadline] = useState('Full Stack Software Engineer | React, Node.js, Python, TypeScript');
+  const [summary, setSummary] = useState('Dedicated Full Stack Developer experienced in React, TypeScript, Python, FastAPI, and autonomous web automation systems.');
 
   // 2. Job & Career Screening Details (Directly for Bot Applications)
   const [totalExperience, setTotalExperience] = useState('0');
