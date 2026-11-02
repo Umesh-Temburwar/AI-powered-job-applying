@@ -26,65 +26,68 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AdminPage } from './pages/AdminPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ApiOfflineModal } from './components/common/ApiOfflineModal';
+import { SiteAccessGate } from './components/common/SiteAccessGate';
 
 export function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
-          <BrowserRouter>
-            <ApiOfflineModal />
-            <Routes>
-              {/* Public Marketing & Auth Routes */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/verify-email" element={<VerifyEmailPage />} />
-              <Route path="/auth/confirm" element={<AuthCallbackPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/forgot-password" element={<Navigate to="/reset-password" replace />} />
+          <SiteAccessGate>
+            <BrowserRouter>
+              <ApiOfflineModal />
+              <Routes>
+                {/* Public Marketing & Auth Routes */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                <Route path="/auth/confirm" element={<AuthCallbackPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/forgot-password" element={<Navigate to="/reset-password" replace />} />
 
-              {/* Onboarding Wizard Route */}
-              <Route
-                path="/onboarding"
-                element={
-                  <ProtectedRoute allowIncompleteOnboarding={true}>
-                    <OnboardingPage />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Protected App Routes */}
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/dashboard" element={<Navigate to="/applications" replace />} />
-                <Route path="/guide" element={<GuidePage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/resumes" element={<ResumeManagerPage />} />
-                <Route path="/resume-analyzer" element={<ResumeAnalyzerPage />} />
-                <Route path="/preferences" element={<PreferencesPage />} />
-                <Route path="/automation" element={<AutomationPage />} />
-                <Route path="/applications" element={<ApplicationsPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                {/* Onboarding Wizard Route */}
                 <Route
-                  path="/admin"
+                  path="/onboarding"
                   element={
-                    <ProtectedRoute requireAdmin={true}>
-                      <AdminPage />
+                    <ProtectedRoute allowIncompleteOnboarding={true}>
+                      <OnboardingPage />
                     </ProtectedRoute>
                   }
                 />
-              </Route>
 
-              {/* Catch-all 404 */}
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </BrowserRouter>
+                {/* Protected App Routes */}
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/dashboard" element={<Navigate to="/applications" replace />} />
+                  <Route path="/guide" element={<GuidePage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/resumes" element={<ResumeManagerPage />} />
+                  <Route path="/resume-analyzer" element={<ResumeAnalyzerPage />} />
+                  <Route path="/preferences" element={<PreferencesPage />} />
+                  <Route path="/automation" element={<AutomationPage />} />
+                  <Route path="/applications" element={<ApplicationsPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute requireAdmin={true}>
+                        <AdminPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                </Route>
+
+                {/* Catch-all 404 */}
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </BrowserRouter>
+          </SiteAccessGate>
         </ToastProvider>
       </AuthProvider>
     </ThemeProvider>

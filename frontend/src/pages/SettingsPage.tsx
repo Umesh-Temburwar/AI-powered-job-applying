@@ -26,6 +26,7 @@ import {
   Badge,
   ConfirmDialog,
 } from '../components/ui';
+import { lockSiteAccess } from '../components/common/SiteAccessGate';
 
 export const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -348,6 +349,27 @@ export const SettingsPage: React.FC = () => {
             <Badge variant="success" size="sm">
               Current Session
             </Badge>
+          </div>
+
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-theme bg-theme-surface/50 text-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-theme-card flex items-center justify-center text-amber-400">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-bold text-theme-primary">Website Access Gatekeeper</p>
+                <p className="text-theme-muted mt-0.5">Password protection is active (Password: Umesh)</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={lockSiteAccess}
+              className="text-xs border-amber-500/40 text-amber-300 hover:bg-amber-500/10 cursor-pointer"
+            >
+              Lock Site Access
+            </Button>
           </div>
         </div>
       </Card>
