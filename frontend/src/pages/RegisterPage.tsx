@@ -243,7 +243,7 @@ export const RegisterPage: React.FC = () => {
 
       {/* Credit footer */}
       <div className="mt-6 font-mono text-[11px] opacity-60 text-center">
-        UNIVERSAL_JOB_BOT // CRAFTED BY UMESH TEMBURWAR
+        AI-POWERED-JOB-APPLYING // CRAFTED BY UMESH TEMBURWAR
       </div>
     </div>
   );

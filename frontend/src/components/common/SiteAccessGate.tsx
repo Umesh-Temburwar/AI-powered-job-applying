@@ -176,7 +176,7 @@ export const SiteAccessGate: React.FC<SiteAccessGateProps> = ({ children }) => {
               theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'
             }`}
           >
-            UNIVERSAL_JOB_BOT // GATEWAY
+            AI-POWERED-JOB-APPLYING // GATEWAY
           </span>
         </div>
         <button

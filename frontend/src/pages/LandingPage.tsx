@@ -14,7 +14,6 @@ import {
   Globe,
   Code2,
   BookOpen,
-  KeyRound,
   ShieldAlert,
   Volume2,
   VolumeX,
@@ -554,13 +553,6 @@ export const LandingPage: React.FC = () => {
                           Enter candidate or admin credentials.
                         </p>
 
-                        {/* Admin Notice (Zero Autofill Button) */}
-                        <div className={`mt-3 p-2 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-emerald-300' : 'border-[#18181B] bg-[#F5F3EC] text-[#15803D]'
-                          } text-[11px] flex items-center gap-1.5`}>
-                          <KeyRound className="w-3.5 h-3.5 shrink-0" />
-                          <span>Admin: <strong className="underline">umeshtemburwar2002@gmail.com</strong></span>
-                        </div>
-
                         {/* Error Notice */}
                         {loginError && (
                           <div className="mt-2.5 p-2 border-2 border-red-500 bg-red-500/10 text-red-500 text-[11px] flex items-center gap-1.5">
@@ -570,7 +562,10 @@ export const LandingPage: React.FC = () => {
                         )}
 
                         {/* Login Form */}
-                        <form onSubmit={handleInPlaceLogin} className="space-y-3 mt-3">
+                        <form onSubmit={handleInPlaceLogin} autoComplete="off" className="space-y-3 mt-3">
+                            {/* Decoy hidden fields to defeat browser autofill */}
+                            <input type="text" name="decoy_username" tabIndex={-1} aria-hidden="true" autoComplete="off" style={{ display: 'none' }} readOnly />
+                            <input type="password" name="decoy_password" tabIndex={-1} aria-hidden="true" autoComplete="new-password" style={{ display: 'none' }} readOnly />
                           <div>
                             <label className="block text-[10px] font-bold uppercase mb-1">
                               Email Address:
@@ -580,7 +575,7 @@ export const LandingPage: React.FC = () => {
                               required
                               value={loginEmail}
                               onChange={(e) => setLoginEmail(e.target.value)}
-                              placeholder="umeshtemburwar2002@gmail.com"
+                              placeholder="candidate@example.com" autoComplete="off" data-lpignore="true"
                               className={`w-full h-9 px-2.5 border-2 text-[12px] ${theme === 'dark'
                                 ? 'border-[#2E384D] bg-[#0E121B] text-white focus:border-[#10B981]'
                                 : 'border-[#18181B] bg-[#FFFFFF] text-black focus:border-[#15803D]'
@@ -595,6 +590,8 @@ export const LandingPage: React.FC = () => {
                             <input
                               type="password"
                               required
+                              autoComplete="new-password"
+                              data-lpignore="true"
                               value={loginPassword}
                               onChange={(e) => setLoginPassword(e.target.value)}
                               placeholder="••••••••"
@@ -1192,7 +1189,7 @@ export const LandingPage: React.FC = () => {
               className="w-7 h-7 rounded-none object-cover border border-[#18181B]"
             />
             <div>
-              <span className="font-bold">UNIVERSAL_JOB_APPLY_BOT</span>
+              <span className="font-bold">AI-POWERED-JOB-APPLYING</span>
               <span className="mx-2">|</span>
               <span>ENGINEERED BY <strong className="underline">UMESH TEMBURWAR</strong></span>
             </div>

@@ -2758,7 +2758,7 @@ export const ProfilePage: React.FC = () => {
             label="Project Title *"
             value={newProject.title}
             onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
-            placeholder="e.g. Universal Job Apply Bot"
+            placeholder="e.g. AI-powered-job-applying Bot"
             required
           />
           <Textarea

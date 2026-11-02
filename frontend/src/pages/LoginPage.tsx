@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { ArrowRight, Sun, Moon, ArrowLeft, ShieldAlert, KeyRound } from 'lucide-react';
+import { ArrowRight, Sun, Moon, ArrowLeft, ShieldAlert } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { user, login, signInWithGithub, isLoading } = useAuth();
@@ -106,17 +106,23 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+            {/* Decoy hidden fields to defeat browser autofill */}
+            <input type="text" name="decoy_username" tabIndex={-1} aria-hidden="true" autoComplete="off" style={{ display: 'none' }} readOnly />
+            <input type="password" name="decoy_password" tabIndex={-1} aria-hidden="true" autoComplete="new-password" style={{ display: 'none' }} readOnly />
             <div className="space-y-1">
               <label className="block font-mono text-[12px] font-bold uppercase">
                 [EMAIL_ADDRESS]
               </label>
               <input
                 type="email"
+                name="login_email_clean"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="umeshtemburwar2002@gmail.com"
-                autoComplete="email"
+                placeholder="candidate@example.com"
+                autoComplete="off"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 aria-label="Email Address"
                 required
                 className={`w-full px-3.5 py-2.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#0B0E14] text-white focus:border-emerald-500' : 'border-[#18181B] bg-white text-[#18181B] focus:border-emerald-700'} font-mono text-[13px] outline-none transition-colors`}
@@ -137,20 +143,17 @@ export const LoginPage: React.FC = () => {
               </div>
               <input
                 type="password"
+                name="login_password_clean"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                autoComplete="current-password"
+                autoComplete="new-password"
+                data-lpignore="true"
+                data-1p-ignore="true"
                 aria-label="Password"
                 required
                 className={`w-full px-3.5 py-2.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#0B0E14] text-white focus:border-emerald-500' : 'border-[#18181B] bg-white text-[#18181B] focus:border-emerald-700'} font-mono text-[13px] outline-none transition-colors`}
               />
-            </div>
-
-            {/* Admin Notice */}
-            <div className={`p-2.5 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-emerald-300' : 'border-[#18181B] bg-[#F5F3EC] text-[#15803D]'} font-mono text-[11px] flex items-center gap-1.5`}>
-              <KeyRound className="w-3.5 h-3.5 shrink-0" />
-              <span>Admin: <strong className="underline">umeshtemburwar2002@gmail.com</strong></span>
             </div>
 
             <button
@@ -191,7 +194,7 @@ export const LoginPage: React.FC = () => {
 
       {/* Credit footer */}
       <div className="mt-6 font-mono text-[11px] opacity-60 text-center">
-        UNIVERSAL_JOB_BOT // CRAFTED BY UMESH TEMBURWAR
+        AI-POWERED-JOB-APPLYING // CRAFTED BY UMESH TEMBURWAR
       </div>
     </div>
   );
