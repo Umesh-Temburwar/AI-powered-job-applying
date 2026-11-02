@@ -79,8 +79,12 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleLogoutConfirmed = async () => {
-    await logout();
-    navigate('/login');
+    navigate('/', { replace: true });
+    try {
+      await logout();
+    } catch (err) {
+      console.warn('Logout error:', err);
+    }
   };
 
   const handleDeleteAccountConfirmed = async () => {

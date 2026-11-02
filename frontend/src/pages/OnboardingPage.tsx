@@ -77,12 +77,12 @@ export const OnboardingPage: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    navigate('/', { replace: true });
     try {
       await logout();
       showToast('Logged out successfully.', 'info');
-      navigate('/login', { replace: true });
-    } catch {
-      navigate('/login', { replace: true });
+    } catch (err) {
+      console.warn('Logout error:', err);
     }
   };
 

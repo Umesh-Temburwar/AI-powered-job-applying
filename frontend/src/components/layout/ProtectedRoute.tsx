@@ -7,11 +7,13 @@ export interface ProtectedRouteProps {
   children?: React.ReactNode;
   allowIncompleteOnboarding?: boolean;
   requireAdmin?: boolean;
+  redirectTo?: string;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requireAdmin = false,
+  redirectTo,
 }) => {
   const { user, isLoading: authLoading } = useAuth();
 
@@ -28,7 +30,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!user && !authLoading) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={redirectTo || '/login'} replace />;
   }
 
   // Restrict admin routes to authorized administrators only

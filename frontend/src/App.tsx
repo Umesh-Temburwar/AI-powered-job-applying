@@ -51,7 +51,7 @@ export function App() {
                 {/* Protected App Routes */}
                 <Route
                   element={
-                    <ProtectedRoute>
+                    <ProtectedRoute redirectTo="/">
                       <AppLayout />
                     </ProtectedRoute>
                   }
@@ -68,7 +68,7 @@ export function App() {
                   <Route
                     path="/admin"
                     element={
-                      <ProtectedRoute requireAdmin={true}>
+                      <ProtectedRoute requireAdmin={true} redirectTo="/">
                         <AdminPage />
                       </ProtectedRoute>
                     }

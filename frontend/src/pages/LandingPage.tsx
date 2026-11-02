@@ -24,7 +24,7 @@ import { isSoundEnabled, toggleSound, playRetroSound } from '../utils/soundEffec
 
 export const LandingPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
-  const { user, login } = useAuth();
+  const { user, login, logout } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'terminal' | 'applications' | 'portals'>('terminal');
@@ -328,9 +328,26 @@ export const LandingPage: React.FC = () => {
                 SIGN IN →
               </button>
             ) : (
-              <span className="hidden sm:inline-block font-mono text-[11px] text-emerald-600 font-bold border border-emerald-600/40 px-2 py-1">
-                [{user.email?.split('@')[0]}]
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline-block font-mono text-[11px] text-emerald-600 font-bold border border-emerald-600/40 px-2 py-1">
+                  [{user.email?.split('@')[0]}]
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    playRetroSound('toggle');
+                    await logout();
+                  }}
+                  className={`font-mono text-[11px] font-bold uppercase px-2 py-1 border-2 ${
+                    theme === 'dark'
+                      ? 'border-red-500/40 text-red-400 hover:bg-red-500/10'
+                      : 'border-red-300 text-red-600 hover:bg-red-50'
+                  } retro-shadow-sm cursor-pointer`}
+                  title="Sign out of workspace"
+                >
+                  LOGOUT
+                </button>
+              </div>
             )}
 
             <button
