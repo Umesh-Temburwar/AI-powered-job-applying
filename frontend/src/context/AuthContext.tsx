@@ -111,6 +111,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         expiresAt: (current.expires_at || 0) * 1000,
       };
     });
+
+    if (isSupabaseConfigured && current.user?.id) {
+      supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: current.user.id,
+            email: current.user.email || '',
+            full_name: candidateName,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        )
+        .then(() => {}, (err) => console.warn('Could not sync candidate profile to Supabase on login:', err));
+    }
   }, []);
 
   useEffect(() => {

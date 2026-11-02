@@ -152,13 +152,14 @@ async def upload_and_parse_resume(
         "file_bytes": file_bytes,
     }
 
+    _MEMORY_RESUMES[resume_id] = record
+
     if client:
         try:
-            client.table("resumes").insert(record).execute()
+            db_record = {k: v for k, v in record.items() if k != "file_bytes"}
+            client.table("resumes").insert(db_record).execute()
         except Exception as db_err:
             logger.error("Database error saving resume: %s", db_err)
-    else:
-        _MEMORY_RESUMES[resume_id] = record
 
     # 5. Automatically populate candidate profile in Supabase & memory
     profile_updates = {

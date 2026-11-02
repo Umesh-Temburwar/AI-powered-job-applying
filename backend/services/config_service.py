@@ -910,6 +910,55 @@ def parse_and_save_user_resume(
 
     update_root_env_file(env_updates)
 
+    # Sync to Supabase storage bucket & resumes table if user_id or client available
+    try:
+        from core.supabase import get_supabase_client
+        sb_client = get_supabase_client()
+        target_uid = user_id
+        if sb_client and not target_uid and email:
+            try:
+                prof_chk = sb_client.table("profiles").select("id").eq("email", email.strip().lower()).execute()
+                if prof_chk.data:
+                    target_uid = prof_chk.data[0]["id"]
+            except Exception:
+                pass
+
+        if sb_client and target_uid and not str(target_uid).startswith("usr_mock"):
+            storage_path = f"{target_uid}/{clean_name}"
+            try:
+                sb_client.storage.from_("resumes").upload(
+                    path=storage_path,
+                    file=file_bytes,
+                    file_options={"content-type": mime_type, "upsert": "true"},
+                )
+            except Exception as st_err:
+                logger.debug("Storage upload sync error: %s", st_err)
+
+            res_id = str(uuid.uuid4())
+            now_iso = datetime.now(timezone.utc).isoformat()
+            db_record = {
+                "id": res_id,
+                "user_id": str(target_uid),
+                "file_name": clean_name,
+                "storage_path": storage_path,
+                "file_size": len(file_bytes),
+                "mime_type": mime_type,
+                "is_default": True,
+                "parsed_data": structured,
+                "ocr_needed": False,
+                "created_at": now_iso,
+                "updated_at": now_iso,
+            }
+            try:
+                sb_client.table("resumes").insert(db_record).execute()
+            except Exception as ins_err:
+                logger.debug("Resumes table insert error: %s", ins_err)
+
+            from services.resume_service import _MEMORY_RESUMES
+            _MEMORY_RESUMES[res_id] = {**db_record, "file_bytes": file_bytes}
+    except Exception as sync_exc:
+        logger.debug("Could not sync uploaded resume to Supabase: %s", sync_exc)
+
     # Train bot immediately with extracted details
     try:
         train_bot_with_candidate_details({
