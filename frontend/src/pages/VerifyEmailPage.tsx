@@ -43,10 +43,10 @@ export const VerifyEmailPage: React.FC = () => {
   const errorAlertRef = useRef<HTMLDivElement>(null);
   const statusAlertRef = useRef<HTMLDivElement>(null);
 
-  // If user is already authenticated (or confirms in another tab), redirect to dashboard
+  // If user is already authenticated (or confirms in another tab), redirect to home page
   useEffect(() => {
     if (user) {
-      navigate('/applications', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [user, navigate]);
 

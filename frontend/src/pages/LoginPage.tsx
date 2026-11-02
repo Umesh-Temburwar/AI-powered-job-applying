@@ -16,7 +16,7 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/applications', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [user, navigate]);
 
@@ -31,7 +31,7 @@ export const LoginPage: React.FC = () => {
 
     try {
       await login(email, password);
-      navigate('/applications');
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : (err as any)?.message || 'Login failed');
     }

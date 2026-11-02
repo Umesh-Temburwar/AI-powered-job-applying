@@ -95,7 +95,7 @@ export const LandingPage: React.FC = () => {
       setIsLoggingIn(true);
       await login(loginEmail, loginPassword);
       playRetroSound('success');
-      navigate('/applications');
+      navigate('/');
     } catch (err) {
       playRetroSound('error');
       setLoginError(err instanceof Error ? err.message : 'Invalid credentials.');

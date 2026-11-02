@@ -15,7 +15,6 @@ import { AuthCallbackPage } from './pages/AuthCallbackPage';
 
 
 import { GuidePage } from './pages/GuidePage';
-import { OnboardingPage } from './pages/OnboardingPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ResumeManagerPage } from './pages/ResumeManagerPage';
 import { ResumeAnalyzerPage } from './pages/ResumeAnalyzerPage';
@@ -46,15 +45,8 @@ export function App() {
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/forgot-password" element={<Navigate to="/reset-password" replace />} />
 
-                {/* Onboarding Wizard Route */}
-                <Route
-                  path="/onboarding"
-                  element={
-                    <ProtectedRoute allowIncompleteOnboarding={true}>
-                      <OnboardingPage />
-                    </ProtectedRoute>
-                  }
-                />
+                {/* Onboarding Wizard Route - removed from flow, redirects directly to home */}
+                <Route path="/onboarding" element={<Navigate to="/" replace />} />
 
                 {/* Protected App Routes */}
                 <Route
