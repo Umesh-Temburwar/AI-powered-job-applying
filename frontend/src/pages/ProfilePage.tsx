@@ -282,6 +282,8 @@ export const ProfilePage: React.FC = () => {
   const [selectedCommand, setSelectedCommand] = useState('all');
   const [maxApplications, setMaxApplications] = useState(50);
   const [startingBot, setStartingBot] = useState(false);
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resettingData, setResettingData] = useState(false);
 
 
 
@@ -490,32 +492,11 @@ export const ProfilePage: React.FC = () => {
       setBotConfigLoading(true);
       const cfg = await configService.fetchConfig();
       if (cfg) {
-        const isUserAdmin = Boolean(
-          user?.isAdmin ||
-          (user?.email && ['umeshtemburwar2002@gmail.com', 'utemburwar2002@gmail.com'].includes(user.email.toLowerCase()))
-        );
-
-        if (isUserAdmin) {
-          if (cfg.resume_name) {
-            setLocalResumeName(cfg.resume_name);
-          } else {
-            setLocalResumeName(null);
-          }
-          if (cfg.firstname) setFirstname(cfg.firstname);
-          if (cfg.lastname) setLastname(cfg.lastname);
-          if (cfg.email) setEmail(cfg.email);
-          if (cfg.phone) setPhone(cfg.phone);
-        } else {
-          setLocalResumeName(null);
-          if (user?.fullName) {
-            const parts = user.fullName.trim().split(' ');
-            setFirstname(parts[0] || '');
-            setLastname(parts.slice(1).join(' ') || '');
-          }
-          if (user?.email) {
-            setEmail(user.email);
-          }
-        }
+        if (cfg.resume_name) setLocalResumeName(cfg.resume_name);
+        if (cfg.firstname) setFirstname(cfg.firstname);
+        if (cfg.lastname) setLastname(cfg.lastname);
+        if (cfg.email) setEmail(cfg.email);
+        if (cfg.phone) setPhone(cfg.phone);
         if (cfg.gender) setGender(cfg.gender);
         if (cfg.location) {
           const locs = cfg.location.split(',').map((s) => s.trim()).filter(Boolean);
@@ -524,8 +505,12 @@ export const ProfilePage: React.FC = () => {
             setCurrentCity(locs[0]);
           }
         }
-        if (cfg.total_experience_years !== undefined) setTotalExperience(String(cfg.total_experience_years));
-        if (cfg.relevant_experience_years !== undefined) setRelevantExperience(String(cfg.relevant_experience_years));
+        if (cfg.total_experience_years !== undefined && cfg.total_experience_years !== '') {
+          setTotalExperience(String(cfg.total_experience_years));
+        }
+        if (cfg.relevant_experience_years !== undefined && cfg.relevant_experience_years !== '') {
+          setRelevantExperience(String(cfg.relevant_experience_years));
+        }
         if (cfg.current_ctc) setCurrentCtc(cfg.current_ctc);
         if (cfg.expected_ctc) setExpectedCtc(cfg.expected_ctc);
         if (cfg.notice_period) setNoticePeriod(cfg.notice_period);
@@ -539,7 +524,7 @@ export const ProfilePage: React.FC = () => {
             setRelevantExperience('0');
           }
         }
-        if (cfg.selected_platforms && Array.isArray(cfg.selected_platforms)) {
+        if (cfg.selected_platforms && Array.isArray(cfg.selected_platforms) && cfg.selected_platforms.length > 0) {
           setSelectedPlatforms(cfg.selected_platforms as PlatformName[]);
         }
         if (cfg.education_degree) setEducationDegree(cfg.education_degree);
@@ -550,25 +535,17 @@ export const ProfilePage: React.FC = () => {
         if (cfg.github_url) setGithubUrl(cfg.github_url);
         if (cfg.portfolio_url) setPortfolioUrl(cfg.portfolio_url);
         if (cfg.cover_letter) setCoverLetter(cfg.cover_letter);
-        if (isUserAdmin) {
-          if (cfg.naukri_email) setNaukriEmail(cfg.naukri_email);
-          if (cfg.naukri_password) setNaukriPassword(cfg.naukri_password);
-          if (cfg.internshala_email) setInternshalaEmail(cfg.internshala_email);
-          if (cfg.internshala_password) setInternshalaPassword(cfg.internshala_password);
-          if (cfg.indeed_email) setIndeedEmail(cfg.indeed_email);
-          if (cfg.indeed_password) setIndeedPassword(cfg.indeed_password);
-          if (cfg.linkedin_email) setLinkedinEmail(cfg.linkedin_email);
-          if (cfg.linkedin_password) setLinkedinPassword(cfg.linkedin_password);
-        } else {
-          setNaukriEmail('');
-          setNaukriPassword('');
-          setInternshalaEmail('');
-          setInternshalaPassword('');
-          setIndeedEmail('');
-          setIndeedPassword('');
-          setLinkedinEmail('');
-          setLinkedinPassword('');
-        }
+
+        // Platform credentials saved for this candidate
+        if (cfg.naukri_email) setNaukriEmail(cfg.naukri_email);
+        if (cfg.naukri_password) setNaukriPassword(cfg.naukri_password);
+        if (cfg.internshala_email) setInternshalaEmail(cfg.internshala_email);
+        if (cfg.internshala_password) setInternshalaPassword(cfg.internshala_password);
+        if (cfg.indeed_email) setIndeedEmail(cfg.indeed_email);
+        if (cfg.indeed_password) setIndeedPassword(cfg.indeed_password);
+        if (cfg.linkedin_email) setLinkedinEmail(cfg.linkedin_email);
+        if (cfg.linkedin_password) setLinkedinPassword(cfg.linkedin_password);
+
         if (cfg.max_applications) setMaxApplications(Number(cfg.max_applications) || 50);
         if (cfg.keywords) {
           const kws = cfg.keywords.split(',').map((s) => s.trim()).filter(Boolean);
@@ -662,16 +639,43 @@ export const ProfilePage: React.FC = () => {
         setCertifications(profile.certifications);
       }
       if (profile.additionalInfo) {
-        if (profile.additionalInfo.work_authorization && !workAuthorization) {
-          setWorkAuthorization(profile.additionalInfo.work_authorization);
+        const info: any = profile.additionalInfo;
+        if (info.gender && !gender) setGender(info.gender);
+        if (info.work_authorization && !workAuthorization) {
+          setWorkAuthorization(info.work_authorization);
         }
-        if (typeof profile.additionalInfo.is_fresher === 'boolean') {
-          setIsFresher(profile.additionalInfo.is_fresher);
-          if (profile.additionalInfo.is_fresher) {
+        if (typeof info.is_fresher === 'boolean') {
+          setIsFresher(info.is_fresher);
+          if (info.is_fresher) {
             setTotalExperience('0');
             setRelevantExperience('0');
           }
         }
+        if (info.total_experience_years && (!totalExperience || totalExperience === '0')) {
+          setTotalExperience(String(info.total_experience_years));
+        }
+        if (info.relevant_experience_years && (!relevantExperience || relevantExperience === '0')) {
+          setRelevantExperience(String(info.relevant_experience_years));
+        }
+        if (info.current_ctc && !currentCtc) setCurrentCtc(info.current_ctc);
+        if (info.expected_ctc && !expectedCtc) setExpectedCtc(info.expected_ctc);
+        if (info.notice_period && !noticePeriod) setNoticePeriod(info.notice_period);
+        if (info.work_mode && !workMode) setWorkMode(info.work_mode);
+        if (info.willing_to_relocate && !willingToRelocate) setWillingToRelocate(info.willing_to_relocate);
+        if (info.cover_letter && !coverLetter) setCoverLetter(info.cover_letter);
+        if (info.education_degree && !educationDegree) setEducationDegree(info.education_degree);
+        if (info.education_college && !educationCollege) setEducationCollege(info.education_college);
+        if (info.education_passing_year && !educationPassingYear) setEducationPassingYear(info.education_passing_year);
+        if (info.education_score && !educationScore) setEducationScore(info.education_score);
+        if (info.naukri_email && !naukriEmail) setNaukriEmail(info.naukri_email);
+        if (info.naukri_password && !naukriPassword) setNaukriPassword(info.naukri_password);
+        if (info.internshala_email && !internshalaEmail) setInternshalaEmail(info.internshala_email);
+        if (info.internshala_password && !internshalaPassword) setInternshalaPassword(info.internshala_password);
+        if (info.indeed_email && !indeedEmail) setIndeedEmail(info.indeed_email);
+        if (info.indeed_password && !indeedPassword) setIndeedPassword(info.indeed_password);
+        if (info.linkedin_email && !linkedinEmail) setLinkedinEmail(info.linkedin_email);
+        if (info.linkedin_password && !linkedinPassword) setLinkedinPassword(info.linkedin_password);
+        if (info.resume_name && !localResumeName) setLocalResumeName(info.resume_name);
       }
       if (profile.linkedinUrl && !linkedinUrl) setLinkedinUrl(profile.linkedinUrl);
       if (profile.githubUrl && !githubUrl) setGithubUrl(profile.githubUrl);
@@ -870,7 +874,7 @@ export const ProfilePage: React.FC = () => {
         fileSize: activeSbResume.fileSizeBytes,
         uploadedAt: activeSbResume.uploadedAt,
       }
-    : (user?.isAdmin && localResumeName)
+    : localResumeName
     ? {
         id: null,
         fileName: localResumeName,
@@ -1282,6 +1286,65 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  // Reset all candidate data to clean empty state
+  const handleResetData = async () => {
+    try {
+      setResettingData(true);
+      playRetroSound('click');
+      await configService.resetCandidateData();
+      setLocalResumeName(null);
+      setFirstname('');
+      setLastname('');
+      setEmail(user?.email || '');
+      setPhone('');
+      setCurrentCity('');
+      setHeadline('');
+      setSummary('');
+      setGender('Male');
+      setTotalExperience('0');
+      setRelevantExperience('0');
+      setCurrentCtc('');
+      setExpectedCtc('');
+      setNoticePeriod('Immediate (0 Days)');
+      setWorkMode('Remote / Hybrid');
+      setWillingToRelocate('Yes');
+      setWorkAuthorization('Authorized to work in India');
+      setIsFresher(false);
+      setEducationDegree('');
+      setEducationCollege('');
+      setEducationPassingYear('');
+      setEducationScore('');
+      setCoverLetter('');
+      setLinkedinUrl('');
+      setGithubUrl('');
+      setPortfolioUrl('');
+      setNaukriEmail('');
+      setNaukriPassword('');
+      setInternshalaEmail('');
+      setInternshalaPassword('');
+      setIndeedEmail('');
+      setIndeedPassword('');
+      setLinkedinEmail('');
+      setLinkedinPassword('');
+      setSkills([]);
+      setEducation([]);
+      setExperience([]);
+      setProjects([]);
+      setCertifications([]);
+      setKeywordList(['Full Stack Developer']);
+      setLocationList(['Pune']);
+      setIsDirty(false);
+      setResetModalOpen(false);
+      playRetroSound('success');
+      showToast('✓ Candidate data has been reset to default clean state.', 'success');
+    } catch (err: any) {
+      playRetroSound('error');
+      showToast(err?.message || 'Failed to reset candidate data', 'error');
+    } finally {
+      setResettingData(false);
+    }
+  };
+
   // Unified Save: Updates Supabase tables + Root .env & profile_data.json
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1312,10 +1375,36 @@ export const ProfilePage: React.FC = () => {
           projects,
           certifications,
           additionalInfo: {
-            is_fresher: isFresher,
+            has_saved_config: true,
+            gender,
+            total_experience_years: totalExperience,
+            relevant_experience_years: relevantExperience,
+            current_ctc: currentCtc,
+            expected_ctc: expectedCtc,
+            notice_period: noticePeriod,
             notice_period_days: parseInt(noticePeriod, 10) || 15,
+            work_mode: workMode,
             willing_to_relocate: willingToRelocate === 'Yes',
             work_authorization: workAuthorization,
+            is_fresher: isFresher,
+            cover_letter: coverLetter,
+            education_degree: educationDegree,
+            education_college: educationCollege,
+            education_passing_year: educationPassingYear,
+            education_score: educationScore,
+            keywords: safeKeywords.join(', '),
+            location: safeLocations.join(', '),
+            selected_platforms: selectedPlatforms,
+            max_applications: maxApplications,
+            naukri_email: naukriEmail.trim(),
+            naukri_password: naukriPassword,
+            internshala_email: internshalaEmail.trim(),
+            internshala_password: internshalaPassword,
+            indeed_email: indeedEmail.trim(),
+            indeed_password: indeedPassword,
+            linkedin_email: linkedinEmail.trim(),
+            linkedin_password: linkedinPassword,
+            resume_name: localResumeName,
           },
         });
       } catch (sbErr) {
@@ -1409,13 +1498,36 @@ export const ProfilePage: React.FC = () => {
             Configure application screening answers, contact info, and job targeting. Syncs directly to Supabase & bot .env.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {isDirty && (
             <span className="text-amber-400 font-bold flex items-center gap-1.5 text-xs font-mono mr-2 hidden sm:inline-flex">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               Unsaved changes
             </span>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving || startingBot}
+            leftIcon={<Save className="w-3.5 h-3.5 text-emerald-400" />}
+            className="text-xs font-mono font-bold border-emerald-500/50 hover:bg-emerald-950/20"
+          >
+            {saving ? 'Saving...' : 'Save Profile'}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setResetModalOpen(true)}
+            disabled={saving || startingBot || resettingData}
+            leftIcon={<Trash2 className="w-3.5 h-3.5 text-red-400" />}
+            className="text-xs font-mono text-red-400 hover:bg-red-500/10 border border-red-500/30"
+            title="Reset candidate data to fresh state"
+          >
+            Reset Data
+          </Button>
         </div>
       </div>
 
@@ -2808,11 +2920,24 @@ export const ProfilePage: React.FC = () => {
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
             <Button
               type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => setResetModalOpen(true)}
+              disabled={saving || startingBot || resettingData}
+              leftIcon={<Trash2 className="w-4 h-4 text-red-400" />}
+              className="text-xs text-red-400 hover:bg-red-500/10 border border-red-500/40 font-mono"
+              title="Reset all candidate data and screening answers"
+            >
+              Reset Candidate Data
+            </Button>
+            <Button
+              type="button"
               variant="outline"
               size="md"
               onClick={handleSave}
               disabled={saving || startingBot}
-              leftIcon={<Save className="w-4 h-4" />}
+              leftIcon={<Save className="w-4 h-4 text-emerald-400" />}
+              className="text-xs font-mono font-bold"
             >
               {saving ? 'Saving...' : 'Save All'}
             </Button>
@@ -2830,6 +2955,18 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Reset Candidate Data Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={resetModalOpen}
+        onClose={() => !resettingData && setResetModalOpen(false)}
+        onConfirm={handleResetData}
+        title="Reset Candidate Data"
+        description="Are you sure you want to permanently reset all candidate details, credentials, and screening answers? Your profile will be returned to a fresh clean state. This action cannot be undone."
+        confirmLabel={resettingData ? 'Resetting All Data...' : 'Reset Everything'}
+        isDestructive={true}
+        isLoading={resettingData}
+      />
 
       {/* Add Education Modal */}
       <Modal isOpen={eduModalOpen} onClose={() => setEduModalOpen(false)} title="Add Educational Degree">

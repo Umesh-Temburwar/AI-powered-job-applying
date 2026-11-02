@@ -396,8 +396,19 @@ async def run_platform_automation_task(
         if profile.phone:
             sub_env["PHONE"] = profile.phone
 
-        # Sync portal credentials from connection_service / .env if available
+        # Sync portal credentials from user isolated configuration or connection_service / .env
         try:
+            from services.config_service import read_user_config
+            user_cfg = read_user_config(str(user_id)) if user_id else None
+            if user_cfg:
+                for p_name in ["naukri", "internshala", "indeed", "linkedin"]:
+                    c_email = user_cfg.get(f"{p_name}_email")
+                    c_pwd = user_cfg.get(f"{p_name}_password")
+                    if c_email:
+                        sub_env[f"{p_name.upper()}_EMAIL"] = str(c_email)
+                    if c_pwd:
+                        sub_env[f"{p_name.upper()}_PASSWORD"] = str(c_pwd)
+
             from services.connection_service import _read_env_credentials
             env_creds = _read_env_credentials()
             for p_name in ["naukri", "internshala", "indeed", "linkedin"]:

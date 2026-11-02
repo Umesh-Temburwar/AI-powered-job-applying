@@ -21,6 +21,48 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 RESUMES_DIR = os.path.join(DATA_DIR, "resumes")
 PROFILE_DATA_PATH = os.path.join(DATA_DIR, "profile_data.json")
 RESUME_INI_PATH = os.path.join(DATA_DIR, "resume.ini")
+USER_CONFIGS_DIR = os.path.join(DATA_DIR, "user_configs")
+
+
+def get_user_config_path(user_id: str) -> str:
+    clean_uid = "".join(c for c in str(user_id) if c.isalnum() or c in ("-", "_"))
+    return os.path.join(USER_CONFIGS_DIR, f"{clean_uid}.json")
+
+
+def read_user_config(user_id: Optional[str]) -> Optional[dict[str, Any]]:
+    if not user_id:
+        return None
+    path = get_user_config_path(user_id)
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning("Could not read user config from %s: %s", path, e)
+    return None
+
+
+def write_user_config(user_id: Optional[str], data: dict[str, Any]) -> None:
+    if not user_id:
+        return
+    try:
+        os.makedirs(USER_CONFIGS_DIR, exist_ok=True)
+        path = get_user_config_path(user_id)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        logger.warning("Could not write user config to %s: %s", path, e)
+
+
+def delete_user_config(user_id: Optional[str]) -> None:
+    if not user_id:
+        return
+    path = get_user_config_path(user_id)
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception as e:
+            logger.warning("Could not delete user config %s: %s", path, e)
 
 
 def get_current_env_dict() -> dict[str, str]:
@@ -157,102 +199,40 @@ def get_full_configuration(
     user_email: Optional[str] = None,
     is_admin: bool = False,
 ) -> dict[str, Any]:
-    """Retrieve configuration. Admins see full host environment; regular candidates see their own isolated data."""
+    """Retrieve configuration for candidate. If candidate has saved their configuration, return it accurately.
+    Never leak another user's configuration or credentials.
+    """
     admin_emails = {"umeshtemburwar2002@gmail.com", "utemburwar2002@gmail.com"}
     clean_email = (user_email or "").strip().lower()
     is_effective_admin = is_admin or clean_email in admin_emails or (user_id is None and user_email is None)
 
-    env = get_current_env_dict()
-    prof = get_current_profile_data()
+    # 1. Check if this specific user has a saved configuration on disk
+    saved_cfg = read_user_config(user_id) if user_id else None
 
-    if is_effective_admin:
-        personal = prof.get("personal", {})
-        edu = prof.get("education", {})
-        if isinstance(edu, list) and len(edu) > 0:
-            edu = edu[0]
-        elif not isinstance(edu, dict):
-            edu = {}
-        r_name, r_path = get_latest_resume_info()
+    # 2. Check Supabase profiles for this user
+    supabase = get_supabase_client()
+    sb_profile = None
+    if supabase and user_id and not str(user_id).startswith("usr_"):
+        try:
+            p_res = supabase.table("profiles").select("*").eq("id", user_id).limit(1).execute()
+            if p_res.data:
+                sb_profile = p_res.data[0]
+        except Exception as sup_err:
+            logger.debug("Could not query Supabase profile for user %s: %s", user_id, sup_err)
 
-        return {
-            # Personal details
-            "firstname": env.get("FIRSTNAME") or personal.get("firstname") or "",
-            "lastname": env.get("LASTNAME") or personal.get("lastname") or "",
-            "phone": env.get("PHONE") or personal.get("phone") or "",
-            "email": env.get("EMAIL") or personal.get("email") or "",
-            "gender": env.get("GENDER") or personal.get("gender") or "Male",
-            # Search & Job Application Preferences
-            "keywords": env.get("KEYWORDS") or prof.get("naukri_headline") or "",
-            "location": env.get("LOCATION") or personal.get("current_location") or "",
-            "pages_per_keyword": int(env.get("PAGES_PER_KEYWORD", 2)),
-            "max_applications": int(env.get("MAX_APPLICATIONS", 50)),
-            "browser": env.get("BROWSER") or "auto",
-            # Career & Screening Details for all portals
-            "total_experience_years": env.get("TOTAL_EXPERIENCE_YEARS") or str(personal.get("total_experience_years", "0")),
-            "relevant_experience_years": env.get("RELEVANT_EXPERIENCE_YEARS") or str(personal.get("relevant_experience_years", "0")),
-            "current_ctc": env.get("CURRENT_CTC") or personal.get("current_ctc", ""),
-            "expected_ctc": env.get("EXPECTED_CTC") or personal.get("expected_ctc", ""),
-            "notice_period": env.get("NOTICE_PERIOD") or personal.get("notice_period", "Immediate (0 Days)"),
-            "work_mode": env.get("WORK_MODE") or personal.get("work_mode", "Remote / Hybrid"),
-            "willing_to_relocate": env.get("WILLING_TO_RELOCATE") or personal.get("willing_to_relocate", "Yes"),
-            "work_authorization": env.get("WORK_AUTHORIZATION") or personal.get("work_authorization", "Authorized to work in India"),
-            "is_fresher": env.get("IS_FRESHER", "").lower() in ("true", "1", "yes") or personal.get("is_fresher", False),
-            "selected_platforms": prof.get("selected_platforms") or ["Naukri", "Internshala", "Indeed", "LinkedIn"],
-            # Highest Education Details
-            "education_degree": env.get("EDUCATION_DEGREE") or edu.get("degree", ""),
-            "education_college": env.get("EDUCATION_COLLEGE") or edu.get("institution") or edu.get("college", ""),
-            "education_passing_year": env.get("EDUCATION_PASSING_YEAR") or str(edu.get("year") or edu.get("passing_year", "")),
-            "education_score": env.get("EDUCATION_SCORE") or str(edu.get("score") or edu.get("cgpa", "")),
-            # Social & Portfolio Links
-            "linkedin_url": env.get("LINKEDIN_URL") or personal.get("linkedin_url", ""),
-            "github_url": env.get("GITHUB_URL") or personal.get("github_url", ""),
-            "portfolio_url": env.get("PORTFOLIO_URL") or personal.get("portfolio_url", ""),
-            "cover_letter": env.get("COVER_LETTER") or prof.get("cover_letter", ""),
-            # Platform credentials
-            "naukri_email": env.get("NAUKRI_EMAIL", ""),
-            "naukri_password": env.get("NAUKRI_PASSWORD", ""),
-            "internshala_email": env.get("INTERNSHALA_EMAIL", ""),
-            "internshala_password": env.get("INTERNSHALA_PASSWORD", ""),
-            "indeed_email": env.get("INDEED_EMAIL", ""),
-            "indeed_password": env.get("INDEED_PASSWORD", ""),
-            "linkedin_email": env.get("LINKEDIN_EMAIL", ""),
-            "linkedin_password": env.get("LINKEDIN_PASSWORD", ""),
-            "foundit_email": env.get("FOUNDIT_EMAIL", ""),
-            "foundit_password": env.get("FOUNDIT_PASSWORD", ""),
-            "wellfound_email": env.get("WELLFOUND_EMAIL", ""),
-            "wellfound_password": env.get("WELLFOUND_PASSWORD", ""),
-            "glassdoor_email": env.get("GLASSDOOR_EMAIL", ""),
-            "glassdoor_password": env.get("GLASSDOOR_PASSWORD", ""),
-            "cutshort_email": env.get("CUTSHORT_EMAIL", ""),
-            "cutshort_password": env.get("CUTSHORT_PASSWORD", ""),
-            # AI & Notifications
-            "telegram_bot_token": env.get("TELEGRAM_BOT_TOKEN", ""),
-            "telegram_chat_id": env.get("TELEGRAM_CHAT_ID", ""),
-            "discord_webhook_url": env.get("DISCORD_WEBHOOK_URL", ""),
-            "gemini_api_key": env.get("GEMINI_API_KEY", ""),
-            "dashboard_port": int(env.get("DASHBOARD_PORT", 5000)),
-            # Resume state
-            "resume_name": r_name,
-            "resume_path": r_path,
-            "key_skills": prof.get("key_skills", []),
-            "profile_summary": prof.get("profile_summary", ""),
-            "naukri_headline": prof.get("naukri_headline", ""),
-        }
-
-    # Isolated candidate profile resolution (No server host data leakage)
+    # 3. Check active resume for this user
     r_name = None
     r_path = None
-    client = get_supabase_client()
-    if client and user_id and not user_id.startswith("usr_"):
+    if supabase and user_id and not str(user_id).startswith("usr_"):
         try:
-            res = client.table("resumes").select("file_name, storage_path").eq("user_id", user_id).eq("is_default", True).limit(1).execute()
-            if not res.data:
-                res = client.table("resumes").select("file_name, storage_path").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
-            if res.data:
-                r_name = res.data[0].get("file_name")
-                r_path = res.data[0].get("storage_path")
-        except Exception as e:
-            logger.debug("Could not query candidate resume in Supabase: %s", e)
+            res_query = supabase.table("resumes").select("file_name, storage_path").eq("user_id", user_id).eq("is_default", True).limit(1).execute()
+            if not res_query.data:
+                res_query = supabase.table("resumes").select("file_name, storage_path").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
+            if res_query.data:
+                r_name = res_query.data[0].get("file_name")
+                r_path = res_query.data[0].get("storage_path")
+        except Exception as res_err:
+            logger.debug("Could not query Supabase resumes for user %s: %s", user_id, res_err)
 
     if not r_name:
         try:
@@ -265,34 +245,144 @@ def get_full_configuration(
         except Exception:
             pass
 
-    cand_firstname = ""
-    cand_lastname = ""
+    # If user has a saved config on disk, return it!
+    if saved_cfg:
+        if r_name and not saved_cfg.get("resume_name"):
+            saved_cfg["resume_name"] = r_name
+            saved_cfg["resume_path"] = r_path
+        return saved_cfg
+
+    # If user saved in Supabase additional_info
+    if sb_profile and isinstance(sb_profile.get("additional_info"), dict) and sb_profile["additional_info"].get("has_saved_config"):
+        info = sb_profile["additional_info"]
+        fn = sb_profile.get("full_name") or ""
+        parts = fn.strip().split() if fn else []
+        reconstructed = {
+            "firstname": parts[0] if parts else "",
+            "lastname": " ".join(parts[1:]) if len(parts) > 1 else "",
+            "phone": sb_profile.get("phone") or "",
+            "email": sb_profile.get("email") or clean_email,
+            "gender": info.get("gender", "Male"),
+            "keywords": info.get("keywords") or sb_profile.get("headline") or "",
+            "location": info.get("location") or sb_profile.get("city") or "",
+            "pages_per_keyword": int(info.get("pages_per_keyword", 2)),
+            "max_applications": int(info.get("max_applications", 50)),
+            "browser": info.get("browser", "auto"),
+            "total_experience_years": str(info.get("total_experience_years", "0")),
+            "relevant_experience_years": str(info.get("relevant_experience_years", "0")),
+            "current_ctc": str(info.get("current_ctc", "")),
+            "expected_ctc": str(info.get("expected_ctc", "")),
+            "notice_period": str(info.get("notice_period", "Immediate (0 Days)")),
+            "work_mode": str(info.get("work_mode", "Remote / Hybrid")),
+            "willing_to_relocate": str(info.get("willing_to_relocate", "Yes")),
+            "work_authorization": str(info.get("work_authorization", "Authorized to work in India")),
+            "is_fresher": bool(info.get("is_fresher", False)),
+            "selected_platforms": info.get("selected_platforms") or ["Naukri", "Internshala", "Indeed", "LinkedIn"],
+            "education_degree": str(info.get("education_degree", "")),
+            "education_college": str(info.get("education_college", "")),
+            "education_passing_year": str(info.get("education_passing_year", "")),
+            "education_score": str(info.get("education_score", "")),
+            "linkedin_url": str(info.get("linkedin_url") or sb_profile.get("linkedin_url", "")),
+            "github_url": str(info.get("github_url") or sb_profile.get("github_url", "")),
+            "portfolio_url": str(info.get("portfolio_url") or sb_profile.get("portfolio_url", "")),
+            "cover_letter": str(info.get("cover_letter", "")),
+            "naukri_email": str(info.get("naukri_email", "")),
+            "naukri_password": str(info.get("naukri_password", "")),
+            "internshala_email": str(info.get("internshala_email", "")),
+            "internshala_password": str(info.get("internshala_password", "")),
+            "indeed_email": str(info.get("indeed_email", "")),
+            "indeed_password": str(info.get("indeed_password", "")),
+            "linkedin_email": str(info.get("linkedin_email", "")),
+            "linkedin_password": str(info.get("linkedin_password", "")),
+            "resume_name": r_name or info.get("resume_name"),
+            "resume_path": r_path or info.get("resume_path"),
+            "key_skills": sb_profile.get("skills") or info.get("key_skills", []),
+            "profile_summary": sb_profile.get("summary") or info.get("profile_summary", ""),
+            "naukri_headline": sb_profile.get("headline") or info.get("naukri_headline", ""),
+        }
+        if user_id:
+            write_user_config(user_id, reconstructed)
+        return reconstructed
+
+    # If effective admin and no per-user config: load from host environment
+    if is_effective_admin:
+        env = get_current_env_dict()
+        prof = get_current_profile_data()
+        personal = prof.get("personal", {})
+        edu = prof.get("education", {})
+        if isinstance(edu, list) and len(edu) > 0:
+            edu = edu[0]
+        elif not isinstance(edu, dict):
+            edu = {}
+        r_name_env, r_path_env = get_latest_resume_info()
+
+        return {
+            "firstname": env.get("FIRSTNAME") or personal.get("firstname") or "",
+            "lastname": env.get("LASTNAME") or personal.get("lastname") or "",
+            "phone": env.get("PHONE") or personal.get("phone") or "",
+            "email": env.get("EMAIL") or personal.get("email") or "",
+            "gender": env.get("GENDER") or personal.get("gender") or "Male",
+            "keywords": env.get("KEYWORDS") or prof.get("naukri_headline") or "",
+            "location": env.get("LOCATION") or personal.get("current_location") or "",
+            "pages_per_keyword": int(env.get("PAGES_PER_KEYWORD", 2)),
+            "max_applications": int(env.get("MAX_APPLICATIONS", 50)),
+            "browser": env.get("BROWSER") or "auto",
+            "total_experience_years": env.get("TOTAL_EXPERIENCE_YEARS") or str(personal.get("total_experience_years", "0")),
+            "relevant_experience_years": env.get("RELEVANT_EXPERIENCE_YEARS") or str(personal.get("relevant_experience_years", "0")),
+            "current_ctc": env.get("CURRENT_CTC") or personal.get("current_ctc", ""),
+            "expected_ctc": env.get("EXPECTED_CTC") or personal.get("expected_ctc", ""),
+            "notice_period": env.get("NOTICE_PERIOD") or personal.get("notice_period", "Immediate (0 Days)"),
+            "work_mode": env.get("WORK_MODE") or personal.get("work_mode", "Remote / Hybrid"),
+            "willing_to_relocate": env.get("WILLING_TO_RELOCATE") or personal.get("willing_to_relocate", "Yes"),
+            "work_authorization": env.get("WORK_AUTHORIZATION") or personal.get("work_authorization", "Authorized to work in India"),
+            "is_fresher": env.get("IS_FRESHER", "").lower() in ("true", "1", "yes") or personal.get("is_fresher", False),
+            "selected_platforms": prof.get("selected_platforms") or ["Naukri", "Internshala", "Indeed", "LinkedIn"],
+            "education_degree": env.get("EDUCATION_DEGREE") or edu.get("degree", ""),
+            "education_college": env.get("EDUCATION_COLLEGE") or edu.get("institution") or edu.get("college", ""),
+            "education_passing_year": env.get("EDUCATION_PASSING_YEAR") or str(edu.get("year") or edu.get("passing_year", "")),
+            "education_score": env.get("EDUCATION_SCORE") or str(edu.get("score") or edu.get("cgpa", "")),
+            "linkedin_url": env.get("LINKEDIN_URL") or personal.get("linkedin_url", ""),
+            "github_url": env.get("GITHUB_URL") or personal.get("github_url", ""),
+            "portfolio_url": env.get("PORTFOLIO_URL") or personal.get("portfolio_url", ""),
+            "cover_letter": env.get("COVER_LETTER") or prof.get("cover_letter", ""),
+            "naukri_email": env.get("NAUKRI_EMAIL", ""),
+            "naukri_password": env.get("NAUKRI_PASSWORD", ""),
+            "internshala_email": env.get("INTERNSHALA_EMAIL", ""),
+            "internshala_password": env.get("INTERNSHALA_PASSWORD", ""),
+            "indeed_email": env.get("INDEED_EMAIL", ""),
+            "indeed_password": env.get("INDEED_PASSWORD", ""),
+            "linkedin_email": env.get("LINKEDIN_EMAIL", ""),
+            "linkedin_password": env.get("LINKEDIN_PASSWORD", ""),
+            "resume_name": r_name or r_name_env,
+            "resume_path": r_path or r_path_env,
+            "key_skills": prof.get("key_skills", []),
+            "profile_summary": prof.get("profile_summary", ""),
+            "naukri_headline": prof.get("naukri_headline", ""),
+        }
+
+    # Brand new clean candidate account
+    cand_fn = ""
+    cand_ln = ""
     cand_phone = ""
-    cand_email = clean_email or ""
+    cand_email = clean_email
     cand_headline = ""
     cand_summary = ""
     cand_skills = []
 
-    if client and user_id and not user_id.startswith("usr_"):
-        try:
-            prof_res = client.table("profiles").select("*").eq("id", user_id).limit(1).execute()
-            if prof_res.data:
-                p = prof_res.data[0]
-                fn = p.get("full_name") or ""
-                parts = fn.strip().split(" ")
-                cand_firstname = parts[0] if parts else ""
-                cand_lastname = " ".join(parts[1:]) if len(parts) > 1 else ""
-                cand_phone = p.get("phone") or ""
-                cand_email = p.get("email") or cand_email
-                cand_headline = p.get("headline") or ""
-                cand_summary = p.get("summary") or ""
-                cand_skills = p.get("skills") or []
-        except Exception as e:
-            logger.debug("Could not query candidate profile in Supabase: %s", e)
+    if sb_profile:
+        fn = sb_profile.get("full_name") or ""
+        parts = fn.strip().split() if fn else []
+        cand_fn = parts[0] if parts else ""
+        cand_ln = " ".join(parts[1:]) if len(parts) > 1 else ""
+        cand_phone = sb_profile.get("phone") or ""
+        cand_email = sb_profile.get("email") or clean_email
+        cand_headline = sb_profile.get("headline") or ""
+        cand_summary = sb_profile.get("summary") or ""
+        cand_skills = sb_profile.get("skills") or []
 
     return {
-        "firstname": cand_firstname,
-        "lastname": cand_lastname,
+        "firstname": cand_fn,
+        "lastname": cand_ln,
         "phone": cand_phone,
         "email": cand_email,
         "gender": "Male",
@@ -327,19 +417,6 @@ def get_full_configuration(
         "indeed_password": "",
         "linkedin_email": "",
         "linkedin_password": "",
-        "foundit_email": "",
-        "foundit_password": "",
-        "wellfound_email": "",
-        "wellfound_password": "",
-        "glassdoor_email": "",
-        "glassdoor_password": "",
-        "cutshort_email": "",
-        "cutshort_password": "",
-        "telegram_bot_token": "",
-        "telegram_chat_id": "",
-        "discord_webhook_url": "",
-        "gemini_api_key": "",
-        "dashboard_port": 5000,
         "resume_name": r_name,
         "resume_path": r_path,
         "key_skills": cand_skills,
@@ -674,33 +751,40 @@ def train_bot_with_candidate_details(config: dict[str, Any]) -> int:
     return trained_count
 
 def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = None) -> dict[str, Any]:
-    """Persist user configuration to root .env, data/profile_data.json, and data/resume.ini."""
+    """Persist user configuration for this specific user.
+    Saves to data/user_configs/{user_id}.json, Supabase profiles, and (if admin/local) to .env and profile_data.json.
+    """
+    clean_uid = str(user_id) if user_id else None
+    existing_user_cfg = read_user_config(clean_uid) if clean_uid else {}
     existing_env = get_current_env_dict()
 
     def _get_val(cfg_key: str, env_key: str, default: str = "") -> str:
         if cfg_key in config and config[cfg_key] is not None:
             return str(config[cfg_key]).strip()
+        if existing_user_cfg and cfg_key in existing_user_cfg and existing_user_cfg[cfg_key] is not None:
+            return str(existing_user_cfg[cfg_key]).strip()
         return existing_env.get(env_key, default).strip()
 
-    # 1. Base profile fields
     fname = _get_val("firstname", "FIRSTNAME")
     lname = _get_val("lastname", "LASTNAME")
     phone = _get_val("phone", "PHONE")
+    cand_email = str(config.get("email") or (existing_user_cfg.get("email") if existing_user_cfg else "") or existing_env.get("EMAIL", "")).strip()
     keywords = _get_val("keywords", "KEYWORDS")
     location = _get_val("location", "LOCATION", "pune")
-    pages_per_kw = _get_val("pages_per_keyword", "PAGES_PER_KEYWORD", "2")
-    max_apps = _get_val("max_applications", "MAX_APPLICATIONS", "50")
+    pages_per_kw = int(_get_val("pages_per_keyword", "PAGES_PER_KEYWORD", "2") or 2)
+    max_apps = int(_get_val("max_applications", "MAX_APPLICATIONS", "50") or 50)
     browser = _get_val("browser", "BROWSER", "auto").lower()
 
-    # Job & Career Details
-    tot_exp = _get_val("total_experience_years", "TOTAL_EXPERIENCE_YEARS")
-    rel_exp = _get_val("relevant_experience_years", "RELEVANT_EXPERIENCE_YEARS")
+    tot_exp = _get_val("total_experience_years", "TOTAL_EXPERIENCE_YEARS", "0")
+    rel_exp = _get_val("relevant_experience_years", "RELEVANT_EXPERIENCE_YEARS", "0")
     cur_ctc = _get_val("current_ctc", "CURRENT_CTC")
     exp_ctc = _get_val("expected_ctc", "EXPECTED_CTC")
-    notice = _get_val("notice_period", "NOTICE_PERIOD")
-    work_mode = _get_val("work_mode", "WORK_MODE")
-    relocate = _get_val("willing_to_relocate", "WILLING_TO_RELOCATE")
+    notice = _get_val("notice_period", "NOTICE_PERIOD", "Immediate (0 Days)")
+    work_mode = _get_val("work_mode", "WORK_MODE", "Remote / Hybrid")
+    relocate = _get_val("willing_to_relocate", "WILLING_TO_RELOCATE", "Yes")
     gender = _get_val("gender", "GENDER", "Male")
+    work_auth = str(config.get("work_authorization") or (existing_user_cfg.get("work_authorization") if existing_user_cfg else "") or "Authorized to work in India").strip()
+    is_fresher = bool(config.get("is_fresher") or str(tot_exp) in ("0", "Fresher (0 Years)"))
 
     degree = _get_val("education_degree", "EDUCATION_DEGREE")
     college = _get_val("education_college", "EDUCATION_COLLEGE")
@@ -710,144 +794,162 @@ def save_user_configuration(config: dict[str, Any], user_id: Optional[str] = Non
     linkedin = _get_val("linkedin_url", "LINKEDIN_URL")
     github = _get_val("github_url", "GITHUB_URL")
     portfolio = _get_val("portfolio_url", "PORTFOLIO_URL")
-    cover_letter = str(config.get("cover_letter") or "").strip()
+    cover_letter = str(config.get("cover_letter") or (existing_user_cfg.get("cover_letter") if existing_user_cfg else "") or "").strip()
 
-    env_map: dict[str, str] = {
-        "FIRSTNAME": fname,
-        "LASTNAME": lname,
-        "PHONE": phone,
-        "KEYWORDS": keywords,
-        "LOCATION": location,
-        "PAGES_PER_KEYWORD": pages_per_kw,
-        "MAX_APPLICATIONS": max_apps,
-        "BROWSER": browser,
-        "TOTAL_EXPERIENCE_YEARS": tot_exp,
-        "RELEVANT_EXPERIENCE_YEARS": rel_exp,
-        "CURRENT_CTC": cur_ctc,
-        "EXPECTED_CTC": exp_ctc,
-        "NOTICE_PERIOD": notice,
-        "WORK_MODE": work_mode,
-        "WILLING_TO_RELOCATE": relocate,
-        "WORK_AUTHORIZATION": str(config.get("work_authorization") or "Authorized to work in India").strip(),
-        "IS_FRESHER": "true" if config.get("is_fresher") or str(config.get("total_experience_years")) in ("0", "Fresher (0 Years)") else "false",
-        "GENDER": gender,
-        "EDUCATION_DEGREE": degree,
-        "EDUCATION_COLLEGE": college,
-        "EDUCATION_PASSING_YEAR": pass_yr,
-        "EDUCATION_SCORE": score,
-        "LINKEDIN_URL": linkedin,
-        "GITHUB_URL": github,
-        "PORTFOLIO_URL": portfolio,
-    }
+    sel_platforms = config.get("selected_platforms") or (existing_user_cfg.get("selected_platforms") if existing_user_cfg else None) or ["Naukri", "Internshala", "Indeed", "LinkedIn"]
+    key_skills = config.get("key_skills") or (existing_user_cfg.get("key_skills") if existing_user_cfg else None) or []
+    if not key_skills and keywords:
+        key_skills = [k.strip() for k in keywords.split(",") if k.strip()]
 
-    # Portal Credentials: ONLY update if explicitly provided and non-empty in config, OR keep existing!
     portal_keys = [
-        ("naukri_email", "NAUKRI_EMAIL"),
-        ("naukri_password", "NAUKRI_PASSWORD"),
-        ("internshala_email", "INTERNSHALA_EMAIL"),
-        ("internshala_password", "INTERNSHALA_PASSWORD"),
-        ("indeed_email", "INDEED_EMAIL"),
-        ("indeed_password", "INDEED_PASSWORD"),
-        ("linkedin_email", "LINKEDIN_EMAIL"),
-        ("linkedin_password", "LINKEDIN_PASSWORD"),
-        ("foundit_email", "FOUNDIT_EMAIL"),
-        ("foundit_password", "FOUNDIT_PASSWORD"),
-        ("wellfound_email", "WELLFOUND_EMAIL"),
-        ("wellfound_password", "WELLFOUND_PASSWORD"),
-        ("glassdoor_email", "GLASSDOOR_EMAIL"),
-        ("glassdoor_password", "GLASSDOOR_PASSWORD"),
-        ("cutshort_email", "CUTSHORT_EMAIL"),
-        ("cutshort_password", "CUTSHORT_PASSWORD"),
-        ("telegram_bot_token", "TELEGRAM_BOT_TOKEN"),
-        ("telegram_chat_id", "TELEGRAM_CHAT_ID"),
-        ("discord_webhook_url", "DISCORD_WEBHOOK_URL"),
-        ("gemini_api_key", "GEMINI_API_KEY"),
-        ("dashboard_port", "DASHBOARD_PORT"),
+        "naukri_email", "naukri_password",
+        "internshala_email", "internshala_password",
+        "indeed_email", "indeed_password",
+        "linkedin_email", "linkedin_password",
     ]
-    for cfg_k, env_k in portal_keys:
-        if cfg_k in config and config[cfg_k] is not None:
-            env_map[env_k] = str(config[cfg_k]).strip()
-        elif env_k in existing_env and existing_env[env_k].strip() != "":
-            env_map[env_k] = existing_env[env_k].strip()
+    credentials: dict[str, str] = {}
+    for pk in portal_keys:
+        if pk in config and config[pk] is not None:
+            credentials[pk] = str(config[pk]).strip()
+        elif existing_user_cfg and pk in existing_user_cfg and existing_user_cfg[pk] is not None:
+            credentials[pk] = str(existing_user_cfg[pk]).strip()
+        else:
+            credentials[pk] = ""
 
-    # Candidate profile email fallback for NAUKRI_EMAIL if not set
-    cand_email = str(config.get("email") or "").strip()
-    if cand_email and "naukri_email" not in config and not env_map.get("NAUKRI_EMAIL"):
-        env_map["NAUKRI_EMAIL"] = cand_email
+    resume_name = config.get("resume_name") or (existing_user_cfg.get("resume_name") if existing_user_cfg else None)
+    resume_path = config.get("resume_path") or (existing_user_cfg.get("resume_path") if existing_user_cfg else None)
 
-    # Update .env
-    update_root_env_file(env_map)
-
-    # 2. Update data/profile_data.json
-    full_name = f"{fname} {lname}".strip()
-    effective_email = cand_email or env_map.get("NAUKRI_EMAIL") or None
-    prof_updates = {
-        "full_name": full_name or None,
-        "email": effective_email,
-        "phone": phone or None,
-        "city": location,
-        "headline": keywords,
-        "linkedin_url": linkedin or None,
-        "github_url": github or None,
-        "portfolio_url": portfolio or None,
+    user_saved_payload: dict[str, Any] = {
+        "has_saved_config": True,
+        "firstname": fname,
+        "lastname": lname,
+        "phone": phone,
+        "email": cand_email,
+        "gender": gender,
+        "keywords": keywords,
+        "location": location,
+        "pages_per_keyword": pages_per_kw,
+        "max_applications": max_apps,
+        "browser": browser,
+        "total_experience_years": tot_exp,
+        "relevant_experience_years": rel_exp,
+        "current_ctc": cur_ctc,
+        "expected_ctc": exp_ctc,
+        "notice_period": notice,
+        "work_mode": work_mode,
+        "willing_to_relocate": relocate,
+        "work_authorization": work_auth,
+        "is_fresher": is_fresher,
+        "selected_platforms": sel_platforms,
+        "education_degree": degree,
+        "education_college": college,
+        "education_passing_year": pass_yr,
+        "education_score": score,
+        "linkedin_url": linkedin,
+        "github_url": github,
+        "portfolio_url": portfolio,
+        "cover_letter": cover_letter,
+        "key_skills": key_skills,
+        "profile_summary": str(config.get("profile_summary") or "").strip(),
+        "naukri_headline": str(config.get("naukri_headline") or keywords).strip(),
+        "resume_name": resume_name,
+        "resume_path": resume_path,
+        **credentials,
     }
-    if config.get("key_skills"):
-        prof_updates["skills"] = config["key_skills"]
-    elif keywords:
-        prof_updates["skills"] = [k.strip() for k in keywords.split(",") if k.strip()]
 
-    sync_local_profile_data(prof_updates)
+    # 1. Save to data/user_configs/{user_id}.json
+    if clean_uid:
+        write_user_config(clean_uid, user_saved_payload)
 
-    # Update profile_data.json personal and education objects directly
-    prof_json = get_current_profile_data()
-    prof_json["personal"] = prof_json.get("personal", {})
-    prof_json["personal"].update({
-        "name": full_name or prof_json["personal"].get("name", ""),
-        "firstname": fname or prof_json["personal"].get("firstname", ""),
-        "lastname": lname or prof_json["personal"].get("lastname", ""),
-        "email": effective_email or prof_json["personal"].get("email", ""),
-        "phone": phone or prof_json["personal"].get("phone", ""),
-        "current_location": location or prof_json["personal"].get("current_location", "Pune"),
-        "total_experience_years": tot_exp or prof_json["personal"].get("total_experience_years", "0"),
-        "relevant_experience_years": rel_exp or prof_json["personal"].get("relevant_experience_years", "1"),
-        "current_ctc": cur_ctc or prof_json["personal"].get("current_ctc", "0 (Fresher)"),
-        "expected_ctc": exp_ctc or prof_json["personal"].get("expected_ctc", "4.5 Lakhs"),
-        "notice_period": notice or prof_json["personal"].get("notice_period", "Immediate (0 Days)"),
-        "work_mode": work_mode or prof_json["personal"].get("work_mode", "Remote / Hybrid"),
-        "willing_to_relocate": relocate or prof_json["personal"].get("willing_to_relocate", "Yes"),
-        "gender": gender or prof_json["personal"].get("gender", "Male"),
-        "work_authorization": str(config.get("work_authorization") or prof_json["personal"].get("work_authorization", "Authorized to work in India")),
-        "is_fresher": bool(config.get("is_fresher", prof_json["personal"].get("is_fresher", False))),
-        "linkedin_url": linkedin or prof_json["personal"].get("linkedin_url", ""),
-        "github_url": github or prof_json["personal"].get("github_url", ""),
-        "portfolio_url": portfolio or prof_json["personal"].get("portfolio_url", ""),
-    })
+    # 2. Persist to Supabase if available
+    supabase = get_supabase_client()
+    if supabase and clean_uid and not clean_uid.startswith("usr_"):
+        try:
+            full_name = f"{fname} {lname}".strip() or "Candidate"
+            update_payload = {
+                "full_name": full_name,
+                "email": cand_email or None,
+                "phone": phone or None,
+                "city": location or None,
+                "headline": keywords or None,
+                "skills": key_skills,
+                "summary": str(config.get("profile_summary") or None),
+                "linkedin_url": linkedin or None,
+                "github_url": github or None,
+                "portfolio_url": portfolio or None,
+                "additional_info": user_saved_payload,
+            }
+            supabase.table("profiles").update(update_payload).eq("id", clean_uid).execute()
+        except Exception as sb_err:
+            logger.warning("Could not sync profile to Supabase: %s", sb_err)
 
-    edu_obj = prof_json.get("education") or {}
-    if isinstance(edu_obj, list):
-        edu_obj = edu_obj[0] if edu_obj else {}
-    elif not isinstance(edu_obj, dict):
-        edu_obj = {}
-    edu_obj.update({
-        "degree": degree or edu_obj.get("degree", "Bachelor of Technology (B.Tech)"),
-        "institution": college or edu_obj.get("institution") or edu_obj.get("college", ""),
-        "college": college or edu_obj.get("college") or edu_obj.get("institution", ""),
-        "year": pass_yr or edu_obj.get("year", "2025"),
-        "passing_year": pass_yr or edu_obj.get("passing_year", "2025"),
-        "score": score or edu_obj.get("score", ""),
-    })
-    prof_json["education"] = edu_obj
-    if "selected_platforms" in config and isinstance(config["selected_platforms"], list):
-        prof_json["selected_platforms"] = config["selected_platforms"]
-    if cover_letter:
-        prof_json["cover_letter"] = cover_letter
+    # 3. Only update host root .env if user is admin or local runner without auth
+    full_name = f"{fname} {lname}".strip()
+    is_admin_user = (
+        clean_uid is None
+        or (cand_email and cand_email.lower() in ("umeshtemburwar2002@gmail.com", "utemburwar2002@gmail.com"))
+    )
+    if is_admin_user:
+        env_map = {
+            "FIRSTNAME": fname,
+            "LASTNAME": lname,
+            "PHONE": phone,
+            "KEYWORDS": keywords,
+            "LOCATION": location,
+            "PAGES_PER_KEYWORD": str(pages_per_kw),
+            "MAX_APPLICATIONS": str(max_apps),
+            "BROWSER": browser,
+            "TOTAL_EXPERIENCE_YEARS": tot_exp,
+            "RELEVANT_EXPERIENCE_YEARS": rel_exp,
+            "CURRENT_CTC": cur_ctc,
+            "EXPECTED_CTC": exp_ctc,
+            "NOTICE_PERIOD": notice,
+            "WORK_MODE": work_mode,
+            "WILLING_TO_RELOCATE": relocate,
+            "WORK_AUTHORIZATION": work_auth,
+            "IS_FRESHER": "true" if is_fresher else "false",
+            "GENDER": gender,
+            "EDUCATION_DEGREE": degree,
+            "EDUCATION_COLLEGE": college,
+            "EDUCATION_PASSING_YEAR": pass_yr,
+            "EDUCATION_SCORE": score,
+            "LINKEDIN_URL": linkedin,
+            "GITHUB_URL": github,
+            "PORTFOLIO_URL": portfolio,
+        }
+        for pk, env_k in [
+            ("naukri_email", "NAUKRI_EMAIL"),
+            ("naukri_password", "NAUKRI_PASSWORD"),
+            ("internshala_email", "INTERNSHALA_EMAIL"),
+            ("internshala_password", "INTERNSHALA_PASSWORD"),
+            ("indeed_email", "INDEED_EMAIL"),
+            ("indeed_password", "INDEED_PASSWORD"),
+            ("linkedin_email", "LINKEDIN_EMAIL"),
+            ("linkedin_password", "LINKEDIN_PASSWORD"),
+        ]:
+            if credentials.get(pk):
+                env_map[env_k] = credentials[pk]
+            elif env_k in existing_env and existing_env[env_k].strip():
+                env_map[env_k] = existing_env[env_k].strip()
 
-    try:
-        os.makedirs(DATA_DIR, exist_ok=True)
-        with open(PROFILE_DATA_PATH, "w", encoding="utf-8") as f:
-            json.dump(prof_json, f, indent=2)
-    except Exception as e:
-        logger.warning("Could not persist full profile_data.json: %s", e)
+        if cand_email:
+            env_map["EMAIL"] = cand_email
+
+        update_root_env_file(env_map)
+
+        full_name = f"{fname} {lname}".strip()
+        prof_updates = {
+            "full_name": full_name or None,
+            "email": cand_email or env_map.get("NAUKRI_EMAIL") or None,
+            "phone": phone or None,
+            "city": location,
+            "headline": keywords,
+            "linkedin_url": linkedin or None,
+            "github_url": github or None,
+            "portfolio_url": portfolio or None,
+            "skills": key_skills,
+        }
+        sync_local_profile_data(prof_updates)
 
     # 2.5 Automatically train bot screening questions with candidate details
     try:
@@ -1325,6 +1427,9 @@ def delete_user_resume_file() -> dict[str, Any]:
     }
 
 def reset_all_candidate_data(user_id: Optional[str] = None) -> dict[str, Any]:
+    """Completely wipe candidate data across Supabase, user_configs, SQLite, physical resumes, data/profile_data.json, and .env."""
+    if user_id:
+        delete_user_config(user_id)
     """Completely wipe candidate data across Supabase, SQLite, physical resumes, data/profile_data.json, and .env."""
     supabase = get_supabase_client()
     supabase_cleaned = []
@@ -1347,6 +1452,8 @@ def reset_all_candidate_data(user_id: Optional[str] = None) -> dict[str, Any]:
         ]
         for tbl in tables_to_wipe:
             for uid in target_user_ids:
+                if uid.startswith("usr_"):
+                    continue
                 try:
                     supabase.table(tbl).delete().eq("user_id", uid).execute()
                     if tbl not in supabase_cleaned:
@@ -1356,6 +1463,8 @@ def reset_all_candidate_data(user_id: Optional[str] = None) -> dict[str, Any]:
 
         # Reset profile row to clean fresh defaults
         for uid in target_user_ids:
+            if uid.startswith("usr_"):
+                continue
             try:
                 supabase.table("profiles").update({
                     "full_name": "Candidate",

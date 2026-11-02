@@ -90,6 +90,7 @@ export interface UserProfile {
     willing_to_relocate?: boolean;
     expected_salary_lakhs?: number | null;
     is_fresher?: boolean;
+    [key: string]: any;
   };
   isOnboarded?: boolean;
   onboardingStep?: number;
