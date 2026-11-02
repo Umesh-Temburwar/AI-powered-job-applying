@@ -15,6 +15,10 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  Check,
+  RefreshCw,
+  BarChart3,
+  Zap,
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../context/AuthContext';
@@ -60,81 +64,170 @@ const SUGGESTED_CITIES = [
   'Remote',
 ];
 
-const QUICK_COMMANDS = [
+interface QuickCommandItem {
+  id: string;
+  label: string;
+  subtitle: string;
+  cli: string;
+  platform: string;
+  taskType: string;
+  badge?: string;
+  logoType: 'all' | 'naukri' | 'internshala' | 'indeed' | 'linkedin' | 'update-naukri' | 'update-internshala' | 'update-all' | 'report';
+}
+
+const QUICK_COMMANDS: QuickCommandItem[] = [
   {
     id: 'all',
-    label: 'Run All Platforms (Auto-Apply)',
+    label: 'Run All Platforms',
+    subtitle: 'Naukri, Internshala, Indeed & LinkedIn',
     cli: 'py universal_bot.py --platform all',
     platform: 'All Platforms',
     taskType: 'job_apply',
     badge: 'RECOMMENDED',
-    desc: 'Runs automated job discovery & applications across Naukri, Internshala, Indeed & LinkedIn sequentially',
+    logoType: 'all',
   },
   {
     id: 'naukri',
     label: 'Naukri.com Auto-Apply',
+    subtitle: 'Direct Vacancies Auto-Apply',
     cli: 'py universal_bot.py --platform naukri',
     platform: 'Naukri',
     taskType: 'job_apply',
-    desc: 'Searches keywords & recommended jobs on Naukri.com',
+    logoType: 'naukri',
   },
   {
     id: 'internshala',
     label: 'Internshala Auto-Apply',
+    subtitle: 'Internships & Fresher Vacancies',
     cli: 'py universal_bot.py --platform internshala',
     platform: 'Internshala',
     taskType: 'job_apply',
-    desc: 'Applies to internships & fresher jobs on Internshala',
+    logoType: 'internshala',
   },
   {
     id: 'indeed',
     label: 'Indeed.com Auto-Apply',
+    subtitle: 'Easily Apply Portal Vacancies',
     cli: 'py universal_bot.py --platform indeed',
     platform: 'Indeed',
     taskType: 'job_apply',
-    desc: 'Applies to Easily Apply vacancies on Indeed India',
+    logoType: 'indeed',
   },
   {
     id: 'linkedin',
     label: 'LinkedIn Easy Apply',
+    subtitle: 'Automated Easy Apply Submissions',
     cli: 'py universal_bot.py --platform linkedin',
     platform: 'LinkedIn',
     taskType: 'job_apply',
-    desc: 'Navigates and submits LinkedIn Easy Apply applications',
+    logoType: 'linkedin',
   },
   {
     id: 'update-naukri-profile',
     label: 'Update Naukri Profile',
+    subtitle: 'Profile Freshness & Headline Sync',
     cli: 'py universal_bot.py --update-naukri-profile',
     platform: 'Naukri',
     taskType: 'profile_update',
-    desc: 'Refreshes Naukri profile freshness, resume headline, and key skills',
+    logoType: 'update-naukri',
   },
   {
     id: 'update-internshala-profile',
     label: 'Update Internshala Profile',
+    subtitle: 'Sync Projects, Credentials & Skills',
     cli: 'py universal_bot.py --update-internshala-profile',
     platform: 'Internshala',
     taskType: 'profile_update',
-    desc: 'Syncs projects, certificates, and skills to Internshala profile',
+    logoType: 'update-internshala',
   },
   {
     id: 'update-all-profiles',
     label: 'Update All Profiles',
+    subtitle: 'Refresh Freshness Across All Portals',
     cli: 'py universal_bot.py --update-all-profiles',
     platform: 'All Platforms',
     taskType: 'profile_update',
-    desc: 'Refreshes profile freshness across all job portals simultaneously',
+    logoType: 'update-all',
   },
   {
     id: 'report',
-    label: 'Consolidated Analytics Report',
+    label: 'Analytics Report',
+    subtitle: 'Applied Jobs Ledger & Analytics',
     cli: 'py universal_bot.py --report',
     platform: 'All Platforms',
     taskType: 'report',
-    desc: 'Aggregates applied jobs ledger & generates performance analytics',
+    logoType: 'report',
   },
 ];
+
+const renderTaskLogo = (logoType: QuickCommandItem['logoType']) => {
+  switch (logoType) {
+    case 'all':
+      return (
+        <div className="w-10 h-10 bg-emerald-600 text-white flex flex-col items-center justify-center font-black text-xs border border-emerald-400 select-none shadow-sm shrink-0">
+          <Zap className="w-4 h-4 fill-current text-amber-300" />
+          <span className="text-[9px] font-mono leading-none tracking-tighter">ALL</span>
+        </div>
+      );
+    case 'naukri':
+      return (
+        <div className="w-10 h-10 bg-[#0078DB] text-white flex items-center justify-center font-black text-lg font-sans border border-blue-400 select-none shadow-sm shrink-0">
+          N
+        </div>
+      );
+    case 'internshala':
+      return (
+        <div className="w-10 h-10 bg-[#1295D8] text-white flex items-center justify-center font-black text-sm font-sans tracking-tight border border-cyan-300 select-none shadow-sm shrink-0">
+          IS
+        </div>
+      );
+    case 'indeed':
+      return (
+        <div className="w-10 h-10 bg-[#2164F3] text-white flex items-center justify-center font-black text-sm font-sans tracking-tight border border-indigo-400 select-none shadow-sm shrink-0">
+          IN
+        </div>
+      );
+    case 'linkedin':
+      return (
+        <div className="w-10 h-10 bg-[#0A66C2] text-white flex items-center justify-center font-bold text-base font-sans lowercase border border-sky-400 select-none shadow-sm shrink-0">
+          in
+        </div>
+      );
+    case 'update-naukri':
+      return (
+        <div className="w-10 h-10 bg-[#0078DB] text-white flex flex-col items-center justify-center border border-blue-400 select-none shadow-sm shrink-0 relative">
+          <span className="font-black text-xs font-sans leading-none">N</span>
+          <RefreshCw className="w-3 h-3 text-emerald-300 mt-0.5" />
+        </div>
+      );
+    case 'update-internshala':
+      return (
+        <div className="w-10 h-10 bg-[#1295D8] text-white flex flex-col items-center justify-center border border-cyan-300 select-none shadow-sm shrink-0 relative">
+          <span className="font-black text-[10px] font-sans leading-none">IS</span>
+          <RefreshCw className="w-3 h-3 text-cyan-200 mt-0.5" />
+        </div>
+      );
+    case 'update-all':
+      return (
+        <div className="w-10 h-10 bg-emerald-700 text-white flex flex-col items-center justify-center border border-emerald-400 select-none shadow-sm shrink-0">
+          <RefreshCw className="w-4 h-4 text-emerald-200" />
+          <span className="text-[8px] font-mono leading-none tracking-tighter mt-0.5">SYNC</span>
+        </div>
+      );
+    case 'report':
+      return (
+        <div className="w-10 h-10 bg-amber-600 text-white flex items-center justify-center border border-amber-400 select-none shadow-sm shrink-0">
+          <BarChart3 className="w-5 h-5 text-white" />
+        </div>
+      );
+    default:
+      return (
+        <div className="w-10 h-10 bg-zinc-700 text-white flex items-center justify-center font-bold text-xs shrink-0">
+          BOT
+        </div>
+      );
+  }
+};
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -185,11 +278,9 @@ export const ProfilePage: React.FC = () => {
   const [linkedinPassword, setLinkedinPassword] = useState('');
   const [showLinkedinPassword, setShowLinkedinPassword] = useState(false);
 
-  // Quick Commands & Bot Launcher State
+  // Quick Commands & Bot Launcher State (Execution Mode always LIVE APPLY, Browser Mode always VISIBLE)
   const [selectedCommand, setSelectedCommand] = useState('all');
-  const [dryRun, setDryRun] = useState(true);
   const [maxApplications, setMaxApplications] = useState(50);
-  const [visibleBrowser, setVisibleBrowser] = useState(true);
   const [startingBot, setStartingBot] = useState(false);
 
 
@@ -1171,17 +1262,17 @@ export const ProfilePage: React.FC = () => {
       await startTask({
         platform: cmd.platform as any,
         taskType: cmd.taskType as any,
-        dryRun,
-        userConfirmedRealSubmission: !dryRun,
+        dryRun: false,
+        userConfirmedRealSubmission: true,
         maxApplications: maxApplications || 50,
         keywords: safeKeywords,
         locations: safeLocations,
         force: true,
-        headless: !visibleBrowser,
+        headless: false,
       });
 
       playRetroSound('success');
-      showToast(`🚀 Started: ${cmd.label} (${cmd.cli})! Redirecting to Applications...`, 'success');
+      showToast(`🚀 Started: ${cmd.label} (Live Apply Mode)! Redirecting to Applications...`, 'success');
       navigate('/applications');
     } catch (err: any) {
       playRetroSound('error');
@@ -2581,7 +2672,7 @@ export const ProfilePage: React.FC = () => {
           <label className="block text-[11px] font-bold uppercase font-mono text-[var(--text-primary)]">
             Select Automation Command:
           </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {QUICK_COMMANDS.map((cmd) => {
               const isSelected = selectedCommand === cmd.id;
               return (
@@ -2592,29 +2683,51 @@ export const ProfilePage: React.FC = () => {
                     playRetroSound('click');
                     setSelectedCommand(cmd.id);
                   }}
-                  className={`p-3 text-left border-2 transition-all cursor-pointer font-mono flex flex-col justify-between ${
+                  className={`p-3 text-left border-2 transition-all cursor-pointer font-mono flex items-center justify-between gap-3 group relative ${
                     isSelected
-                      ? 'border-emerald-500 bg-emerald-950/30 retro-shadow-sm ring-1 ring-emerald-500'
-                      : 'border-[var(--border-color)] bg-[var(--bg-base)] hover:border-emerald-500/60'
+                      ? 'border-emerald-500 bg-emerald-950/40 retro-shadow ring-2 ring-emerald-500/80'
+                      : 'border-[var(--border-color)] bg-[var(--bg-base)] hover:border-emerald-500/60 hover:bg-[var(--bg-card)]'
                   }`}
+                  aria-pressed={isSelected}
+                  title={`Select ${cmd.label}`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between gap-1.5 mb-1">
-                      <span className={`text-xs font-bold ${isSelected ? 'text-emerald-400' : 'text-[var(--text-primary)]'}`}>
-                        {cmd.label}
-                      </span>
-                      {cmd.badge && (
-                        <span className="text-[9px] px-1 py-0.5 bg-emerald-600 text-white font-bold">
-                          {cmd.badge}
+                  {/* Left: Platform Logo & Task Info */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {renderTaskLogo(cmd.logoType)}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`text-xs font-bold leading-tight ${
+                            isSelected ? 'text-emerald-400 font-extrabold' : 'text-[var(--text-primary)]'
+                          }`}
+                        >
+                          {cmd.label}
                         </span>
-                      )}
+                        {cmd.badge && (
+                          <span className="text-[9px] px-1 py-0.2 bg-emerald-600 text-white font-bold shrink-0">
+                            {cmd.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-[var(--text-secondary)] truncate mt-0.5">
+                        {cmd.subtitle}
+                      </p>
                     </div>
-                    <code className="text-[10px] text-amber-300 block bg-black/40 px-1.5 py-0.5 border border-black/40 mb-1.5 break-all">
-                      {cmd.cli}
-                    </code>
-                    <p className="text-[10px] text-[var(--text-secondary)] leading-tight">
-                      {cmd.desc}
-                    </p>
+                  </div>
+
+                  {/* Right: Tick Indicator */}
+                  <div className="shrink-0 pl-1">
+                    {isSelected ? (
+                      <div className="w-6 h-6 bg-emerald-500 border-2 border-emerald-300 text-black flex items-center justify-center font-black retro-shadow-sm">
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </div>
+                    ) : (
+                      <div className="w-6 h-6 border-2 border-[var(--border-color)] bg-black/20 flex items-center justify-center group-hover:border-emerald-500/60 transition-colors">
+                        <span className="text-[10px] text-zinc-500 opacity-40 group-hover:opacity-100 group-hover:text-emerald-400">
+                          ✓
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </button>
               );
@@ -2628,30 +2741,18 @@ export const ProfilePage: React.FC = () => {
             <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
               Execution Mode
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setDryRun(true)}
-                className={`px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer ${
-                  dryRun
-                    ? 'border-amber-500 bg-amber-400/20 text-amber-300 retro-shadow-sm'
-                    : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
-                }`}
-              >
-                🧪 DRY-RUN
-              </button>
-              <button
-                type="button"
-                onClick={() => setDryRun(false)}
-                className={`px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer ${
-                  !dryRun
-                    ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 retro-shadow-sm'
-                    : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
-                }`}
-              >
+            <div className="w-full px-3 py-2 border-2 border-emerald-500 bg-emerald-500/15 text-emerald-400 text-[11px] font-mono font-bold flex items-center justify-between retro-shadow-sm select-none">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 bg-emerald-400 animate-pulse inline-block" />
                 ⚡ LIVE APPLY
-              </button>
+              </span>
+              <span className="text-[10px] text-emerald-300 uppercase tracking-wider bg-emerald-950/70 px-1.5 py-0.5 border border-emerald-500/50">
+                ALWAYS ACTIVE
+              </span>
             </div>
+            <p className="text-[10px] text-emerald-500/80 font-mono mt-1">
+              Direct live job portal applications enabled.
+            </p>
           </div>
 
           <div>
@@ -2671,35 +2772,37 @@ export const ProfilePage: React.FC = () => {
             <label className="block text-[11px] font-bold uppercase mb-1 font-mono text-[var(--text-primary)]">
               Browser Display Mode
             </label>
-            <button
-              type="button"
-              onClick={() => setVisibleBrowser(!visibleBrowser)}
-              className={`w-full px-3 py-2 border-2 text-[11px] font-bold transition-all cursor-pointer text-center ${
-                visibleBrowser
-                  ? 'border-sky-500 bg-sky-950/30 text-sky-300 retro-shadow-sm'
-                  : 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-secondary)]'
-              }`}
-            >
-              {visibleBrowser ? '🖥️ Visible Browser Window' : '🕶️ Headless (Background)'}
-            </button>
+            <div className="w-full px-3 py-2 border-2 border-sky-500 bg-sky-950/30 text-sky-300 text-[11px] font-mono font-bold flex items-center justify-between retro-shadow-sm select-none">
+              <span className="flex items-center gap-1.5">
+                🖥️ Visible Browser Window
+              </span>
+              <span className="text-[10px] text-sky-200 uppercase tracking-wider bg-sky-950/70 px-1.5 py-0.5 border border-sky-500/50">
+                ALWAYS VISIBLE
+              </span>
+            </div>
+            <p className="text-[10px] text-sky-400/80 font-mono mt-1">
+              Browser window will open visibly during run.
+            </p>
           </div>
         </div>
 
         {/* Selected Command Summary & Primary Launch Button */}
         <div className="p-4 border-2 border-emerald-500/40 bg-emerald-950/20 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs font-mono space-y-1 text-center sm:text-left">
-            <div>
-              <span className="text-[var(--text-secondary)]">Selected Command: </span>
-              <span className="font-bold text-emerald-400">
+            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+              <span className="text-[var(--text-secondary)]">Target Task:</span>
+              <span className="font-bold text-emerald-400 text-sm">
                 {QUICK_COMMANDS.find((c) => c.id === selectedCommand)?.label}
-              </span>{' '}
-              <span className="text-amber-300 text-[11px]">
-                ({dryRun ? 'Dry-Run Simulation' : 'Live Mode'})
+              </span>
+              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-emerald-500 text-black border border-emerald-400">
+                ⚡ LIVE APPLY MODE
               </span>
             </div>
-            <code className="text-[11px] text-amber-200 block">
-              {QUICK_COMMANDS.find((c) => c.id === selectedCommand)?.cli}
-            </code>
+            <div className="text-[11px] text-[var(--text-secondary)] flex items-center gap-2 justify-center sm:justify-start flex-wrap">
+              <span className="text-sky-300 font-semibold">🖥️ Visible Browser Window</span>
+              <span>•</span>
+              <span className="text-emerald-300 font-semibold">Limit: {maxApplications} Applications</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
@@ -2720,7 +2823,7 @@ export const ProfilePage: React.FC = () => {
               onClick={handleLaunchBot}
               disabled={startingBot || saving}
               leftIcon={<Play className="w-4 h-4 fill-current" />}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider px-6 py-2.5 retro-shadow"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider px-6 py-2.5 retro-shadow cursor-pointer"
             >
               {startingBot ? 'Starting Bot...' : '🚀 Start / Launch Bot'}
             </Button>

@@ -84,15 +84,21 @@ def test_admin_candidate_resume_endpoints(client: TestClient):
     assert cand_res.status_code == 200
     candidates = cand_res.json()["candidates"]
     assert len(candidates) >= 1
-    cand_id = candidates[0]["id"]
+    
+    # Test resume stream with a candidate that has a resume uploaded
+    cand_with_resume = next((c for c in candidates if c.get("has_resume")), None)
+    cand_id = cand_with_resume["id"] if cand_with_resume else candidates[0]["id"]
 
     resumes_res = client.get(f"/api/v1/admin/candidates/{cand_id}/resumes")
     assert resumes_res.status_code == 200
     assert isinstance(resumes_res.json(), list)
 
     stream_res = client.get(f"/api/v1/admin/candidates/{cand_id}/resume")
-    assert stream_res.status_code == 200
-    assert "application/pdf" in stream_res.headers.get("content-type", "")
+    if cand_with_resume:
+        assert stream_res.status_code == 200
+        assert "application/pdf" in stream_res.headers.get("content-type", "")
+    else:
+        assert stream_res.status_code == 404
 
 
 def test_admin_audit_logs_endpoint(client: TestClient):

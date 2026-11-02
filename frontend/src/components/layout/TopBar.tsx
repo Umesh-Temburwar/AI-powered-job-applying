@@ -106,7 +106,30 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
           <span className="hidden sm:inline">{soundOn ? 'SFX:ON' : 'SFX:OFF'}</span>
         </button>
 
-        {/* High-Contrast Theme Toggle */}
+        {/* Engineer Profile Link next to Theme Mode Toggle */}
+        <a
+          href="https://umeshtemburwar.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`flex items-center gap-2 px-2.5 py-1 border-2 ${
+            theme === 'dark'
+              ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-[#10B981]'
+              : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#F5F3EC]'
+          } text-[11px] font-mono font-bold transition-all retro-shadow-sm`}
+          title="Visit Engineer Portfolio (Umesh Temburwar)"
+        >
+          <img
+            src="/umesh.jpg"
+            alt="Umesh Temburwar"
+            className="w-4 h-4 rounded-none object-cover border border-current"
+          />
+          <span className="hidden sm:inline">
+            ENGINEER: <strong className="underline">UMESH TEMBURWAR</strong>
+          </span>
+          <ExternalLink className="w-3 h-3 text-[#10B981]" />
+        </a>
+
+        {/* High-Contrast Theme (Mode) Toggle */}
         <button
           type="button"
           onClick={handleThemeToggle}
@@ -121,18 +144,6 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
-
-        {/* Creator Portfolio Link */}
-        <a
-          href="https://umeshtemburwar.vercel.app/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden lg:inline-flex items-center gap-1 text-[11px] opacity-75 hover:opacity-100 hover:underline"
-          title="Engineered by Umesh Temburwar"
-        >
-          <span>umeshtemburwar.vercel.app</span>
-          <ExternalLink className="w-3 h-3 text-emerald-600" />
-        </a>
       </div>
     </header>
   );
