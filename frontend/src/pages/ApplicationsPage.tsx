@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -65,6 +65,12 @@ export const ApplicationsPage: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [dismissedTaskId, setDismissedTaskId] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState<boolean>(false);
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  // Automatically scroll to the top of the page on mount so user sees top banners immediately
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
 
   const isTaskActive = currentTask?.status === 'running' || currentTask?.status === 'queued';
   const showTaskBanner = Boolean(
@@ -72,6 +78,14 @@ export const ApplicationsPage: React.FC = () => {
     currentTask.status !== 'idle' &&
     (isTaskActive || dismissedTaskId !== currentTask.id)
   );
+
+  // When a bot task is running or active, ensure the running banner is directly in view
+  useEffect(() => {
+    if (isTaskActive) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      bannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isTaskActive, currentTask?.id]);
 
   const getTaskBannerTitle = (task: typeof currentTask) => {
     if (!task) return '';
@@ -228,6 +242,9 @@ export const ApplicationsPage: React.FC = () => {
       {/* Bot Execution Status & Live Process Monitor */}
       {showTaskBanner && currentTask && (
         <div
+          ref={bannerRef}
+          id="active-task-banner"
+          data-testid="active-task-banner"
           className={`p-4 rounded-none border-2 ${
             currentTask.status === 'failed'
               ? 'border-red-600/70 bg-red-950/20'
