@@ -12,6 +12,7 @@ import {
 import { configService, type BotEnvConfig } from '../../services/configService';
 import { playRetroSound } from '../../utils/soundEffects';
 import { Button, Input, Badge } from '../ui';
+import { BotLaunchPasswordModal } from './BotLaunchPasswordModal';
 
 interface BotSetupModalProps {
   isOpen: boolean;
@@ -49,6 +50,7 @@ export const BotSetupModal: React.FC<BotSetupModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState<boolean>(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [botConfig, setBotConfig] = useState<BotEnvConfig | null>(null);
 
   // Launch Target & Mode
@@ -465,7 +467,7 @@ export const BotSetupModal: React.FC<BotSetupModalProps> = ({
               type="button"
               variant="primary"
               size="md"
-              onClick={handleLaunchNow}
+              onClick={() => setIsPasswordModalOpen(true)}
               disabled={saving}
               leftIcon={<Play className="w-4 h-4 fill-current" />}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
@@ -475,6 +477,16 @@ export const BotSetupModal: React.FC<BotSetupModalProps> = ({
           </div>
         </div>
       </div>
+
+      <BotLaunchPasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        onConfirm={handleLaunchNow}
+        title="Verify Password to Launch Bot"
+        commandLabel="Universal Bot Automation Task"
+        platform={selectedPlatform}
+        mode={dryRun ? 'Dry-Run Simulation' : 'LIVE APPLY'}
+      />
     </div>
   );
 };

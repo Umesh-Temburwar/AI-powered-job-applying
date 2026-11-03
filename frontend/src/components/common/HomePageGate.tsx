@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Lock,
   KeyRound,
@@ -14,42 +14,9 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { AuthContext } from '../../context/AuthContext';
 import { playRetroSound } from '../../utils/soundEffects';
-
-const SALT = 'universal_job_bot_secure_salt_2026';
-
-// Cryptographic SHA-256 hashes for authorized master passwords:
-// 1. "umesh" -> 1ab3384539470876f7b2ed061d9705ffeda83e7a512e5b5dd01b945b9a9b4720
-// 2. "umesh@123" -> 4b263082436b7a7c37eca4ee51793fc884f4123a682f03ba629d521ed42ff6d2
-const AUTHORIZED_HASHES = [
-  '1ab3384539470876f7b2ed061d9705ffeda83e7a512e5b5dd01b945b9a9b4720',
-  '4b263082436b7a7c37eca4ee51793fc884f4123a682f03ba629d521ed42ff6d2',
-];
-
-/**
- * Computes a salted SHA-256 digest using native browser WebCrypto API.
- */
-async function hashPassword(rawKey: string): Promise<string> {
-  const normalized = SALT + rawKey.trim().toLowerCase();
-  const encoder = new TextEncoder();
-  const data = encoder.encode(normalized);
-  const cryptoObj =
-    (typeof window !== 'undefined' && window.crypto?.subtle) || globalThis.crypto?.subtle;
-
-  if (cryptoObj) {
-    const buffer = await cryptoObj.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(buffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  // Fallback simple hash for environments without WebCrypto
-  let hash = 0;
-  for (let i = 0; i < normalized.length; i++) {
-    hash = (hash << 5) - hash + normalized.charCodeAt(i);
-    hash |= 0;
-  }
-  return String(hash);
-}
+import { verifyMasterPassword } from '../../utils/authGate';
 
 interface HomePageGateProps {
   children: React.ReactNode;
@@ -57,15 +24,18 @@ interface HomePageGateProps {
 
 /**
  * HomePageGate ensures that accessing the Home Page (Landing Page) requires
- * password verification every time ("har bar"). State is kept only in component
- * memory so returning to the home page or refreshing always requires re-verification.
+ * password verification when opening the website / localhost for guest/unauthenticated users.
+ * Once a user is logged in, no password is required to visit the Home Page.
  */
 export const HomePageGate: React.FC<HomePageGateProps> = ({ children }) => {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
+  
+  // Safely check authenticated user without throwing if rendered outside AuthProvider
+  const auth = useContext(AuthContext);
+  const user = auth?.user ?? null;
 
-  // Fresh unverified state on every mount / visit
+  // Fresh unverified state on initial open / session
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -92,20 +62,12 @@ export const HomePageGate: React.FC<HomePageGateProps> = ({ children }) => {
     }
   }, [navigate]);
 
-  // Whenever the navigation location key updates (e.g. user navigates back to Home), ensure access is locked
+  // Autofocus the password field on mount for guest users
   useEffect(() => {
-    setIsUnlocked(false);
-    setPassword('');
-    setError(null);
-    setAccessSuccess(false);
-  }, [location.key]);
-
-  // Autofocus the password field on mount
-  useEffect(() => {
-    if (!isUnlocked && inputRef.current) {
+    if (!user && !isUnlocked && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [isUnlocked]);
+  }, [user, isUnlocked]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,23 +80,14 @@ export const HomePageGate: React.FC<HomePageGateProps> = ({ children }) => {
     setIsSubmitting(true);
 
     try {
-      const trimmed = password.trim();
-      const lower = trimmed.toLowerCase();
-      const computedHash = await hashPassword(trimmed);
-
-      // Check against authorized hashes and canonical keys
-      const isValid =
-        AUTHORIZED_HASHES.includes(computedHash) ||
-        lower === 'umesh' ||
-        lower === 'umesh@123';
+      const isValid = await verifyMasterPassword(password);
 
       if (isValid) {
         playRetroSound('success');
         setAccessSuccess(true);
-        // Small delay for audio and visual feedback
         setTimeout(() => {
           setIsUnlocked(true);
-        }, 400);
+        }, 350);
       } else {
         playRetroSound('error');
         setError('Access Denied! Galat password hai. (Incorrect password. Please try again.)');
@@ -152,8 +105,9 @@ export const HomePageGate: React.FC<HomePageGateProps> = ({ children }) => {
     }
   };
 
-  // If already unlocked in this session visit, display the Home Page content
-  if (isUnlocked) {
+  // 1. If user is already logged in, no password needed when navigating to Home Page
+  // 2. If guest user has entered correct password for this viewing session, show Home Page
+  if (user || isUnlocked) {
     return <>{children}</>;
   }
 
@@ -265,7 +219,7 @@ export const HomePageGate: React.FC<HomePageGateProps> = ({ children }) => {
                 theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600'
               }`}
             >
-              Home page dekhne aur access karne ke liye password enter karein. Har bar password verify hone ke baad hi home page open hoga.
+              Website open karne aur Home page dekhne ke liye password enter karein. Sahi password enter karne ke baad hi home page display hoga.
             </p>
           </div>
 
@@ -288,7 +242,7 @@ export const HomePageGate: React.FC<HomePageGateProps> = ({ children }) => {
             >
               <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
               <div className="flex-1 font-bold">
-                [ACCESS GRANTED] Redirecting to Home Page...
+                [ACCESS GRANTED] Opening Home Page...
               </div>
             </div>
           )}

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '../context/ThemeContext';
+import { AuthContext } from '../context/AuthContext';
 import { HomePageGate } from '../components/common/HomePageGate';
 
 describe('HomePageGate Component Tests', () => {
@@ -183,5 +184,42 @@ describe('HomePageGate Component Tests', () => {
     // Gate must be locked again!
     expect(screen.getByText(/Home Page Access Verification/i)).toBeInTheDocument();
     expect(screen.queryByTestId('landing-page-content')).not.toBeInTheDocument();
+  });
+  it('bypasses password gate without prompt when user is already logged in', () => {
+    const mockAuthContext = {
+      user: {
+        id: 'usr_123',
+        email: 'umeshtemburwar2002@gmail.com',
+        fullName: 'Umesh Temburwar',
+      },
+      session: null,
+      isLoading: false,
+      isConfigured: true,
+      error: null,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+      resetPassword: vi.fn(),
+      updatePassword: vi.fn(),
+      resendVerificationEmail: vi.fn(),
+      signInWithGithub: vi.fn(),
+      getToken: vi.fn(),
+    };
+
+    render(
+      <AuthContext.Provider value={mockAuthContext as any}>
+        <ThemeProvider>
+          <BrowserRouter>
+            <HomePageGate>
+              <div data-testid="landing-page-content">Autonomous Job Apply Engine Home Page</div>
+            </HomePageGate>
+          </BrowserRouter>
+        </ThemeProvider>
+      </AuthContext.Provider>
+    );
+
+    // Must immediately show Home Page content without asking for password!
+    expect(screen.getByTestId('landing-page-content')).toBeInTheDocument();
+    expect(screen.queryByText(/Home Page Access Verification/i)).not.toBeInTheDocument();
   });
 });

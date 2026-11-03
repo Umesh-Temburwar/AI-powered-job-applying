@@ -39,6 +39,7 @@ import {
   ProgressBar,
   ConfirmDialog,
 } from '../components/ui';
+import { BotLaunchPasswordModal } from '../components/common/BotLaunchPasswordModal';
 import type { EducationItem, ExperienceItem, ProjectItem, CertificationItem, PlatformName } from '../types';
 
 const SUGGESTED_ROLES = [
@@ -282,6 +283,7 @@ export const ProfilePage: React.FC = () => {
   const [selectedCommand, setSelectedCommand] = useState('all');
   const [maxApplications, setMaxApplications] = useState(50);
   const [startingBot, setStartingBot] = useState(false);
+  const [isLaunchPasswordModalOpen, setIsLaunchPasswordModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resettingData, setResettingData] = useState(false);
 
@@ -2945,7 +2947,7 @@ export const ProfilePage: React.FC = () => {
               type="button"
               variant="primary"
               size="md"
-              onClick={handleLaunchBot}
+              onClick={() => setIsLaunchPasswordModalOpen(true)}
               disabled={startingBot || saving}
               leftIcon={<Play className="w-4 h-4 fill-current" />}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider px-6 py-2.5 retro-shadow cursor-pointer"
@@ -2955,6 +2957,17 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Bot Launch Password Verification Modal */}
+      <BotLaunchPasswordModal
+        isOpen={isLaunchPasswordModalOpen}
+        onClose={() => setIsLaunchPasswordModalOpen(false)}
+        onConfirm={handleLaunchBot}
+        title="Verify Password to Start Bot"
+        commandLabel={QUICK_COMMANDS.find((c) => c.id === selectedCommand)?.label || 'Run All Platforms'}
+        platform={QUICK_COMMANDS.find((c) => c.id === selectedCommand)?.platform || 'All Platforms'}
+        mode="LIVE APPLY"
+      />
 
       {/* Reset Candidate Data Confirmation Modal */}
       <ConfirmDialog

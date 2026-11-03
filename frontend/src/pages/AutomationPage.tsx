@@ -31,6 +31,7 @@ import {
   ConfirmDialog,
   Skeleton,
 } from '../components/ui';
+import { BotLaunchPasswordModal } from '../components/common/BotLaunchPasswordModal';
 import type { PlatformName } from '../types';
 
 export const AutomationPage: React.FC = () => {
@@ -66,6 +67,7 @@ export const AutomationPage: React.FC = () => {
   const [showConfig, setShowConfig] = useState<boolean>(true);
 
   const [confirmStartOpen, setConfirmStartOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // Initialize or synchronize form state from user's saved preferences
@@ -149,8 +151,12 @@ export const AutomationPage: React.FC = () => {
     setConfirmStartOpen(true);
   };
 
-  const handleStartConfirmed = async () => {
+  const handleStartConfirmed = () => {
     setConfirmStartOpen(false);
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleExecuteStart = async () => {
     try {
       const taskOptions: StartTaskOptions = {
         platform: selectedPlatform,
@@ -680,6 +686,16 @@ export const AutomationPage: React.FC = () => {
         title="Enqueue Automation Task"
         description={`This will enqueue an automation task for ${selectedPlatform} (${taskType}) targeting ${keywords.length} roles in ${locations.length} locations with a limit of ${maxApplications} applications. Execution mode: ${dryRun ? 'Safe Dry-Run' : 'LIVE SUBMISSION'}.`}
         confirmLabel="Confirm & Enqueue"
+      />
+
+      <BotLaunchPasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        onConfirm={handleExecuteStart}
+        title="Verify Password to Start Automation Task"
+        commandLabel={`Task: ${taskType}`}
+        platform={selectedPlatform}
+        mode={dryRun ? 'Safe Dry-Run' : 'LIVE SUBMISSION'}
       />
     </div>
   );
