@@ -143,6 +143,7 @@ def main():
     backend_env["PORT"] = str(BACKEND_PORT)
     backend_env["PYTHONPATH"] = f"{BACKEND_DIR}{os.pathsep}{ROOT_DIR}"
 
+    dev_mode = "--dev" in sys.argv
     backend_cmd = [
         py_exe,
         "-m",
@@ -154,10 +155,9 @@ def main():
         "127.0.0.1",
         "--port",
         str(BACKEND_PORT),
-        "--reload",
-        "--reload-dir",
-        BACKEND_DIR,
     ]
+    if dev_mode:
+        backend_cmd.extend(["--reload", "--reload-dir", BACKEND_DIR])
 
     print(f"\n[1/3] Starting Backend API on http://127.0.0.1:{BACKEND_PORT}...")
     backend_proc = subprocess.Popen(

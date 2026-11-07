@@ -79,11 +79,62 @@ echo   - Web Dashboard:  http://localhost:5173
 echo   - REST API Live:  http://127.0.0.1:8001 (Click or open in browser)
 echo   - API Swagger UI: http://127.0.0.1:8001/docs
 echo ===============================================================================
-echo Both server consoles have been opened in separate windows.
-echo Keep them running while using the bot.
+
+:master_console_loop
 echo.
-pause
-exit /b 0
+echo -------------------------------------------------------------------------------
+echo [CONSOLE CONTROL MENU] AI-Powered-Job-Applying Master Daemon
+echo -------------------------------------------------------------------------------
+echo   [1] Open Web Dashboard in browser (http://localhost:5173)
+echo   [2] Open REST API Status page (http://127.0.0.1:8001)
+echo   [3] Open Swagger API Interactive Docs (http://127.0.0.1:8001/docs)
+echo   [4] Restart Backend REST API (Port 8001)
+echo   [5] Restart Frontend Dev Server (Port 5173)
+echo   [0] Stop All Servers & Exit Cleanly
+echo -------------------------------------------------------------------------------
+set "choice="
+set /p choice="Enter choice [0-5]: "
+
+if "%choice%"=="1" (
+    start http://localhost:5173/
+    goto master_console_loop
+)
+if "%choice%"=="2" (
+    start http://127.0.0.1:8001/
+    goto master_console_loop
+)
+if "%choice%"=="3" (
+    start http://127.0.0.1:8001/docs
+    goto master_console_loop
+)
+if "%choice%"=="4" (
+    echo.
+    echo [INFO] Terminating old backend on port 8001...
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":8001 .*LISTENING"') do taskkill /F /T /PID %%a >nul 2>nul
+    echo [INFO] Starting fresh FastAPI Backend on port 8001...
+    start "AI-powered-job-applying - FastAPI Backend (Port 8001)" cmd /k call "%~dp0scripts\start_backend.bat"
+    timeout /t 2 >nul
+    goto master_console_loop
+)
+if "%choice%"=="5" (
+    echo.
+    echo [INFO] Terminating old frontend on port 5173...
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":5173 .*LISTENING"') do taskkill /F /T /PID %%a >nul 2>nul
+    echo [INFO] Starting fresh React Frontend on port 5173...
+    start "AI-powered-job-applying - React Frontend (Port 5173)" cmd /k call "%~dp0scripts\start_frontend.bat"
+    timeout /t 2 >nul
+    goto master_console_loop
+)
+if "%choice%"=="0" (
+    echo.
+    echo [INFO] Stopping all background servers (ports 8001 and 5173)...
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":8001 .*LISTENING"') do taskkill /F /T /PID %%a >nul 2>nul
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":5173 .*LISTENING"') do taskkill /F /T /PID %%a >nul 2>nul
+    echo [OK] All servers stopped cleanly.
+    exit /b 0
+)
+
+goto master_console_loop
 
 :launch_cli
 shift

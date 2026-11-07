@@ -77,17 +77,26 @@ if "%PY_EXE%"=="" (
 
 set "PYTHONPATH=%ROOT_DIR%\backend;%ROOT_DIR%"
 
-echo [INFO] Starting Uvicorn Server on 127.0.0.1:8001...
-echo.
-"%PY_EXE%" -m uvicorn main:app --app-dir "%ROOT_DIR%\backend" --host 127.0.0.1 --port 8001 --reload --reload-dir "%ROOT_DIR%\backend"
+REM Development mode flag: only use --reload if explicitly requested
+set "RELOAD_OPTS="
+if "%1"=="--dev" set "RELOAD_OPTS=--reload --reload-dir \"%ROOT_DIR%\backend\""
+if "%2"=="--dev" set "RELOAD_OPTS=--reload --reload-dir \"%ROOT_DIR%\backend\""
 
-if %ERRORLEVEL% neq 0 (
-    echo.
-    echo ===============================================================================
-    echo [ERROR] FastAPI backend failed to start or exited with an error code.
-    echo To automatically verify and install all dependencies, run:
-    echo   run.bat --setup
-    echo ===============================================================================
-)
+:server_supervisor_loop
 echo.
-pause
+echo ===============================================================================
+echo [INFO] Starting FastAPI Uvicorn Server on http://127.0.0.1:8001...
+echo ===============================================================================
+echo.
+
+"%PY_EXE%" -m uvicorn main:app --app-dir "%ROOT_DIR%\backend" --host 127.0.0.1 --port 8001 %RELOAD_OPTS%
+
+set "EXIT_CODE=%ERRORLEVEL%"
+echo.
+echo ===============================================================================
+echo [ALERT] FastAPI Backend server process stopped (Exit Code: %EXIT_CODE%).
+echo [SELF-HEALING] Auto-restarting FastAPI Backend in 2 seconds...
+echo Press Ctrl+C anytime to terminate.
+echo ===============================================================================
+timeout /t 2 /nobreak >nul
+goto server_supervisor_loop
