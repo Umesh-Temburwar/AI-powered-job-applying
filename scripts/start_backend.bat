@@ -1,7 +1,9 @@
 @echo off
 chcp 65001 > nul
 title AI-powered-job-applying - FastAPI Backend (Port 8001)
-cd /d "%~dp0.."
+
+set "ROOT_DIR=%~dp0.."
+cd /d "%ROOT_DIR%"
 
 echo ===============================================================================
 echo       AI-POWERED-JOB-APPLYING - FASTAPI BACKEND (PORT 8001)
@@ -10,15 +12,15 @@ echo.
 
 :: Automatically kill any orphaned/zombie process occupying port 8001 before starting
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":8001 .*LISTENING"') do (
-    echo [INFO] Freeing occupied port 8001 (terminating PID %%a)...
+    echo [INFO] Freeing occupied port 8001 - PID %%a...
     taskkill /F /T /PID %%a >nul 2>nul
 )
 
 set "PY_EXE="
-if exist "%CD%\.venv\Scripts\python.exe" (
-    "%CD%\.venv\Scripts\python.exe" -c "import sys" >nul 2>nul
+if exist "%ROOT_DIR%\.venv\Scripts\python.exe" (
+    "%ROOT_DIR%\.venv\Scripts\python.exe" -c "import sys" >nul 2>nul
     if not errorlevel 1 (
-        set "PY_EXE=%CD%\.venv\Scripts\python.exe"
+        set "PY_EXE=%ROOT_DIR%\.venv\Scripts\python.exe"
         echo [INFO] Using virtual environment Python: .venv\Scripts\python.exe
     )
 )
@@ -67,15 +69,17 @@ if "%PY_EXE%"=="" (
     start https://www.python.org/downloads/
     start https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
     echo.
-    echo Please install Python (ensure "Add python.exe to PATH" is checked) and re-run.
+    echo Please install Python and ensure Add python.exe to PATH is checked, then re-run.
     echo.
     pause
     exit /b 1
 )
 
-echo [INFO] Starting Uvicorn Server on 127.0.0.1:8001 (watching backend/ only)...
+set "PYTHONPATH=%ROOT_DIR%\backend;%ROOT_DIR%"
+
+echo [INFO] Starting Uvicorn Server on 127.0.0.1:8001...
 echo.
-"%PY_EXE%" -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8001 --reload --reload-dir backend
+"%PY_EXE%" -m uvicorn main:app --app-dir "%ROOT_DIR%\backend" --host 127.0.0.1 --port 8001 --reload --reload-dir "%ROOT_DIR%\backend"
 
 if %ERRORLEVEL% neq 0 (
     echo.
