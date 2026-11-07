@@ -253,10 +253,10 @@ SUPABASE_JWT_SECRET=<your-jwt-secret>
 Run in separate PowerShell terminals:
 
 ```powershell
-# Terminal 1: FastAPI Backend
-cd D:\Projects\Naukri-autoapply-bot-main\backend
+# Terminal 1: FastAPI Backend (Port 8001 proxied by Frontend Vite)
+cd D:\Projects\Naukri-autoapply-bot-main
 .\.venv\Scripts\Activate.ps1
-uvicorn main:app --reload --host 127.0.0.1 --port 8000
+uvicorn main:app --app-dir backend --reload --reload-dir backend --host 127.0.0.1 --port 8001
 
 # Terminal 2: React + Vite Frontend
 cd D:\Projects\Naukri-autoapply-bot-main\frontend

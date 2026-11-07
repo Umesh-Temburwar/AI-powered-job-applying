@@ -8,6 +8,12 @@ echo       AI-POWERED-JOB-APPLYING - FASTAPI BACKEND (PORT 8001)
 echo ===============================================================================
 echo.
 
+:: Automatically kill any orphaned/zombie process occupying port 8001 before starting
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":8001 .*LISTENING"') do (
+    echo [INFO] Freeing occupied port 8001 (terminating PID %%a)...
+    taskkill /F /T /PID %%a >nul 2>nul
+)
+
 set "PY_EXE="
 if exist "%CD%\.venv\Scripts\python.exe" (
     set "PY_EXE=%CD%\.venv\Scripts\python.exe"
@@ -23,9 +29,9 @@ if exist "%CD%\.venv\Scripts\python.exe" (
     )
 )
 
-echo [INFO] Starting Uvicorn Server on 127.0.0.1:8001 with reload...
+echo [INFO] Starting Uvicorn Server on 127.0.0.1:8001 (watching backend/ only)...
 echo.
-"%PY_EXE%" -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8001 --reload
+"%PY_EXE%" -m uvicorn main:app --app-dir backend --host 127.0.0.1 --port 8001 --reload --reload-dir backend
 
 if %ERRORLEVEL% neq 0 (
     echo.

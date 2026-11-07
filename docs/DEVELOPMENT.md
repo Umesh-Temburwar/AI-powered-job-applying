@@ -25,8 +25,8 @@ pip install -r requirements-dev.txt
 # Setup environment variables
 cp .env.example .env
 
-# Run FastAPI development server
-uvicorn main:app --reload --port 8000
+# Run FastAPI development server (port 8001 proxied by Vite frontend)
+uvicorn main:app --app-dir backend --reload --reload-dir backend --port 8001
 ```
 
 ---

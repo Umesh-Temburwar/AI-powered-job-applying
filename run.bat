@@ -13,6 +13,14 @@ echo.
 if "%1"=="--cli" goto launch_cli
 if "%1"=="-c" goto launch_cli
 
+echo [INFO] Checking and freeing ports 8001 and 5173...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":8001 .*LISTENING"') do (
+    taskkill /F /T /PID %%a >nul 2>nul
+)
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":5173 .*LISTENING"') do (
+    taskkill /F /T /PID %%a >nul 2>nul
+)
+
 echo [1/3] Starting FastAPI Backend on http://127.0.0.1:8001 ...
 start "AI-powered-job-applying - FastAPI Backend (Port 8001)" cmd /k call "%~dp0scripts\start_backend.bat"
 

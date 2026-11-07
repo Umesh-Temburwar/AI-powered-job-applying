@@ -50,6 +50,22 @@ if hasattr(signal, "SIGTERM"):
     signal.signal(signal.SIGTERM, cleanup)
 
 
+def free_port(port: int) -> None:
+    """Safely terminate any lingering process listening on the specified port."""
+    try:
+        if sys.platform == "win32":
+            out = subprocess.check_output(f"netstat -aon | findstr /r /c:\":{port} .*LISTENING\"", shell=True, text=True, stderr=subprocess.DEVNULL)
+            for line in out.strip().splitlines():
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    pid = parts[-1]
+                    if pid.isdigit() and int(pid) > 0 and int(pid) != os.getpid():
+                        print(f"      [PORT] Freeing port {port} (killing PID {pid})...")
+                        subprocess.run(f"taskkill /F /T /PID {pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
+
 def is_backend_ready(port: int = BACKEND_PORT) -> bool:
     try:
         url = f"http://127.0.0.1:{port}/health"
@@ -71,6 +87,10 @@ def main():
     venv_py = os.path.join(ROOT_DIR, ".venv", "Scripts", "python.exe")
     py_exe = venv_py if os.path.exists(venv_py) else sys.executable
 
+    # Free any orphaned processes holding backend or frontend ports
+    free_port(BACKEND_PORT)
+    free_port(FRONTEND_PORT)
+
     # 1. Start FastAPI Backend Server
     backend_env = os.environ.copy()
     backend_env["PORT"] = str(BACKEND_PORT)
@@ -88,6 +108,8 @@ def main():
         "--port",
         str(BACKEND_PORT),
         "--reload",
+        "--reload-dir",
+        BACKEND_DIR,
     ]
 
     print(f"\n[1/3] Starting Backend API on http://127.0.0.1:{BACKEND_PORT}...")
