@@ -74,3 +74,13 @@ def test_ai_engine_location_answers():
     ans_reloc = qa_engine.get_answer("Are you willing to relocate to Pune?")
     assert "yes" in ans_reloc.lower()
 
+
+def test_indeed_platform_search_url_and_helpers():
+    from platforms.indeed_platform import build_search_url, load_profile, load_answers
+    url = build_search_url("Full Stack Developer", "Pune")
+    assert "in.indeed.com/jobs" in url
+    assert "Full+Stack+Developer" in url
+    assert "Pune" in url
+    assert "sc=0kf" in url
+
+

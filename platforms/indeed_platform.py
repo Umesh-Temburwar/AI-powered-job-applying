@@ -121,9 +121,13 @@ def handle_indeed_application_modal(driver, profile, answers):
                     if "phone" in label_l:
                         inp.send_keys(profile.get("personal", {}).get("phone", "+918856087984"))
                     elif "city" in label_l or "location" in label_l:
-                        inp.send_keys(profile.get("personal", {}).get("current_location", "Pune"))
+                        curr_loc = profile.get("personal", {}).get("current_location") or os.getenv("LOCATION", "Pune")
+                        inp.send_keys(curr_loc)
                     elif "experience" in label_l or "years" in label_l:
-                        inp.send_keys("1")
+                        inp.send_keys(str(profile.get("personal", {}).get("total_experience_years", "1")))
+                    elif label:
+                        ans = answers.get(label_l) or qa_engine.answer_question(label)
+                        inp.send_keys(ans if ans else "1")
                     else:
                         inp.send_keys("1")
             except Exception:
@@ -293,10 +297,6 @@ def apply_on_indeed(driver, max_apps=25):
                     logger.warning(f"Error applying on Indeed: {apply_err}")
                     failed_count += 1
                     records.append({"platform": "Indeed", "url": link, "status": "Error", "time": str(datetime.now())})
-
-            except Exception as e:
-                logger.warning(f"Could not apply to {link}: {e}")
-                failed_count += 1
 
     if records:
         mode = 'a' if os.path.exists(RESULTS_CSV) else 'w'
