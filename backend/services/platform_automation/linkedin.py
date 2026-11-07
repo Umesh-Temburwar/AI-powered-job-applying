@@ -15,7 +15,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from services.platform_automation.base import ApplyResult, BasePlatformAdapter, JobOpportunity
-from platforms.location_matcher import is_location_match, parse_target_locations
+from services.location_matcher import is_location_match, parse_target_locations
 
 logger = logging.getLogger("LinkedInAdapter")
 
