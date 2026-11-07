@@ -4,9 +4,15 @@ import {
   Terminal,
   ArrowRight,
   ExternalLink,
+  Mail,
+  MapPin,
+  Briefcase,
+  Laptop,
   Radio,
   Sun,
   Moon,
+  Globe,
+  Code2,
   BookOpen,
   ShieldAlert,
 } from 'lucide-react';
@@ -19,7 +25,8 @@ export const LandingPage: React.FC = () => {
   const { user, login, logout } = useAuth();
   const navigate = useNavigate();
 
-  // State for in-page Hero Terminal -> Login card toggle
+  const [activeTab, setActiveTab] = useState<'terminal' | 'applications' | 'portals'>('terminal');
+  // State for in-page Hero Photo -> Login card flip
   const [heroAuthState, setHeroAuthState] = useState<'photo' | 'login'>('photo');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -133,6 +140,49 @@ export const LandingPage: React.FC = () => {
     }
   ];
 
+  const recentApplicationsDemo = [
+    {
+      role: 'Full Stack Python & React Developer',
+      company: 'Persistent Systems Ltd.',
+      portal: 'Naukri',
+      location: 'Pune, Maharashtra',
+      salary: '₹8 - 14 LPA',
+      status: 'Applied',
+      date: 'Today, 14:22',
+      url: 'https://www.naukri.com/job-listings-full-stack-persistent'
+    },
+    {
+      role: 'Software Engineer - Frontend Focus',
+      company: 'Starkenn Technologies',
+      portal: 'Naukri',
+      location: 'Pune, Maharashtra',
+      salary: '₹6 - 10 LPA',
+      status: 'Applied',
+      date: 'Today, 14:21',
+      url: 'https://www.naukri.com/job-listings-starkenn-technologies'
+    },
+    {
+      role: 'Associate Full Stack Engineer',
+      company: 'Swiggy Tech India',
+      portal: 'Indeed',
+      location: 'Bengaluru / Remote',
+      salary: '₹12 - 18 LPA',
+      status: 'Applied',
+      date: 'Today, 13:45',
+      url: 'https://in.indeed.com/viewjob?jk=swiggy-tech-01'
+    },
+    {
+      role: 'Junior Full Stack Developer',
+      company: 'Tech Mahindra Ltd.',
+      portal: 'LinkedIn',
+      location: 'Pune / Remote',
+      salary: 'Competitive',
+      status: 'Applied',
+      date: 'Today, 12:10',
+      url: 'https://www.linkedin.com/jobs/view/tech-mahindra-fsd'
+    }
+  ];
+
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'retro-grid-dark bg-[#0B0E14] text-[#F4F4F5]' : 'retro-grid-light bg-[#F5F3EC] text-[#09090B]'} font-sans flex flex-col transition-colors duration-150`}>
 
@@ -148,8 +198,9 @@ export const LandingPage: React.FC = () => {
           <span className="hidden md:inline opacity-75">| ENGINE: CHROMIUM_UNDETECTED</span>
         </div>
         <div className="flex items-center gap-3 font-semibold">
-          <span className="text-emerald-400">● 4 CORE PORTALS READY</span>
-          <span className="hidden sm:inline opacity-75">| AUTONOMOUS HEURISTICS</span>
+          <span className="text-emerald-400 font-bold">[ENGINE: CHROMIUM_UNDETECTED]</span>
+          <span className="hidden sm:inline opacity-75">| LIVE APPLY: READY</span>
+          <span className="hidden md:inline opacity-75">| DUAL STORE: SUPABASE + SQLITE</span>
         </div>
       </div>
 
@@ -286,8 +337,9 @@ export const LandingPage: React.FC = () => {
 
               {/* Real Technical Subtitle */}
               <p className={`text-[15px] sm:text-[16px] leading-relaxed ${theme === 'dark' ? 'text-[#A1A1AA]' : 'text-[#3F3F46]'}`}>
+                Engineered line-by-line by <a href="#architect" className="font-bold underline decoration-2 decoration-emerald-500">UMESH TEMBURWAR</a>.
                 Automates high-volume, repetitive job applications across Naukri, Internshala, Indeed, and LinkedIn
-                with undetectable Chromium mouse curves, dynamic heuristic form filling, zero synthetic spam, and real-time CRM ledger tracking.
+                with undetectable Chromium mouse curves, dynamic heuristic form filling, and zero AI hallucinations.
               </p>
 
               {/* Primary Action Buttons */}
@@ -319,7 +371,7 @@ export const LandingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Right 5 Columns: Interactive In-Place Card (System Gateway -> Login) */}
+            {/* Right 5 Columns: Interactive In-Place Card (Photo First -> Slide in Login) */}
             <div id="hero-auth-card" className="lg:col-span-5 w-full max-w-md mx-auto scroll-mt-24">
               <div className={`border-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#111520]' : 'border-[#18181B] bg-white'
                 } retro-shadow-lg overflow-hidden transition-all duration-300 font-mono`}>
@@ -332,92 +384,141 @@ export const LandingPage: React.FC = () => {
                     <span className="w-2 h-2 bg-amber-400 inline-block border border-black/40" />
                     <span className="w-2 h-2 bg-emerald-500 inline-block border border-black/40" />
                     <span className="ml-1.5">
-                      {heroAuthState === 'photo' ? 'SYSTEM_GATEWAY // LAUNCHER.EXE' : 'AUTH_TERMINAL // LOGIN.EXE'}
+                      {user
+                        ? 'AUTH_TERMINAL // SESSION_ACTIVE'
+                        : heroAuthState === 'photo'
+                        ? 'TELEMETRY // BOT_ENGINE.EXE'
+                        : 'AUTH_TERMINAL // LOGIN.EXE'}
                     </span>
                   </div>
                   <span className="text-[10px] opacity-75">
-                    {heroAuthState === 'photo' ? '[ONLINE]' : '[SECURE_SESSION]'}
+                    {user ? '[LOGGED_IN]' : heroAuthState === 'photo' ? '[READY]' : '[SECURE_SESSION]'}
                   </span>
                 </div>
 
-                {/* Card Content: Flips between System Gateway and Login In-Place */}
+                {/* Card Content: Session Active, Engine Overview, or Login Form */}
                 <div className="p-5 min-h-[390px] flex flex-col justify-between">
-                  {heroAuthState === 'photo' ? (
-                    <div className="space-y-4 animate-fade-in text-left flex-1 flex flex-col justify-between font-mono">
+                  {user ? (
+                    /* Logged-In Active Session Dispatcher */
+                    <div className="space-y-4 animate-fade-in flex-1 flex flex-col justify-between font-mono">
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between border-b border-current/20 pb-2">
-                          <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            [SYSTEM_ONLINE // READY]
-                          </span>
-                          <span className="text-[10px] opacity-70">PORT: 5173 / 8001</span>
+                        <div className="inline-block px-2.5 py-0.5 text-[10px] font-bold uppercase border border-current text-emerald-600">
+                          [WORKSPACE_SESSION // ACTIVE]
                         </div>
 
-                        <div className="space-y-2 py-1 text-[11px]">
-                          <div className="flex items-center justify-between p-2 border border-current/20 bg-black/10">
-                            <span className="opacity-75">Automated Engine:</span>
-                            <span className="font-bold text-emerald-400">Stealth Chromium</span>
+                        <div className={`p-3.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-[#F5F3EC]'}`}>
+                          <div className="text-[10px] text-zinc-400 uppercase tracking-wider">CANDIDATE SESSION</div>
+                          <div className="text-[14px] font-bold text-emerald-500 truncate mt-0.5">
+                            {user.fullName || user.email}
                           </div>
-                          <div className="flex items-center justify-between p-2 border border-current/20 bg-black/10">
-                            <span className="opacity-75">Supported Portals:</span>
-                            <span className="font-bold">Naukri, Indeed, LinkedIn, Internshala</span>
+                          <div className="text-[10px] text-zinc-500 mt-1 flex items-center gap-1.5">
+                            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse inline-block" />
+                            Connected to Supabase Cloud • Live Ready
                           </div>
-                          <div className="flex items-center justify-between p-2 border border-current/20 bg-black/10">
-                            <span className="opacity-75">Persistence:</span>
-                            <span className="font-bold">Dual-Store (SQLite + Supabase)</span>
+                        </div>
+
+                        <div className="space-y-1.5 text-[11px] text-zinc-400">
+                          <div className="flex justify-between border-b border-zinc-800 pb-1">
+                            <span>AUTOMATION ENGINE:</span>
+                            <span className="font-bold text-emerald-400">STEALTH CHROMIUM</span>
                           </div>
-                          <div className="flex items-center justify-between p-2 border border-current/20 bg-black/10">
-                            <span className="opacity-75">Execution Mode:</span>
-                            <span className="font-bold text-emerald-400">100% Real Live Applications</span>
+                          <div className="flex justify-between border-b border-zinc-800 pb-1">
+                            <span>PORTALS CONFIGURED:</span>
+                            <span className="font-bold text-zinc-200">NAUKRI • INDEED • LINKEDIN</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>EXECUTION MODE:</span>
+                            <span className="font-bold text-emerald-400">100% LIVE APPLY</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Button to Trigger Login */}
+                      <div className="pt-2 space-y-2">
+                        <Link
+                          to="/applications"
+                          className={`w-full py-2.5 px-3 border-2 font-black uppercase text-[12px] ${theme === 'dark'
+                            ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                            : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
+                            } retro-shadow transition-all cursor-pointer flex items-center justify-center gap-2`}
+                          data-sound="nav"
+                        >
+                          <span>ENTER ACTIVE DASHBOARD</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playRetroSound('click');
+                            logout();
+                          }}
+                          className="w-full text-center text-[10px] opacity-70 hover:opacity-100 hover:underline cursor-pointer"
+                        >
+                          Sign out of workspace
+                        </button>
+                      </div>
+                    </div>
+                  ) : heroAuthState === 'photo' ? (
+                    /* Logged-Out Bot Overview & Sign-In Dispatcher */
+                    <div className="space-y-4 animate-fade-in flex-1 flex flex-col justify-between font-mono">
+                      <div className="space-y-3">
+                        <div className="inline-block px-2.5 py-0.5 text-[10px] font-bold uppercase border border-current text-emerald-600">
+                          [AUTONOMOUS_DAEMON // V3.4_STABLE]
+                        </div>
+
+                        <div className={`p-3.5 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-[#F5F3EC]'}`}>
+                          <div className="text-[10px] text-zinc-400 uppercase tracking-wider">EXECUTION ENGINE</div>
+                          <div className="text-[15px] font-black text-emerald-500 mt-0.5">UNDETECTED CHROMIUM</div>
+                          <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                            Bypasses Cloudflare & CDP checks with natural human mouse paths and 0% synthetic data.
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5 text-[11px] text-zinc-400">
+                          <div className="flex justify-between border-b border-zinc-800 pb-1">
+                            <span>PORTAL RUNNERS:</span>
+                            <span className="font-bold text-zinc-200">NAUKRI, INDEED, LINKEDIN</span>
+                          </div>
+                          <div className="flex justify-between border-b border-zinc-800 pb-1">
+                            <span>MODE:</span>
+                            <span className="font-bold text-emerald-400">LIVE APPLY ENABLED</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>DATABASE:</span>
+                            <span className="font-bold text-zinc-200">DUAL-STORE (LOCAL + SUPABASE)</span>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="pt-2">
-                        {user ? (
-                          <Link
-                            to="/applications"
-                            className={`w-full py-2.5 px-3 border-2 font-black uppercase text-[12px] ${theme === 'dark'
-                              ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
-                              : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
-                              } retro-shadow transition-all cursor-pointer flex items-center justify-center gap-2`}
-                            data-sound="nav"
-                          >
-                            <span>ENTER ACTIVE DASHBOARD</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </Link>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              playRetroSound('slide');
-                              setHeroAuthState('login');
-                            }}
-                            className={`w-full py-2.5 px-3 border-2 font-black uppercase text-[12px] ${theme === 'dark'
-                              ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
-                              : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
-                              } retro-shadow transition-all cursor-pointer flex items-center justify-center gap-2`}
-                            data-sound="slide"
-                          >
-                            <span>SIGN IN TO DASHBOARD</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <p className="text-[10px] opacity-60 mt-1.5 font-mono text-center">
-                          Sign in to configure credentials & launch live applications
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playRetroSound('slide');
+                            setHeroAuthState('login');
+                          }}
+                          className={`w-full py-2.5 px-3 border-2 font-black uppercase text-[12px] ${theme === 'dark'
+                            ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                            : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
+                            } retro-shadow transition-all cursor-pointer flex items-center justify-center gap-2`}
+                          data-sound="slide"
+                        >
+                          <span>SIGN IN TO DASHBOARD</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                        <p className="text-[10px] opacity-60 mt-1 text-center font-mono">
+                          Access your application ledger, resume & live automation
                         </p>
                       </div>
                     </div>
                   ) : (
                     /* 
                       ==========================================================
-                      LOGIN BOX: SLIDES IN RIGHT IN PLACE OF PHOTO
+                      LOGIN BOX: SLIDES IN DIRECTLY IN-PLACE
                       ==========================================================
                     */
                     <div className="space-y-4 animate-slide-in-right flex-1 flex flex-col justify-between">
                       <div>
-                        {/* Toggle Back to Photo */}
+                        {/* Toggle Back to Overview */}
                         <div className="flex items-center justify-between mb-2">
                           <button
                             type="button"
@@ -525,9 +626,9 @@ export const LandingPage: React.FC = () => {
 
                 {/* Footer Strip */}
                 <div className={`px-4 py-2 border-t-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-[#F5F3EC]'
-                  } text-[10px] flex items-center justify-between font-mono opacity-80`}>
-                  <span>STATUS: READY_FOR_DISCOVERY</span>
-                  <span className="text-emerald-500 font-bold">100% REAL APPS</span>
+                  } text-[10px] flex items-center justify-between font-mono`}>
+                  <span className="text-zinc-500">PORTALS: NAUKRI • INDEED • LINKEDIN</span>
+                  <span className="text-emerald-500 font-bold">100% REAL JOBS</span>
                 </div>
 
               </div>
@@ -560,6 +661,336 @@ export const LandingPage: React.FC = () => {
               <div className="font-mono font-black text-[18px]">DUAL_STORE</div>
               <div className="text-[11px] font-mono text-[#71717A] mt-0.5">SQLite Local + Supabase</div>
             </div>
+          </div>
+        </section>
+
+        {/* 
+          ========================================================================
+          RETRO CREATOR SPOTLIGHT: UMESH TEMBURWAR
+          ========================================================================
+        */}
+        <section id="architect" className="scroll-mt-20">
+          <div className={`border-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#111520]' : 'border-[#18181B] bg-white'} retro-shadow-lg`}>
+
+            {/* Retro Window Titlebar */}
+            <div className={`h-9 border-b-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#141A26] text-[#10B981]' : 'border-[#18181B] bg-[#18181B] text-[#F5F3EC]'} px-4 flex items-center justify-between font-mono text-[12px] font-bold select-none`}>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-red-500 inline-block border border-black/40" />
+                <span className="w-2.5 h-2.5 bg-amber-400 inline-block border border-black/40" />
+                <span className="w-2.5 h-2.5 bg-emerald-500 inline-block border border-black/40" />
+                <span className="ml-2">CREATOR_PROFILE.EXE // LEAD_ARCHITECT</span>
+              </div>
+              <span className="hidden sm:inline text-xs font-mono">STATUS: AVAILABLE_FOR_ROLES</span>
+            </div>
+
+            {/* Creator Content Body */}
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8">
+
+                {/* Photo & Hardware Box */}
+                <div className="flex flex-col items-center shrink-0 w-full sm:w-[250px]">
+                  <div className={`relative border-2 ${theme === 'dark' ? 'border-[#10B981] bg-[#0B0E14]' : 'border-[#18181B] bg-[#F5F3EC]'} p-2 retro-shadow`}>
+                    <div className="w-[200px] h-[250px] sm:w-[220px] sm:h-[280px] overflow-hidden border border-[#18181B]">
+                      <img
+                        src="/umesh.jpg"
+                        alt="UMESH TEMBURWAR - Creator & Full Stack Automation Engineer"
+                        className="w-full h-full object-cover object-top filter grayscale-15 contrast-105"
+                      />
+                    </div>
+                    <div className={`mt-2 py-1 px-2 border ${theme === 'dark' ? 'border-emerald-500 bg-emerald-950/80 text-emerald-300' : 'border-[#18181B] bg-[#DCFCE7] text-[#15803D]'} font-mono text-[11px] font-bold text-center`}>
+                      ● FULL-STACK ENGINEER
+                    </div>
+                  </div>
+
+                  {/* Personal Hardware Spec */}
+                  <div className="mt-4 w-full space-y-1 text-center sm:text-left font-mono text-[11px]">
+                    <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Pune / Ambajogai, MH</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                      <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Notice: Immediate (0 Days)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                      <Laptop className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>B.Tech in Computer Science</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Bio, Philosophy & Official Links */}
+                <div className="flex-1 space-y-5 text-left">
+                  <div>
+                    <div className="inline-block px-2 py-0.5 font-mono text-[11px] font-bold uppercase border border-current mb-2 text-emerald-600">
+                      [CREATOR & LEAD DEVELOPER]
+                    </div>
+                    <h2 className="text-[30px] sm:text-[38px] font-black tracking-tight leading-none uppercase">
+                      UMESH TEMBURWAR
+                    </h2>
+                    <p className="font-mono text-[13px] font-bold text-emerald-600 mt-1">
+                      Full-Stack Software Engineer • Browser Automation Specialist
+                    </p>
+                  </div>
+
+                  {/* Philosophy Quote */}
+                  <div className={`p-4 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-[#F5F3EC]'} font-mono text-[13px] leading-relaxed`}>
+                    "I built this bot website and automation architecture from scratch because generic AI tools
+                    produce synthetic spam, fake URLs, and account bans. As a developer, I wanted real, transparent,
+                    undetected browser execution and direct dual-store database ownership."
+                  </div>
+
+                  {/* Skills Console Chips */}
+                  <div>
+                    <div className="font-mono text-[11px] font-bold uppercase text-[#71717A] mb-2">
+                      [VERIFIED_TECH_STACK]
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 font-mono text-[12px]">
+                      {[
+                        'React.js',
+                        'TypeScript',
+                        'Python',
+                        'Selenium',
+                        'Undetected_Chromedriver',
+                        'Node.js',
+                        'Express.js',
+                        'PostgreSQL',
+                        'Supabase',
+                        'SQLite',
+                        'REST_APIs',
+                        'Git'
+                      ].map((s) => (
+                        <span
+                          key={s}
+                          className={`px-2 py-0.5 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#0B0E14] text-white' : 'border-[#18181B] bg-white text-[#18181B]'} font-bold text-[11px]`}
+                        >
+                          +{s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Real Portfolio Projects */}
+                  <div className="pt-2">
+                    <div className="font-mono text-[11px] font-bold uppercase text-[#71717A] mb-2">
+                      [FEATURED_PROJECTS_FROM_PORTFOLIO]
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-[11px]">
+                      <div className={`p-2.5 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-[#F5F3EC]'}`}>
+                        <div className="font-bold text-emerald-600">AI-powered-job-applying</div>
+                        <div className="text-[10px] mt-0.5 opacity-80">Autonomous multi-portal runner with zero fake data.</div>
+                      </div>
+                      <a
+                        href="https://edtechacademy.vercel.app"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`p-2.5 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] hover:border-emerald-500' : 'border-[#18181B] bg-[#F5F3EC] hover:bg-white'} block`}
+                      >
+                        <div className="font-bold text-emerald-600 flex items-center justify-between">
+                          EdTech Platform <ExternalLink className="w-3 h-3" />
+                        </div>
+                        <div className="text-[10px] mt-0.5 opacity-80">Full-stack React, Node, Supabase Auth & PostgreSQL.</div>
+                      </a>
+                      <a
+                        href="https://bytefest2k25.vercel.app"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`p-2.5 border ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] hover:border-emerald-500' : 'border-[#18181B] bg-[#F5F3EC] hover:bg-white'} block`}
+                      >
+                        <div className="font-bold text-emerald-600 flex items-center justify-between">
+                          ByteFest 2K25 <ExternalLink className="w-3 h-3" />
+                        </div>
+                        <div className="text-[10px] mt-0.5 opacity-80">Tech festival portal serving 2,000+ daily attendees.</div>
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Verified Links & Direct Actions (Resume removed per request) */}
+                  <div className="pt-3 flex flex-wrap items-center gap-2.5 font-mono text-[12px]">
+                    <a
+                      href="https://umeshtemburwar.vercel.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-1.5 px-4 py-2 border-2 ${theme === 'dark'
+                        ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14]'
+                        : 'border-[#18181B] bg-[#15803D] text-white'
+                        } font-bold uppercase retro-shadow transition-all`}
+                    >
+                      <Globe className="w-4 h-4" />
+                      VISIT PORTFOLIO [umeshtemburwar.vercel.app] ↗
+                    </a>
+
+                    <a
+                      href="https://github.com/Umesh-Temburwar"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
+                        } font-bold retro-shadow transition-all`}
+                    >
+                      <Code2 className="w-4 h-4 text-emerald-600" />
+                      GITHUB
+                    </a>
+
+                    <a
+                      href="https://www.linkedin.com/in/umesh-temburwar-673555373/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
+                        } font-bold retro-shadow transition-all`}
+                    >
+                      <ExternalLink className="w-4 h-4 text-emerald-600" />
+                      LINKEDIN
+                    </a>
+
+                    <a
+                      href="mailto:umeshtemburwar2002@gmail.com"
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
+                        } font-bold retro-shadow transition-all`}
+                    >
+                      <Mail className="w-4 h-4 text-emerald-600" />
+                      EMAIL
+                    </a>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Interactive Retro Terminal Showcase */}
+        <section id="console" className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="font-mono font-bold text-[18px] uppercase flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-emerald-600" />
+                // LIVE_DAEMON_TELEMETRY_CONSOLE
+              </h2>
+              <p className={`font-mono text-[12px] ${theme === 'dark' ? 'text-[#A1A1AA]' : 'text-[#71717A]'}`}>
+                Inspect the real-time background automation process, database ledger, and portal connectors.
+              </p>
+            </div>
+
+            {/* Retro Segmented Tabs */}
+            <div className={`flex items-center p-1 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-white'} font-mono text-[12px]`}>
+              <button
+                type="button"
+                onClick={() => setActiveTab('terminal')}
+                className={`px-3 py-1 font-bold uppercase transition-colors cursor-pointer ${activeTab === 'terminal'
+                  ? theme === 'dark' ? 'bg-[#10B981] text-[#0B0E14]' : 'bg-[#18181B] text-white'
+                  : 'text-[#71717A] hover:text-current'
+                  }`}
+              >
+                [01_TERMINAL]
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('applications')}
+                className={`px-3 py-1 font-bold uppercase transition-colors cursor-pointer ${activeTab === 'applications'
+                  ? theme === 'dark' ? 'bg-[#10B981] text-[#0B0E14]' : 'bg-[#18181B] text-white'
+                  : 'text-[#71717A] hover:text-current'
+                  }`}
+              >
+                [02_LEDGER_7COL]
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('portals')}
+                className={`px-3 py-1 font-bold uppercase transition-colors cursor-pointer ${activeTab === 'portals'
+                  ? theme === 'dark' ? 'bg-[#10B981] text-[#0B0E14]' : 'bg-[#18181B] text-white'
+                  : 'text-[#71717A] hover:text-current'
+                  }`}
+              >
+                [03_PORTAL_DRIVERS]
+              </button>
+            </div>
+          </div>
+
+          {/* Console Window */}
+          <div className={`border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#0A0C10]' : 'border-[#18181B] bg-[#0D1117]'} retro-shadow font-mono text-[12px] text-[#E6EDF3] p-5 overflow-x-auto`}>
+            {activeTab === 'terminal' && (
+              <div className="space-y-1.5 leading-relaxed">
+                <div className="text-zinc-500 pb-2 border-b border-zinc-800 flex items-center justify-between text-[11px]">
+                  <span>EXEC_PID: 28412 // RUNNER.PY // ISOLATED CHROMIUM PROCESS</span>
+                  <span className="text-emerald-400 font-bold">STATUS: DAEMON_RUNNING ▋</span>
+                </div>
+                <div className="text-zinc-500">[2026-11-01 16:15:02] <span className="text-sky-400">[INIT]</span> AI-powered-job-applying Suite v3.4 initialized by Umesh Temburwar</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:03] <span className="text-emerald-400">[PROFILE]</span> Loaded verified profile for Umesh Temburwar (Full Stack Engineer)</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:05] <span className="text-purple-400">[STEALTH]</span> Injected undetected_chromedriver flags + randomized viewport [1440x900]</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:08] <span className="text-amber-400">[NAUKRI]</span> Querying: "Full Stack Developer" in "Pune" — 38 active postings detected</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:10] <span className="text-emerald-400">[FILTER]</span> Evaluated against SQLite & Supabase: Filtered previously submitted jobs</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:13] <span className="text-sky-400">[VISIT]</span> Target: <span className="text-emerald-300">https://www.naukri.com/job-listings-full-stack-persistent</span></div>
+                <div className="text-zinc-500">[2026-11-01 16:15:16] <span className="text-purple-400">[HEURISTIC]</span> Form Question: "Notice Period?" → Injected "Immediate (0 Days)"</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:17] <span className="text-purple-400">[HEURISTIC]</span> Form Question: "Current CTC?" → Injected verified compensation expectation</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:19] <span className="text-emerald-400 font-bold">✓ APPLIED SUCCESS:</span> Persistent Systems Ltd. | ₹8 - 14 LPA | Pune</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:20] <span className="text-emerald-400">[SYNC]</span> Pushed to jobs_tracker.db, universal_applied_jobs.csv, & Supabase Cloud</div>
+                <div className="text-zinc-500">[2026-11-01 16:15:23] <span className="text-amber-400">[HUMAN_JITTER]</span> Pausing 3.8s with cubic bezier curve movement to emulate human speed...</div>
+              </div>
+            )}
+
+            {activeTab === 'applications' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[12px] border-collapse font-mono">
+                  <thead>
+                    <tr className="border-b border-zinc-800 text-zinc-400 text-[11px] uppercase">
+                      <th className="py-2 px-3">Role & Company</th>
+                      <th className="py-2 px-3">Portal</th>
+                      <th className="py-2 px-3">Location</th>
+                      <th className="py-2 px-3">Salary</th>
+                      <th className="py-2 px-3">Status</th>
+                      <th className="py-2 px-3">Date</th>
+                      <th className="py-2 px-3 text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-900">
+                    {recentApplicationsDemo.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-zinc-900/50">
+                        <td className="py-2.5 px-3">
+                          <div className="font-bold text-white">{item.role}</div>
+                          <div className="text-zinc-400 text-[11px]">{item.company}</div>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="px-1.5 py-0.5 border border-emerald-500/40 text-emerald-400 text-[10px]">
+                            {item.portal}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-zinc-300">{item.location}</td>
+                        <td className="py-2.5 px-3 text-emerald-300">{item.salary}</td>
+                        <td className="py-2.5 px-3 text-emerald-400">✓ {item.status}</td>
+                        <td className="py-2.5 px-3 text-zinc-400">{item.date}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-400 hover:underline"
+                          >
+                            [VERIFY]
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === 'portals' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { name: 'Naukri.com', status: 'SESSION_CONNECTED', rate: '50/day max' },
+                  { name: 'Internshala', status: 'SESSION_CONNECTED', rate: '25/day max' },
+                  { name: 'Indeed India', status: 'SESSION_ACTIVE', rate: '40/day max' },
+                  { name: 'LinkedIn Easy Apply', status: 'CONFIG_SYNCED', rate: '30/day max' }
+                ].map((p, i) => (
+                  <div key={i} className="p-3 border border-zinc-800 bg-zinc-950/70 space-y-1">
+                    <div className="font-bold text-white text-[13px]">{p.name}</div>
+                    <div className="text-emerald-400 text-[11px]">● {p.status}</div>
+                    <div className="text-zinc-400 text-[10px]">RATE_LIMIT: {p.rate}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -623,20 +1054,18 @@ export const LandingPage: React.FC = () => {
             <Link
               to="/applications"
               className={`px-6 py-2.5 font-bold uppercase border-2 ${theme === 'dark'
-                ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14]'
-                : 'border-[#18181B] bg-[#15803D] text-white'
+                ? 'border-[#10B981] bg-[#10B981] text-[#0B0E14] hover:bg-[#34D399]'
+                : 'border-[#18181B] bg-[#15803D] text-white hover:bg-[#166534]'
                 } retro-shadow transition-all`}
             >
               LAUNCH DASHBOARD NOW ↗
             </Link>
             <a
-              href="https://umeshtemburwar.vercel.app/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`px-5 py-2.5 font-bold uppercase border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white' : 'border-[#18181B] bg-white text-[#18181B]'
+              href="#guide"
+              className={`px-5 py-2.5 font-bold uppercase border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26] text-white hover:border-[#10B981]' : 'border-[#18181B] bg-white text-[#18181B] hover:bg-[#EFECE3]'
                 } retro-shadow transition-all`}
             >
-              VISIT UMESH'S PORTFOLIO ↗
+              [HOW_TO_USE_GUIDE]
             </a>
           </div>
         </section>
@@ -699,11 +1128,11 @@ export const LandingPage: React.FC = () => {
             <div className={`p-4 border-2 ${theme === 'dark' ? 'border-[#2E384D] bg-[#141A26]' : 'border-[#18181B] bg-white'} retro-shadow-sm space-y-2`}>
               <div className="flex items-center justify-between">
                 <span className="font-black text-emerald-600 text-[14px]">03</span>
-                <span className="text-[10px] opacity-70 border px-1 border-current">1-CLICK LAUNCH</span>
+                <span className="text-[10px] opacity-70 border px-1 border-current">LIVE APPLY</span>
               </div>
-              <h3 className="font-bold text-[14px] text-current">1-Click Live Automation</h3>
+              <h3 className="font-bold text-[14px] text-current">1-Click Live Auto-Apply</h3>
               <p className="text-[11px] opacity-80 leading-relaxed">
-                Single click me multi-portal automation start karein. <strong>Live Apply</strong> mode me background bot genuine job vacancies discover karke submit karta hai.
+                Single click me automation start karein. <strong>Live Apply</strong> direct job portals par verify karke real applications automatically submit karega.
               </p>
             </div>
 
