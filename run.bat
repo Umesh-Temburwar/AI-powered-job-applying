@@ -46,6 +46,9 @@ REM ============================================================================
 REM 3. SERVER LAUNCHER (FastAPI Backend + React Frontend + Browser)
 REM ===============================================================================
 :launch_servers
+if exist "C:\Program Files\nodejs\node.exe" (
+    set "PATH=C:\Program Files\nodejs;%PATH%"
+)
 echo.
 echo [INFO] Checking and freeing ports 8001 and 5173...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":8001 .*LISTENING"') do (
