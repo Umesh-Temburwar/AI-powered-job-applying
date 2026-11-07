@@ -19,6 +19,8 @@ import {
   RefreshCw,
   BarChart3,
   Zap,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../context/AuthContext';
@@ -230,6 +232,27 @@ const renderTaskLogo = (logoType: QuickCommandItem['logoType']) => {
   }
 };
 
+export interface ProfileSectionTab {
+  index: number;
+  badge: string;
+  shortLabel: string;
+  fullTitle: string;
+  desc: string;
+}
+
+export const PROFILE_SECTIONS: ProfileSectionTab[] = [
+  { index: 0, badge: '📄', shortLabel: 'Resume & ATS', fullTitle: 'Candidate Resume & ATS Attachment', desc: 'Resume PDF upload and extraction' },
+  { index: 1, badge: '1', shortLabel: 'Personal Details', fullTitle: 'Personal & Contact Details', desc: 'Identity, contact and base location' },
+  { index: 2, badge: '2', shortLabel: 'Portal Logins', fullTitle: 'Platform Login Credentials', desc: 'Auto-login keys for job portals' },
+  { index: 3, badge: '3', shortLabel: 'Career Screening', fullTitle: 'Job & Career Screening Details', desc: 'Experience, CTC, notice period & work mode' },
+  { index: 4, badge: '4', shortLabel: 'Academics', fullTitle: 'Academic Qualifications', desc: 'Degrees, colleges, graduation year & score' },
+  { index: 5, badge: '5', shortLabel: 'Target Roles', fullTitle: 'Target Job Roles & Locations', desc: 'Keywords, cities and target portals' },
+  { index: 6, badge: '6', shortLabel: 'Key Skills', fullTitle: 'Key Technical Skills', desc: 'Technologies and technical proficiencies' },
+  { index: 7, badge: '7', shortLabel: 'Projects & Exp', fullTitle: 'Employment Roles & Projects', desc: 'Corporate roles, engineering projects and certifications' },
+  { index: 8, badge: '8', shortLabel: 'Social Profiles', fullTitle: 'Professional Social Profiles & Portfolio', desc: 'LinkedIn, GitHub and personal links' },
+  { index: 9, badge: '🚀', shortLabel: 'Bot Launcher', fullTitle: 'Quick Commands Cheatsheet & Bot Launcher', desc: '1-Click automation dispatch' },
+];
+
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -284,6 +307,130 @@ export const ProfilePage: React.FC = () => {
   const [maxApplications, setMaxApplications] = useState(50);
   const [startingBot, setStartingBot] = useState(false);
   const [isLaunchPasswordModalOpen, setIsLaunchPasswordModalOpen] = useState(false);
+
+  // Section Stepper State (Section-by-Section with Save & Next)
+  const [currentSectionIndex, setCurrentSectionIndex] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('profile_active_section');
+        if (saved !== null) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed) && parsed >= 0 && parsed < PROFILE_SECTIONS.length) return parsed;
+        }
+      } catch {}
+    }
+    return 0;
+  });
+  const [viewMode, setViewMode] = useState<'stepper' | 'all'>('stepper');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('profile_active_section', String(currentSectionIndex));
+      } catch {}
+    }
+  }, [currentSectionIndex]);
+
+  const handleSaveAndNext = async () => {
+    try {
+      setSaving(true);
+      playRetroSound('click');
+      await handleSave();
+      if (currentSectionIndex < PROFILE_SECTIONS.length - 1) {
+        const nextIdx = currentSectionIndex + 1;
+        setCurrentSectionIndex(nextIdx);
+        playRetroSound('success');
+        showToast(`Saved! Moving to ${PROFILE_SECTIONS[nextIdx].shortLabel}...`, 'success');
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      }
+    } catch (err: any) {
+      playRetroSound('error');
+      showToast(err?.message || 'Failed to save section', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePreviousSection = () => {
+    if (currentSectionIndex > 0) {
+      playRetroSound('click');
+      setCurrentSectionIndex((prev) => prev - 1);
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleJumpToSection = (idx: number) => {
+    if (idx >= 0 && idx < PROFILE_SECTIONS.length) {
+      playRetroSound('click');
+      setCurrentSectionIndex(idx);
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    }
+  };
+
+  const renderSectionFooter = (sectionIndex: number) => {
+    if (viewMode !== 'stepper' || sectionIndex === 9) return null;
+    const isFirst = sectionIndex === 0;
+    const nextSection = PROFILE_SECTIONS[sectionIndex + 1];
+    const prevSection = PROFILE_SECTIONS[sectionIndex - 1];
+
+    return (
+      <div className="pt-4 mt-6 border-t-2 border-[var(--border-color)] flex flex-col sm:flex-row items-center justify-between gap-3 font-mono">
+        <div className="w-full sm:w-auto">
+          {!isFirst ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handlePreviousSection}
+              disabled={saving || startingBot}
+              leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
+              className="text-xs border-[var(--border-color)] hover:border-emerald-500 w-full sm:w-auto cursor-pointer"
+            >
+              ← Previous: {prevSection?.shortLabel}
+            </Button>
+          ) : (
+            <div className="text-[11px] text-[var(--text-secondary)] italic">
+              Section 1 of {PROFILE_SECTIONS.length}
+            </div>
+          )}
+        </div>
+
+        <div className="text-[11px] text-[var(--text-secondary)] text-center hidden md:block">
+          Step {sectionIndex + 1} of {PROFILE_SECTIONS.length}:{' '}
+          <span className="font-bold text-[var(--text-primary)]">
+            {PROFILE_SECTIONS[sectionIndex].shortLabel}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving || startingBot}
+            leftIcon={<Save className="w-3.5 h-3.5 text-emerald-400" />}
+            className="text-xs border-[var(--border-color)] cursor-pointer"
+            title="Save changes in this section"
+          >
+            {saving ? 'Saving...' : 'Save Draft'}
+          </Button>
+
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            onClick={handleSaveAndNext}
+            disabled={saving || startingBot}
+            rightIcon={<ArrowRight className="w-4 h-4" />}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 retro-shadow cursor-pointer w-full sm:w-auto"
+          >
+            {saving ? 'Saving & Next...' : `Save & Next → (${nextSection?.shortLabel || 'Next'})`}
+          </Button>
+        </div>
+      </div>
+    );
+  };
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resettingData, setResettingData] = useState(false);
 
@@ -1534,7 +1681,93 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION: CANDIDATE RESUME & ATS DOCUMENT ATTACHMENT */}
+            {/* SECTION STEPPER & PROGRESS NAVIGATION BAR */}
+      <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-4 space-y-3 font-mono">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-[var(--border-color)]">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2 py-0.5 text-[11px] font-bold bg-emerald-600 text-white border border-emerald-500 uppercase tracking-wider">
+              {viewMode === 'stepper' ? `SECTION ${currentSectionIndex + 1} OF ${PROFILE_SECTIONS.length}` : 'ALL SECTIONS VIEW'}
+            </span>
+            <h2 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
+              {viewMode === 'stepper' ? PROFILE_SECTIONS[currentSectionIndex].fullTitle : 'Candidate Profile (All 10 Sections)'}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-3 justify-between sm:justify-end">
+            <span className="text-[11px] text-emerald-400 font-bold hidden xs:inline">
+              {Math.round(((currentSectionIndex + 1) / PROFILE_SECTIONS.length) * 100)}% Completed
+            </span>
+
+            <div className="flex items-center border border-[var(--border-color)] bg-[var(--bg-base)] p-0.5 text-[10px]">
+              <button
+                type="button"
+                onClick={() => setViewMode('stepper')}
+                className={`px-2 py-1 font-bold transition-all cursor-pointer ${
+                  viewMode === 'stepper'
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+                title="View one section at a time with Save & Next"
+              >
+                Section-wise
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('all')}
+                className={`px-2 py-1 font-bold transition-all cursor-pointer ${
+                  viewMode === 'all'
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+                title="View all sections together on one continuous page"
+              >
+                View All
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full bg-[var(--bg-base)] border border-[var(--border-color)] h-1.5 overflow-hidden">
+          <div
+            className="bg-emerald-500 h-full transition-all duration-300 ease-out"
+            style={{ width: `${((currentSectionIndex + 1) / PROFILE_SECTIONS.length) * 100}%` }}
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-thin">
+          {PROFILE_SECTIONS.map((sec) => {
+            const isActive = viewMode === 'stepper' && currentSectionIndex === sec.index;
+            const isCompleted = sec.index < currentSectionIndex;
+
+            return (
+              <button
+                key={sec.index}
+                type="button"
+                onClick={() => handleJumpToSection(sec.index)}
+                className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 border text-[11px] font-mono transition-all cursor-pointer ${
+                  isActive
+                    ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400 font-bold retro-shadow-sm'
+                    : isCompleted
+                    ? 'border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-primary)] hover:border-emerald-500/60'
+                    : 'border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-color)]/80'
+                }`}
+                title={`${sec.index + 1}. ${sec.fullTitle} (${sec.desc})`}
+              >
+                <span className={`w-4 h-4 flex items-center justify-center text-[10px] font-bold rounded-none ${
+                  isActive ? 'bg-emerald-500 text-black' : isCompleted ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/40' : 'bg-black/30 text-[var(--text-secondary)]'
+                }`}>
+                  {isCompleted ? '✓' : sec.badge}
+                </span>
+                <span className="whitespace-nowrap">{sec.shortLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+{(viewMode === 'all' || currentSectionIndex === 0) && (
+        <>
+{/* SECTION: CANDIDATE RESUME & ATS DOCUMENT ATTACHMENT */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -1708,9 +1941,15 @@ export const ProfilePage: React.FC = () => {
           className="hidden"
           onChange={handleFileChange}
         />
-      </div>
+      
+          {renderSectionFooter(0)}
+</div>
+        </>
+      )}
 
-      {/* SECTION 1: CANDIDATE IDENTITY & CONTACT */}
+      {(viewMode === 'all' || currentSectionIndex === 1) && (
+        <>
+{/* SECTION 1: CANDIDATE IDENTITY & CONTACT */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -1827,9 +2066,15 @@ export const ProfilePage: React.FC = () => {
             placeholder="Brief 2-3 line overview of your engineering skills, projects, and career highlights..."
           />
         </div>
-      </div>
+      
+          {renderSectionFooter(1)}
+</div>
+        </>
+      )}
 
-      {/* SECTION 2: PLATFORM LOGIN CREDENTIALS & ACCESS KEYS (SYNCS TO .ENV) */}
+      {(viewMode === 'all' || currentSectionIndex === 2) && (
+        <>
+{/* SECTION 2: PLATFORM LOGIN CREDENTIALS & ACCESS KEYS (SYNCS TO .ENV) */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -2060,9 +2305,15 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      
+          {renderSectionFooter(2)}
+</div>
+        </>
+      )}
 
-      {/* SECTION 3: JOB & CAREER SCREENING DETAILS */}
+      {(viewMode === 'all' || currentSectionIndex === 3) && (
+        <>
+{/* SECTION 3: JOB & CAREER SCREENING DETAILS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -2215,9 +2466,15 @@ export const ProfilePage: React.FC = () => {
             placeholder="Bot inputs this into application cover letter and screening answer textboxes..."
           />
         </div>
-      </div>
+      
+          {renderSectionFooter(3)}
+</div>
+        </>
+      )}
 
-      {/* SECTION 4: ACADEMIC QUALIFICATIONS */}
+      {(viewMode === 'all' || currentSectionIndex === 4) && (
+        <>
+{/* SECTION 4: ACADEMIC QUALIFICATIONS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -2310,9 +2567,15 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
+      
+          {renderSectionFooter(4)}
+</div>
+        </>
+      )}
 
-      {/* SECTION 5: TARGET JOB ROLES & LOCATIONS */}
+      {(viewMode === 'all' || currentSectionIndex === 5) && (
+        <>
+{/* SECTION 5: TARGET JOB ROLES & LOCATIONS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -2493,9 +2756,15 @@ export const ProfilePage: React.FC = () => {
             ))}
           </div>
         </div>
-      </div>
+      
+          {renderSectionFooter(5)}
+</div>
+        </>
+      )}
 
-      {/* SECTION 6: TECHNICAL SKILLS */}
+      {(viewMode === 'all' || currentSectionIndex === 6) && (
+        <>
+{/* SECTION 6: TECHNICAL SKILLS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -2538,9 +2807,15 @@ export const ProfilePage: React.FC = () => {
             Add Skill
           </Button>
         </div>
-      </div>
+      
+          {renderSectionFooter(6)}
+</div>
+        </>
+      )}
 
-      {/* SECTION 7: WORK EXPERIENCE & PROJECTS */}
+      {(viewMode === 'all' || currentSectionIndex === 7) && (
+        <>
+{/* SECTION 7: WORK EXPERIENCE & PROJECTS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -2716,9 +2991,15 @@ export const ProfilePage: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+      
+          {renderSectionFooter(7)}
+</div>
+        </>
+      )}
 
-      {/* SECTION 8: PROFESSIONAL LINKS */}
+      {(viewMode === 'all' || currentSectionIndex === 8) && (
+        <>
+{/* SECTION 8: PROFESSIONAL LINKS */}
       <div className="border-2 border-[var(--border-color)] bg-[var(--bg-card)] retro-shadow p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
           <div className="flex items-center gap-2">
@@ -2761,9 +3042,15 @@ export const ProfilePage: React.FC = () => {
             placeholder="https://yourportfolio.dev"
           />
         </div>
-      </div>
+      
+          {renderSectionFooter(8)}
+</div>
+        </>
+      )}
 
-      {/* SECTION 9: 🚀 QUICK COMMANDS CHEATSHEET & AUTOMATION LAUNCHER */}
+      {(viewMode === 'all' || currentSectionIndex === 9) && (
+        <>
+{/* SECTION 9: 🚀 QUICK COMMANDS CHEATSHEET & AUTOMATION LAUNCHER */}
       <div className="border-2 border-emerald-500/50 bg-[var(--bg-card)] retro-shadow p-5 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b-2 border-emerald-500/40">
           <div className="flex items-center gap-2">
@@ -2921,6 +3208,19 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end flex-wrap">
+            {viewMode === 'stepper' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={handlePreviousSection}
+                disabled={saving || startingBot}
+                leftIcon={<ArrowLeft className="w-4 h-4" />}
+                className="text-xs font-mono border-[var(--border-color)] hover:border-emerald-500 mr-auto sm:mr-0"
+              >
+                ← Previous: Social Profiles
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -2957,7 +3257,10 @@ export const ProfilePage: React.FC = () => {
             </Button>
           </div>
         </div>
-      </div>
+      
+</div>
+        </>
+      )}
 
       {/* Bot Launch Password Verification Modal */}
       <BotLaunchPasswordModal
