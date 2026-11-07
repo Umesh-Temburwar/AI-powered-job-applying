@@ -26,31 +26,43 @@ function Refresh-EnvPath {
     }
 }
 
-function Get-PythonExecutable {
-    # 1. Virtual environment python
-    $venvPy = Join-Path $projectRoot ".venv\Scripts\python.exe"
-    if (Test-Path $venvPy) { return $venvPy }
+function Test-IsRealPython($exePath) {
+    if (-not $exePath) { return $false }
+    # Strictly reject Windows Store fake stub
+    if ($exePath -like "*\Microsoft\WindowsApps\*") { return $false }
+    if (-not (Test-Path $exePath)) { return $false }
+    try {
+        $pInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $pInfo.FileName = $exePath
+        $pInfo.Arguments = "-c `"import sys; print(sys.version_info[0])`""
+        $pInfo.RedirectStandardOutput = $true
+        $pInfo.RedirectStandardError = $true
+        $pInfo.UseShellExecute = $false
+        $pInfo.CreateNoWindow = $true
+        $proc = [System.Diagnostics.Process]::Start($pInfo)
+        $proc.WaitForExit(3000)
+        $out = $proc.StandardOutput.ReadToEnd().Trim()
+        return ($proc.ExitCode -eq 0 -and $out -eq "3")
+    } catch {
+        return $false
+    }
+}
 
-    # 2. Python in PATH
-    $cmd = Get-Command "python" -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
-    $pyLauncher = Get-Command "py" -ErrorAction SilentlyContinue
-    if ($pyLauncher) { return $pyLauncher.Source }
-
-    # 3. Known standard directories
+function Get-SystemPythonExecutable {
+    $localApp = $env:LocalAppData
     $knownPythonPaths = @(
-        "$env:LocalAppData\Programs\Python\Python312\python.exe",
-        "$env:LocalAppData\Programs\Python\Python311\python.exe",
-        "$env:LocalAppData\Programs\Python\Python310\python.exe",
-        "C:\Python312\python.exe",
+        (Join-Path $localApp "Programs\Python\Python311\python.exe"),
+        (Join-Path $localApp "Programs\Python\Python312\python.exe"),
+        (Join-Path $localApp "Programs\Python\Python310\python.exe"),
         "C:\Python311\python.exe",
+        "C:\Python312\python.exe",
         "C:\Python310\python.exe",
-        "C:\Program Files\Python312\python.exe",
         "C:\Program Files\Python311\python.exe",
+        "C:\Program Files\Python312\python.exe",
         "C:\Program Files\Python310\python.exe"
     )
     foreach ($p in $knownPythonPaths) {
-        if (Test-Path $p) {
+        if (Test-IsRealPython $p) {
             $pyDir = Split-Path $p
             if ($env:Path -notlike "*$pyDir*") {
                 $env:Path = "$pyDir;$env:Path"
@@ -58,7 +70,31 @@ function Get-PythonExecutable {
             return $p
         }
     }
+
+    # Check py launcher
+    $pyLauncher = Get-Command "py" -ErrorAction SilentlyContinue
+    if ($pyLauncher -and (Test-IsRealPython $pyLauncher.Source)) {
+        return $pyLauncher.Source
+    }
+
+    # Search PATH excluding WindowsApps
+    $allPy = Get-Command "python" -All -ErrorAction SilentlyContinue
+    foreach ($cmd in $allPy) {
+        if ($cmd.Source -notlike "*\Microsoft\WindowsApps\*" -and (Test-IsRealPython $cmd.Source)) {
+            return $cmd.Source
+        }
+    }
+
     return $null
+}
+
+function Get-PythonExecutable {
+    # 1. Virtual environment python in project root
+    $venvPy = Join-Path $projectRoot ".venv\Scripts\python.exe"
+    if (Test-IsRealPython $venvPy) { return $venvPy }
+
+    # 2. Otherwise find real system python
+    return (Get-SystemPythonExecutable)
 }
 
 function Get-NodeExecutable {
@@ -119,12 +155,13 @@ Write-Host "[1/6] Analyzing Python Runtime..." -ForegroundColor Yellow
 $pythonCmd = Get-PythonExecutable
 
 if (-not $pythonCmd) {
-    Write-Host "      [!] Python 3.10+ was NOT detected on this system." -ForegroundColor Yellow
-    Write-Host "      [*] Attempting automatic installation via winget..." -ForegroundColor Yellow
+    Write-Host "      [!] Real Python 3.10+ was NOT detected on this system (Windows Store stub or missing Python)." -ForegroundColor Yellow
+    Write-Host "      [*] Attempting automatic 1-click download & installation of Python 3.11..." -ForegroundColor Yellow
     
     $winget = Get-Command "winget" -ErrorAction SilentlyContinue
     if ($winget) {
         try {
+            Write-Host "      [*] Running winget install Python.Python.3.11..." -ForegroundColor Yellow
             Start-Process "winget" -ArgumentList "install -e --id Python.Python.3.11 --scope currentuser --accept-package-agreements --accept-source-agreements" -Wait -NoNewWindow
             Refresh-EnvPath
             $pythonCmd = Get-PythonExecutable
@@ -134,14 +171,14 @@ if (-not $pythonCmd) {
     }
 
     if (-not $pythonCmd) {
-        Write-Host "      [*] Downloading official Python 3.11 Windows Installer..." -ForegroundColor Yellow
+        Write-Host "      [*] Downloading official Python 3.11 Windows Installer from python.org..." -ForegroundColor Yellow
         $pyUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
         $pyInstaller = Join-Path $env:TEMP "python-3.11-installer.exe"
         try {
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
             Invoke-WebRequest -Uri $pyUrl -OutFile $pyInstaller -UseBasicParsing
             Write-Host "      [*] Starting Python installer..." -ForegroundColor Yellow
-            Start-Process -FilePath $pyInstaller -ArgumentList "/quiet InstallAllUsers=0 PrependPath=1 Include_test=0" -Wait
+            Start-Process -FilePath $pyInstaller -ArgumentList "/passive PrependPath=1 Include_test=0 SimpleInstall=1" -Wait
             Remove-Item $pyInstaller -Force -ErrorAction SilentlyContinue
             Refresh-EnvPath
             $pythonCmd = Get-PythonExecutable
@@ -168,8 +205,8 @@ if (-not $pythonCmd) {
 
         Write-Host ""
         Write-Host "👉 INSTRUCTIONS:" -ForegroundColor Yellow
-        Write-Host "   1. Run the downloaded python-3.11-amd64.exe installer." -ForegroundColor White
-        Write-Host "   2. [IMPORTANT] Check the box: 'Add python.exe to PATH' at the bottom!" -ForegroundColor White
+        Write-Host "   1. Run the downloaded python-3.11.9-amd64.exe installer." -ForegroundColor White
+        Write-Host "   2. ⚠️ [VERY IMPORTANT]: Check the box 'Add python.exe to PATH' at the bottom!" -ForegroundColor Yellow
         Write-Host "   3. Click 'Install Now'." -ForegroundColor White
         Write-Host "   4. After installation finishes, press [ENTER] below to continue!" -ForegroundColor White
         Write-Host "===============================================================================" -ForegroundColor Magenta
@@ -177,6 +214,10 @@ if (-not $pythonCmd) {
 
         Refresh-EnvPath
         $pythonCmd = Get-PythonExecutable
+
+        if (-not $pythonCmd) {
+            Write-Host "      [!] Python still not detected. Retrying check..." -ForegroundColor Yellow
+        }
     }
 }
 
@@ -375,12 +416,35 @@ Write-Host "[5/6] Analyzing Python Virtual Environment (.venv)..." -ForegroundCo
 $venvDir = Join-Path $projectRoot ".venv"
 $venvPython = Join-Path $venvDir "Scripts\python.exe"
 
-if (-not (Test-Path $venvPython) -or $ForceReinstall) {
+# If existing venv is broken or uses fake WindowsApps python, delete it
+if (Test-Path $venvPython) {
+    if (-not (Test-IsRealPython $venvPython)) {
+        Write-Host "      [!] Detected invalid or corrupted virtual environment. Rebuilding..." -ForegroundColor Yellow
+        Remove-Item -Path $venvDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+if (-not (Test-IsRealPython $venvPython) -or $ForceReinstall) {
     Write-Host "      [*] Creating Python virtual environment (.venv)..." -ForegroundColor Yellow
-    $basePy = if ($pythonCmd -ne $venvPython) { $pythonCmd } else { "python" }
-    & $basePy -m venv $venvDir
-    if (-not (Test-Path $venvPython)) {
-        Write-Host "      [FATAL] Failed to create virtual environment." -ForegroundColor Red
+    
+    $systemPy = Get-SystemPythonExecutable
+    while (-not $systemPy) {
+        Write-Host "      [!] Valid Python 3.10+ required to build .venv. Opening installer..." -ForegroundColor Yellow
+        try {
+            Start-Process "https://www.python.org/downloads/"
+            Start-Process "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
+        } catch {}
+        Read-Host "Install Python (ensure 'Add python.exe to PATH' is checked), then press [ENTER]"
+        Refresh-EnvPath
+        $systemPy = Get-SystemPythonExecutable
+    }
+
+    Write-Host "      [*] Building .venv with Python: $systemPy" -ForegroundColor Yellow
+    & $systemPy -m venv $venvDir
+    Refresh-EnvPath
+
+    if (-not (Test-IsRealPython $venvPython)) {
+        Write-Host "      [FATAL] Failed to create virtual environment with $systemPy." -ForegroundColor Red
         exit 1
     }
     Write-Host "      [OK] Virtual environment created successfully." -ForegroundColor Green

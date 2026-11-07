@@ -16,39 +16,61 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":8001 .*LISTENING"') d
 
 set "PY_EXE="
 if exist "%CD%\.venv\Scripts\python.exe" (
-    set "PY_EXE=%CD%\.venv\Scripts\python.exe"
-    echo [INFO] Using virtual environment Python: .venv\Scripts\python.exe
-) else (
-    where py >nul 2>nul
-    if %ERRORLEVEL% equ 0 (
-        set "PY_EXE=py"
-        echo [INFO] Using Python launcher: py
+    "%CD%\.venv\Scripts\python.exe" -c "import sys" >nul 2>nul
+    if not errorlevel 1 (
+        set "PY_EXE=%CD%\.venv\Scripts\python.exe"
+        echo [INFO] Using virtual environment Python: .venv\Scripts\python.exe
+    )
+)
+
+if "%PY_EXE%"=="" (
+    if exist "%LocalAppData%\Programs\Python\Python311\python.exe" (
+        set "PY_EXE=%LocalAppData%\Programs\Python\Python311\python.exe"
+        echo [INFO] Using system Python: %LocalAppData%\Programs\Python\Python311\python.exe
+    ) else if exist "%LocalAppData%\Programs\Python\Python312\python.exe" (
+        set "PY_EXE=%LocalAppData%\Programs\Python\Python312\python.exe"
+        echo [INFO] Using system Python: %LocalAppData%\Programs\Python\Python312\python.exe
+    ) else if exist "C:\Program Files\Python311\python.exe" (
+        set "PY_EXE=C:\Program Files\Python311\python.exe"
+        echo [INFO] Using system Python: C:\Program Files\Python311\python.exe
+    ) else if exist "C:\Program Files\Python312\python.exe" (
+        set "PY_EXE=C:\Program Files\Python312\python.exe"
+        echo [INFO] Using system Python: C:\Program Files\Python312\python.exe
     ) else (
-        where python >nul 2>nul
-        if %ERRORLEVEL% equ 0 (
-            set "PY_EXE=python"
-            echo [INFO] Using system Python: python
-        ) else if exist "%LocalAppData%\Programs\Python\Python311\python.exe" (
-            set "PY_EXE=%LocalAppData%\Programs\Python\Python311\python.exe"
-        ) else if exist "%LocalAppData%\Programs\Python\Python312\python.exe" (
-            set "PY_EXE=%LocalAppData%\Programs\Python\Python312\python.exe"
-        ) else if exist "C:\Program Files\Python311\python.exe" (
-            set "PY_EXE=C:\Program Files\Python311\python.exe"
-        ) else (
-            echo.
-            echo ===============================================================================
-            echo [!] Python 3.10+ was not found on this system!
-            echo Opening browser tabs to download Python 3.11...
-            echo ===============================================================================
-            start https://www.python.org/downloads/
-            start https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
-            echo.
-            echo Please install Python (ensure "Add python.exe to PATH" is checked) and re-run.
-            echo.
-            pause
-            exit /b 1
+        where py >nul 2>nul
+        if not errorlevel 1 (
+            py -3 -c "import sys" >nul 2>nul
+            if not errorlevel 1 (
+                set "PY_EXE=py"
+                echo [INFO] Using Python launcher: py
+            )
+        )
+        if "%PY_EXE%"=="" (
+            where python >nul 2>nul
+            if not errorlevel 1 (
+                python -c "import sys" >nul 2>nul
+                if not errorlevel 1 (
+                    set "PY_EXE=python"
+                    echo [INFO] Using system Python: python
+                )
+            )
         )
     )
+)
+
+if "%PY_EXE%"=="" (
+    echo.
+    echo ===============================================================================
+    echo [!] Python 3.10+ was not found on this system!
+    echo Opening browser tabs to download Python 3.11...
+    echo ===============================================================================
+    start https://www.python.org/downloads/
+    start https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
+    echo.
+    echo Please install Python (ensure "Add python.exe to PATH" is checked) and re-run.
+    echo.
+    pause
+    exit /b 1
 )
 
 echo [INFO] Starting Uvicorn Server on 127.0.0.1:8001 (watching backend/ only)...
