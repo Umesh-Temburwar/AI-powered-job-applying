@@ -41,23 +41,27 @@ REMOTE_TERMS = {"remote", "work from home", "wfh", "virtual", "anywhere", "work 
 
 def parse_target_locations(
     explicit_locations: Optional[Union[str, List[str]]] = None,
-    profile_data: Optional[dict] = None
+    profile_data: Optional[dict] = None,
+    locations: Optional[Union[str, List[str]]] = None,
+    **kwargs
 ) -> List[str]:
     """
     Extract and clean user's configured target locations from:
     1. Explicit function argument
-    2. Environment variable LOCATION
-    3. data/profile_data.json (preferred_locations or current_location)
-    4. Default fallback: ['pune', 'remote']
+    2. Passed profile_data
+    3. Environment variable LOCATION
+    4. data/profile_data.json (preferred_locations or current_location)
+    5. Default fallback: ['pune', 'remote']
     """
     candidates: List[str] = []
 
     # 1. From explicit argument
-    if explicit_locations:
-        if isinstance(explicit_locations, str):
-            candidates.extend([loc.strip() for loc in explicit_locations.split(",") if loc.strip()])
-        elif isinstance(explicit_locations, list):
-            for item in explicit_locations:
+    target_arg = explicit_locations if explicit_locations is not None else locations
+    if target_arg:
+        if isinstance(target_arg, str):
+            candidates.extend([loc.strip() for loc in target_arg.split(",") if loc.strip()])
+        elif isinstance(target_arg, list):
+            for item in target_arg:
                 if isinstance(item, str):
                     for sub in item.split(","):
                         if sub.strip():
@@ -126,7 +130,8 @@ def parse_target_locations(
 def is_location_match(
     job_location: Optional[str],
     target_locations: Optional[Union[str, List[str]]] = None,
-    allow_remote: bool = True
+    allow_remote: bool = True,
+    **kwargs
 ) -> bool:
     """
     Strictly evaluate if a job or internship posting matches user's target locations.
@@ -216,3 +221,4 @@ def get_location_search_slugs(target_locations: Optional[Union[str, List[str]]] 
             if clean_slug and clean_slug not in slugs:
                 slugs.append(clean_slug)
     return slugs
+

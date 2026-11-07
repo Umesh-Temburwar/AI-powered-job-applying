@@ -39,53 +39,80 @@ for cluster in LOCATION_CLUSTERS:
 REMOTE_TERMS = {"remote", "work from home", "wfh", "virtual", "anywhere", "work from anywhere", "telecommute", "home", "home-based"}
 
 
-def parse_target_locations(explicit_locations: Optional[Union[str, List[str]]] = None) -> List[str]:
+def parse_target_locations(
+    explicit_locations: Optional[Union[str, List[str]]] = None,
+    profile_data: Optional[dict] = None,
+    locations: Optional[Union[str, List[str]]] = None,
+    **kwargs
+) -> List[str]:
     """
     Extract and clean user's configured target locations from:
-    1. Explicit function argument
-    2. Environment variable LOCATION
-    3. data/profile_data.json (preferred_locations or current_location)
-    4. Default fallback: ['pune', 'remote']
+    1. Explicit function argument (explicit_locations or locations)
+    2. Passed profile_data
+    3. Environment variable LOCATION
+    4. data/profile_data.json (preferred_locations or current_location)
+    5. Default fallback: ['pune', 'remote']
     """
     candidates: List[str] = []
 
     # 1. From explicit argument
-    if explicit_locations:
-        if isinstance(explicit_locations, str):
-            candidates.extend([loc.strip() for loc in explicit_locations.split(",") if loc.strip()])
-        elif isinstance(explicit_locations, list):
-            for item in explicit_locations:
+    target_arg = explicit_locations if explicit_locations is not None else locations
+    if target_arg:
+        if isinstance(target_arg, str):
+            candidates.extend([loc.strip() for loc in target_arg.split(",") if loc.strip()])
+        elif isinstance(target_arg, list):
+            for item in target_arg:
                 if isinstance(item, str):
                     for sub in item.split(","):
                         if sub.strip():
                             candidates.append(sub.strip())
 
-    # 2. From environment variable
+    # 2. From passed profile_data
+    if not candidates and profile_data:
+        personal = profile_data.get("personal", {})
+        prefs = personal.get("preferred_locations") or []
+        if isinstance(prefs, list):
+            for p in prefs:
+                if isinstance(p, str) and p.strip():
+                    candidates.append(p.strip())
+        curr = personal.get("current_location", "").strip()
+        if curr and curr not in candidates:
+            candidates.append(curr)
+
+    # 3. From environment variable
     if not candidates:
         env_loc = os.getenv("LOCATION", "").strip()
         if env_loc:
             candidates.extend([loc.strip() for loc in env_loc.split(",") if loc.strip()])
 
-    # 3. From profile_data.json
+    # 4. From profile_data.json
     if not candidates:
-        try:
-            profile_path = os.path.join(os.path.dirname(__file__), "..", "data", "profile_data.json")
-            if os.path.exists(profile_path):
-                with open(profile_path, "r", encoding="utf-8") as f:
-                    pdata = json.load(f)
-                    personal = pdata.get("personal", {})
-                    prefs = personal.get("preferred_locations") or []
-                    if isinstance(prefs, list):
-                        for p in prefs:
-                            if isinstance(p, str) and p.strip():
-                                candidates.append(p.strip())
-                    curr = personal.get("current_location", "").strip()
-                    if curr and curr not in candidates:
-                        candidates.append(curr)
-        except Exception as exc:
-            logger.debug("profile_data.json location read notice: %s", exc)
+        potential_paths = [
+            os.path.join(os.path.dirname(__file__), "..", "data", "profile_data.json"),
+            os.path.join(os.path.dirname(__file__), "..", "..", "data", "profile_data.json"),
+            os.path.join("data", "profile_data.json"),
+            "profile_data.json",
+        ]
+        for ppath in potential_paths:
+            if os.path.exists(ppath):
+                try:
+                    with open(ppath, "r", encoding="utf-8") as f:
+                        pdata = json.load(f)
+                        personal = pdata.get("personal", {})
+                        prefs = personal.get("preferred_locations") or []
+                        if isinstance(prefs, list):
+                            for p in prefs:
+                                if isinstance(p, str) and p.strip():
+                                    candidates.append(p.strip())
+                        curr = personal.get("current_location", "").strip()
+                        if curr and curr not in candidates:
+                            candidates.append(curr)
+                    if candidates:
+                        break
+                except Exception as exc:
+                    logger.debug("profile_data.json location read notice: %s", exc)
 
-    # 4. Standard default fallback
+    # 5. Standard default fallback
     if not candidates:
         candidates = ["Pune", "Remote"]
 
@@ -104,7 +131,8 @@ def parse_target_locations(explicit_locations: Optional[Union[str, List[str]]] =
 def is_location_match(
     job_location: Optional[str],
     target_locations: Optional[Union[str, List[str]]] = None,
-    allow_remote: bool = True
+    allow_remote: bool = True,
+    **kwargs
 ) -> bool:
     """
     Strictly evaluate if a job or internship posting matches user's target locations.
