@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from typing import Any, Optional
 from bs4 import BeautifulSoup
@@ -10,6 +11,52 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 from services.platform_automation.base import ApplyResult, BasePlatformAdapter, JobOpportunity
 
 logger = logging.getLogger("InternshalaAdapter")
+
+
+def is_unpaid_internship(stipend: str = "", title: str = "", company: str = "", extra: str = "") -> bool:
+    """
+    Detect whether an Internshala vacancy is unpaid, zero-stipend, or pure volunteer work.
+    Returns True if unpaid (must be skipped), False if paid or legitimate compensation.
+    """
+    blob = f"{stipend} {title} {company} {extra}".lower().strip()
+    if not blob:
+        return False
+
+    # 1. Explicit unpaid keywords & volunteering phrases
+    unpaid_phrases = [
+        "unpaid",
+        "un-paid",
+        "non-paid",
+        "no stipend",
+        "without stipend",
+        "zero stipend",
+        "nil stipend",
+        "free internship",
+        "volunteer",
+        "volunteering",
+        "pro bono",
+        "certificate only",
+        "expenses only",
+        "expenses covered only",
+    ]
+    for phrase in unpaid_phrases:
+        if phrase in blob:
+            return True
+
+    # 2. Check for zero amount / zero stipend representations
+    stipend_lower = stipend.lower().strip()
+    if stipend_lower:
+        # Crucial: 0 must not be part of a larger number like 10,000 or 2,000
+        if re.search(r"(?<![0-9])0\s*(?:/|\bper\b)\s*month", stipend_lower):
+            return True
+        if re.search(r"^(?:₹|rs\.?|inr)?\s*0\s*$", stipend_lower):
+            return True
+        if re.search(r"(?<![0-9])0\s*-\s*0(?![0-9])", stipend_lower):
+            return True
+        if re.search(r"(?:₹|rs\.?|inr)\s*0(?![0-9])", stipend_lower):
+            return True
+
+    return False
 
 
 class InternshalaPlatformAdapter(BasePlatformAdapter):
@@ -127,6 +174,12 @@ class InternshalaPlatformAdapter(BasePlatformAdapter):
                     sal_elem = card.find("span", class_="salary") or card.find("span", class_="stipend")
                     salary = sal_elem.get_text(strip=True) if sal_elem else "Competitive"
 
+                    # Skip unpaid internships right from the search results
+                    card_raw_text = card.get_text(" ", strip=True)
+                    if is_unpaid_internship(salary, job_title, company, card_raw_text):
+                        logger.info("🚫 Filtered unpaid Internshala vacancy: '%s' @ '%s' (Stipend: %s)", job_title, company, salary)
+                        continue
+
                     opportunities.append(
                         JobOpportunity(
                             job_title=job_title,
@@ -170,6 +223,18 @@ class InternshalaPlatformAdapter(BasePlatformAdapter):
         dry_run: bool = True,
         user_confirmed: bool = False,
     ) -> ApplyResult:
+        # Reject unpaid internships immediately
+        if is_unpaid_internship(job.salary or "", job.job_title or "", job.company or ""):
+            return ApplyResult(
+                job_url=job.job_url,
+                job_title=job.job_title,
+                company=job.company,
+                platform="Internshala",
+                success=False,
+                status="skipped",
+                notes=f"Skipped unpaid internship (Stipend: {job.salary}). Excluded by candidate compensation policy.",
+            )
+
         if dry_run:
             return ApplyResult(
                 job_url=job.job_url,
@@ -196,6 +261,20 @@ class InternshalaPlatformAdapter(BasePlatformAdapter):
         try:
             driver.get(job.job_url)
             time.sleep(3)
+
+            # Live detail page stipend check
+            sal_elem = driver.find_elements(By.CSS_SELECTOR, ".stipend, .salary, [class*='salary'], [class*='stipend']")
+            live_stipend = sal_elem[0].text.strip() if sal_elem else (job.salary or "")
+            if is_unpaid_internship(live_stipend, job.job_title, job.company):
+                return ApplyResult(
+                    job_url=job.job_url,
+                    job_title=job.job_title,
+                    company=job.company,
+                    platform="Internshala",
+                    success=False,
+                    status="skipped",
+                    notes=f"Skipped unpaid internship detected on detail page (Stipend: {live_stipend}).",
+                )
 
             apply_selectors = [
                 "//button[contains(@id,'apply_now_button') or contains(text(),'Apply now')]",
@@ -254,12 +333,22 @@ class InternshalaPlatformAdapter(BasePlatformAdapter):
                     except Exception:
                         pass
 
-            # Answer standard radio questions
+            # Answer standard radio questions (smart check to reject unpaid confirmations)
             radios = driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
             for r in radios:
                 try:
                     val = (r.get_attribute("value") or "").lower()
-                    if val in ["yes", "immediate", "available", "1"]:
+                    context_text = ""
+                    try:
+                        parent_group = r.find_element(By.XPATH, "./ancestor::div[contains(@class,'form-group') or contains(@class,'question')][1]")
+                        context_text = parent_group.text.lower()
+                    except Exception:
+                        pass
+
+                    if any(term in context_text for term in ["unpaid", "without stipend", "no stipend", "zero stipend"]):
+                        if val in ["no", "false", "0"]:
+                            driver.execute_script("arguments[0].click();", r)
+                    elif val in ["yes", "immediate", "available", "1"]:
                         driver.execute_script("arguments[0].click();", r)
                 except Exception:
                     pass

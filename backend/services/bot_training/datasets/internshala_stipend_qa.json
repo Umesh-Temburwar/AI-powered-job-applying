@@ -1,0 +1,50 @@
+[
+  {
+    "question_text": "Are you comfortable with an unpaid internship?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "stipend_policy"
+  },
+  {
+    "question_text": "Are you willing to work for an unpaid internship?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "stipend_policy"
+  },
+  {
+    "question_text": "Are you willing to work without stipend?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "stipend_policy"
+  },
+  {
+    "question_text": "Is an unpaid internship acceptable to you?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "stipend_policy"
+  },
+  {
+    "question_text": "Do you require a monthly stipend?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "stipend_policy"
+  },
+  {
+    "question_text": "Are you open to unpaid volunteer roles?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "stipend_policy"
+  },
+  {
+    "question_text": "Are you looking for a paid or unpaid internship?",
+    "answer": "Paid",
+    "field_type": "text",
+    "category": "stipend_policy"
+  },
+  {
+    "question_text": "Will you work without stipend for the initial duration?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "stipend_policy"
+  }
+]

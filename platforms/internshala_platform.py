@@ -6,6 +6,7 @@ and your resume profile knowledge base.
 """
 
 import os
+import re
 import sys
 import time
 import json
@@ -28,6 +29,52 @@ logger = logging.getLogger("InternshalaBot")
 load_dotenv()
 
 RESULTS_CSV = "internshala_applied.csv"
+
+
+def is_unpaid_internship(stipend: str = "", title: str = "", company: str = "", extra: str = "") -> bool:
+    """
+    Detect whether an Internshala vacancy is unpaid, zero-stipend, or pure volunteer work.
+    Returns True if unpaid (must be skipped), False if paid or legitimate compensation.
+    """
+    blob = f"{stipend} {title} {company} {extra}".lower().strip()
+    if not blob:
+        return False
+
+    # 1. Explicit unpaid keywords & volunteering phrases
+    unpaid_phrases = [
+        "unpaid",
+        "un-paid",
+        "non-paid",
+        "no stipend",
+        "without stipend",
+        "zero stipend",
+        "nil stipend",
+        "free internship",
+        "volunteer",
+        "volunteering",
+        "pro bono",
+        "certificate only",
+        "expenses only",
+        "expenses covered only",
+    ]
+    for phrase in unpaid_phrases:
+        if phrase in blob:
+            return True
+
+    # 2. Check for zero amount / zero stipend representations
+    stipend_lower = stipend.lower().strip()
+    if stipend_lower:
+        # Crucial: 0 must not be part of a larger number like 10,000 or 2,000
+        if re.search(r"(?<![0-9])0\s*(?:/|\bper\b)\s*month", stipend_lower):
+            return True
+        if re.search(r"^(?:₹|rs\.?|inr)?\s*0\s*$", stipend_lower):
+            return True
+        if re.search(r"(?<![0-9])0\s*-\s*0(?![0-9])", stipend_lower):
+            return True
+        if re.search(r"(?:₹|rs\.?|inr)\s*0(?![0-9])", stipend_lower):
+            return True
+
+    return False
 
 
 def load_profile():
@@ -204,14 +251,42 @@ def apply_on_internshala(driver, max_apps=25):
             logger.warning(f"Failed to open {url}: {e}")
             continue
 
-        # Collect application detail links
+        # Collect application detail links (filtering unpaid roles early)
         job_links = []
         try:
-            elems = driver.find_elements(By.CSS_SELECTOR, "a.job-title-href, a.view_detail_button")
-            for el in elems:
-                href = el.get_attribute("href")
-                if href and href not in job_links:
-                    job_links.append(href)
+            cards = driver.find_elements(By.CSS_SELECTOR, ".individual_internship, .container-fluid.individual_internship, .job-internship-card")
+            if cards:
+                for card in cards:
+                    try:
+                        link_elems = card.find_elements(By.CSS_SELECTOR, "a.job-title-href, a.view_detail_button")
+                        if not link_elems:
+                            continue
+                        href = link_elems[0].get_attribute("href")
+                        if not href:
+                            continue
+
+                        title_el = card.find_elements(By.CSS_SELECTOR, "a.job-title-href, .profile, .heading_4_5, .job-title")
+                        title_text = title_el[0].text.strip() if title_el else ""
+                        comp_el = card.find_elements(By.CSS_SELECTOR, ".company_name, .link_display_like_text, p.company-name")
+                        comp_text = comp_el[0].text.strip() if comp_el else ""
+                        stip_el = card.find_elements(By.CSS_SELECTOR, ".stipend, .salary, [class*='stipend'], [class*='salary']")
+                        stip_text = stip_el[0].text.strip() if stip_el else ""
+
+                        if is_unpaid_internship(stip_text, title_text, comp_text, card.text):
+                            logger.info(f"🚫 [SEARCH FILTER] Skipping unpaid Internshala vacancy: '{title_text}' @ '{comp_text}' (Stipend: '{stip_text}')")
+                            continue
+
+                        if href not in job_links:
+                            job_links.append(href)
+                    except Exception:
+                        pass
+
+            if not job_links:
+                elems = driver.find_elements(By.CSS_SELECTOR, "a.job-title-href, a.view_detail_button")
+                for el in elems:
+                    href = el.get_attribute("href")
+                    if href and href not in job_links:
+                        job_links.append(href)
         except Exception:
             pass
 
@@ -240,6 +315,11 @@ def apply_on_internshala(driver, max_apps=25):
                 loc_text = loc_elem[0].text.strip() if loc_elem else "India / Remote"
                 sal_elem = driver.find_elements(By.CSS_SELECTOR, ".stipend, .salary, [class*='salary'], [class*='stipend']")
                 sal_text = sal_elem[0].text.strip() if sal_elem else "Competitive"
+
+                # Double check unpaid status on detail page
+                if is_unpaid_internship(sal_text, role_text, comp_text):
+                    logger.info(f"🚫 [DETAIL FILTER] Position '{role_text}' @ {comp_text} is unpaid (Stipend: '{sal_text}'). Excluded by candidate policy.")
+                    continue
 
                 # Safe Dry-Run Simulation
                 if dry_run:
@@ -289,12 +369,22 @@ def apply_on_internshala(driver, max_apps=25):
                         ta.send_keys(ans)
                         time.sleep(0.5)
 
-                # Answer any assessment / radio questions
+                # Answer any assessment / radio questions (smart check rejecting unpaid confirmations)
                 radios = driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
                 for r in radios:
                     try:
                         val = (r.get_attribute('value') or '').lower()
-                        if val in ['yes', 'immediate', 'available']:
+                        context_text = ""
+                        try:
+                            parent_group = r.find_element(By.XPATH, "./ancestor::div[contains(@class,'form-group') or contains(@class,'question')][1]")
+                            context_text = parent_group.text.lower()
+                        except Exception:
+                            pass
+
+                        if any(term in context_text for term in ["unpaid", "without stipend", "no stipend", "zero stipend"]):
+                            if val in ['no', 'false', '0']:
+                                driver.execute_script("arguments[0].click();", r)
+                        elif val in ['yes', 'immediate', 'available']:
                             driver.execute_script("arguments[0].click();", r)
                     except Exception:
                         pass

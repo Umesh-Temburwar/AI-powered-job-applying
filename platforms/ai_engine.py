@@ -84,6 +84,14 @@ class QuestionAnswerer:
 
         # Platform-specific answer overrides
         if "internshala" in plat:
+            if any(term in q_clean for term in ["unpaid", "without stipend", "zero stipend", "no stipend", "volunteer"]):
+                if any(term in q_clean for term in ["comfortable", "willing", "acceptable", "open to", "agree", "okay with", "accept", "interest"]):
+                    return "No"
+                if any(term in q_clean for term in ["require", "need", "expect"]):
+                    return "Yes"
+                if "paid or unpaid" in q_clean:
+                    return "Paid"
+                return "No"
             if any(term in q_clean for term in ["available for", "months", "duration", "start date", "availability"]):
                 return "Yes, I am available full-time immediately for the entire required duration."
             if any(term in q_clean for term in ["why should you be hired", "why should we hire you"]):
@@ -123,6 +131,18 @@ class QuestionAnswerer:
                 return v
 
         # 2. Rule-based heuristic pattern matching
+        # Stipend & Unpaid Policy Screening
+        if any(term in q_clean for term in ["unpaid", "without stipend", "zero stipend", "no stipend", "volunteer"]):
+            if any(term in q_clean for term in ["comfortable", "willing", "acceptable", "open to", "agree", "okay with", "accept", "interest"]):
+                return "No"
+            if any(term in q_clean for term in ["require", "need", "expect"]):
+                return "Yes"
+            if "paid or unpaid" in q_clean:
+                return "Paid"
+            return "No"
+        if "stipend" in q_clean and any(term in q_clean for term in ["expected", "requirement", "how much"]):
+            return "15000 - 25000"
+
         # Notice Period
         if any(term in q_clean for term in ["notice period", "joining", "how soon", "when can you join"]):
             if "naukri" in plat:

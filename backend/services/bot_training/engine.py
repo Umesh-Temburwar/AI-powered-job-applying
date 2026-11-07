@@ -117,8 +117,12 @@ class BotTrainer:
                     break
 
         if not predicted:
-            predicted = "Fresher / Immediate" if "notice" in q_norm or "experience" in q_norm else "Yes"
-            source = "default_fallback"
+            if any(term in q_norm for term in ["unpaid", "without stipend", "zero stipend", "no stipend", "volunteer"]):
+                predicted = "No"
+                source = "stipend_policy_heuristic"
+            else:
+                predicted = "Fresher / Immediate" if "notice" in q_norm or "experience" in q_norm else "Yes"
+                source = "default_fallback"
 
         latency = (time.perf_counter() - t0) * 1000.0
 

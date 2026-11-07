@@ -113,6 +113,48 @@ def test_internshala_cover_letter_and_slugs():
     assert "alice@example.com" in cover_letter
 
 
+def test_internshala_unpaid_detection_filter():
+    from services.platform_automation.internshala import is_unpaid_internship
+
+    assert is_unpaid_internship("STIPEND Unpaid") is True
+    assert is_unpaid_internship("Unpaid") is True
+    assert is_unpaid_internship("₹ 0 /month") is True
+    assert is_unpaid_internship("0 /month") is True
+    assert is_unpaid_internship("0 - 0 /month") is True
+    assert is_unpaid_internship("No Stipend") is True
+    assert is_unpaid_internship("Expenses covered only") is True
+    assert is_unpaid_internship("", "Volunteer Web Developer", "NGO Foundation") is True
+
+    # Paid roles must NOT be flagged as unpaid
+    assert is_unpaid_internship("STIPEND ₹ 2,000 - 30,000 /month") is False
+    assert is_unpaid_internship("₹ 10,000 /month") is False
+    assert is_unpaid_internship("₹ 15,000 - 25,000 /month") is False
+    assert is_unpaid_internship("₹ 5,000 lump sum") is False
+    assert is_unpaid_internship("Competitive") is False
+
+
+def test_internshala_apply_rejects_unpaid_internship():
+    adapter = InternshalaPlatformAdapter()
+    unpaid_job = JobOpportunity(
+        job_title="Full Stack Developer Intern",
+        company="Women First India Foundation",
+        job_url="https://internshala.com/internship/detail/unpaid-intern-1",
+        platform="Internshala",
+        salary="STIPEND Unpaid",
+    )
+
+    res = adapter.apply_to_job(
+        driver=None,
+        job=unpaid_job,
+        user_profile={"full_name": "Umesh Temburwar"},
+        resume_path=None,
+        dry_run=True,
+    )
+    assert res.success is False
+    assert res.status == "skipped"
+    assert "unpaid" in res.notes.lower()
+
+
 def test_indeed_url_generation():
     adapter = IndeedPlatformAdapter()
     urls = adapter.build_search_urls(keywords=["Software Engineer"], locations=["Bengaluru"])

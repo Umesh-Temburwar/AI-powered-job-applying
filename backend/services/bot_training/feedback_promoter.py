@@ -62,17 +62,23 @@ class FeedbackPromoter:
             })
 
         try:
-            with open(self.csv_path, "w", newline="", encoding="utf-8") as f:
-                fieldnames = ["question_text", "answer", "field_type", "created_at"]
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                for r in existing_rows:
-                    writer.writerow({
-                        "question_text": r.get("question_text", ""),
-                        "answer": r.get("answer", ""),
-                        "field_type": r.get("field_type", "text"),
-                        "created_at": r.get("created_at", created_date),
-                    })
+            target_paths = [self.csv_path]
+            root_csv = os.path.join(BASE_DIR, "application_answers.csv")
+            if os.path.exists(root_csv) and root_csv != self.csv_path:
+                target_paths.append(root_csv)
+
+            for path in target_paths:
+                with open(path, "w", newline="", encoding="utf-8") as f:
+                    fieldnames = ["question_text", "answer", "field_type", "created_at"]
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    for r in existing_rows:
+                        writer.writerow({
+                            "question_text": r.get("question_text", ""),
+                            "answer": r.get("answer", ""),
+                            "field_type": r.get("field_type", "text"),
+                            "created_at": r.get("created_at", created_date),
+                        })
             return True
         except Exception as exc:
             logger.error("Failed to write CSV after promotion: %s", exc)

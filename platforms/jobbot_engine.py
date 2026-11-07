@@ -47,6 +47,12 @@ except ImportError:
     print("   pip install selenium webdriver-manager")
     exit(1)
 
+try:
+    from platforms.internshala_platform import is_unpaid_internship
+except Exception:
+    def is_unpaid_internship(*args, **kwargs):
+        return False
+
 # ══════════════════════════════════════════════════════════════
 #  ✏️  DYNAMIC PROFILE & CREDENTIALS LOADER (Umesh Temburwar)
 # ══════════════════════════════════════════════════════════════
@@ -1334,6 +1340,11 @@ def internshala_bot():
                     a = card.find_element(By.CSS_SELECTOR, "a.job-title-href, a[href*='/jobs/detail']")
                     href = a.get_attribute("href")
                     title_text = a.text.strip()
+                    stip_el = card.find_elements(By.CSS_SELECTOR, ".stipend, .salary, [class*='stipend']")
+                    stip_text = stip_el[0].text.strip() if stip_el else ""
+                    if is_unpaid_internship(stip_text, title_text, "", card.text):
+                        log.info(f"Internshala: 🚫 Skipping unpaid listing: {title_text} ({stip_text})")
+                        continue
                     if href:
                         job_links.append((href, title_text))
                 except Exception:
@@ -1360,6 +1371,17 @@ def internshala_bot():
                     ).text.strip()
                 except Exception:
                     pass
+
+                sal_text = ""
+                try:
+                    sal_el = driver.find_elements(By.CSS_SELECTOR, ".stipend, .salary, [class*='salary'], [class*='stipend']")
+                    sal_text = sal_el[0].text.strip() if sal_el else ""
+                except Exception:
+                    pass
+
+                if is_unpaid_internship(sal_text, title, company):
+                    log.info(f"Internshala: 🚫 Skipping unpaid on detail page: {title} @ {company} (Stipend: {sal_text})")
+                    continue
 
                 apply_btn = None
                 for sel in ["#apply_now_btn", ".btn-primary.apply_button", "button[id*=apply]", ".apply-btn"]:
