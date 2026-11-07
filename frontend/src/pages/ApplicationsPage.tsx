@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -66,11 +66,22 @@ export const ApplicationsPage: React.FC = () => {
   const [dismissedTaskId, setDismissedTaskId] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState<boolean>(false);
   const bannerRef = useRef<HTMLDivElement>(null);
+  const pageTopRef = useRef<HTMLDivElement>(null);
 
-  // Automatically scroll to the top of the page on mount so user sees top banners immediately
-  useEffect(() => {
+  // Helper to reliably pin scroll to the very top across all browsers & scroll containers
+  const scrollToPageTop = useCallback(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.scrollTop = 0;
+    pageTopRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
   }, []);
+
+  // Automatically scroll to the top of the page on mount so user sees 'Applications Ledger & Live Automation'
+  useEffect(() => {
+    scrollToPageTop();
+  }, [scrollToPageTop]);
 
   const isTaskActive = currentTask?.status === 'running' || currentTask?.status === 'queued';
   const showTaskBanner = Boolean(
@@ -79,13 +90,19 @@ export const ApplicationsPage: React.FC = () => {
     (isTaskActive || dismissedTaskId !== currentTask.id)
   );
 
-  // When a bot task is running or active, ensure the running banner is directly in view
+  // When a bot task is launched or active, keep page pinned to the upper side
+  // so 'Applications Ledger & Live Automation' header and live banner are immediately visible
   useEffect(() => {
     if (isTaskActive) {
-      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
-      bannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      scrollToPageTop();
+      const t1 = setTimeout(scrollToPageTop, 50);
+      const t2 = setTimeout(scrollToPageTop, 150);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
-  }, [isTaskActive, currentTask?.id]);
+  }, [isTaskActive, currentTask?.id, scrollToPageTop]);
 
   const getTaskBannerTitle = (task: typeof currentTask) => {
     if (!task) return '';
@@ -179,7 +196,7 @@ export const ApplicationsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div ref={pageTopRef} id="applications-page-top" className="space-y-6 max-w-6xl mx-auto">
       {/* Page Header with Worker Status and Launch Bot */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border-color)]">
         <div>

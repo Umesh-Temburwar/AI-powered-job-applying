@@ -35,3 +35,4 @@ describe('Profile Page Section Stepper Tests', () => {
     expect(PROFILE_SECTIONS[9].badge).toBe('🚀');
   });
 });
+

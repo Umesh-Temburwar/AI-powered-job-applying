@@ -1427,6 +1427,8 @@ export const ProfilePage: React.FC = () => {
       playRetroSound('success');
       showToast(`🚀 Started: ${cmd.label} (Live Apply Mode)! Redirecting to Applications...`, 'success');
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
       navigate('/applications');
     } catch (err: any) {
       playRetroSound('error');
