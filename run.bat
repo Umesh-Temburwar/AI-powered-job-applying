@@ -9,10 +9,44 @@ echo            AI-POWERED-JOB-APPLYING (2026 PRO EDITION)
 echo ===============================================================================
 echo.
 
-:: CLI mode override
+REM CLI mode override
 if "%1"=="--cli" goto launch_cli
 if "%1"=="-c" goto launch_cli
+if "%1"=="--setup" goto run_full_setup
+if "%1"=="--reinstall" goto run_full_setup
 
+REM ===============================================================================
+REM 1. FAST-PATH VERIFICATION (For Existing Users - Runs in <0.2 seconds)
+REM ===============================================================================
+if exist "%~dp0.venv\Scripts\python.exe" if exist "%~dp0frontend\node_modules" if exist "%~dp0.env" if exist "%~dp0data\profile_data.json" (
+    "%~dp0.venv\Scripts\python.exe" -m uvicorn --version >nul 2>nul && "%~dp0.venv\Scripts\python.exe" -c "import selenium" >nul 2>nul && (
+        echo [INFO] Existing installation verified! Runtimes and packages intact.
+        goto launch_servers
+    )
+)
+
+REM ===============================================================================
+REM 2. NEW USER / FRESH CLONE SELF-HEALING SETUP & ANALYSIS
+REM ===============================================================================
+:run_full_setup
+echo [ANALYSIS] Performing complete system environment and dependency analysis...
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\setup_environment.ps1"
+if errorlevel 1 (
+    echo.
+    echo ===============================================================================
+    echo [ERROR] Setup could not complete automatically.
+    echo Please resolve the missing dependency above and run run.bat again.
+    echo ===============================================================================
+    pause
+    exit /b 1
+)
+
+REM ===============================================================================
+REM 3. SERVER LAUNCHER (FastAPI Backend + React Frontend + Browser)
+REM ===============================================================================
+:launch_servers
+echo.
 echo [INFO] Checking and freeing ports 8001 and 5173...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr /r /c:":8001 .*LISTENING"') do (
     taskkill /F /T /PID %%a >nul 2>nul
@@ -49,6 +83,7 @@ pause
 exit /b 0
 
 :launch_cli
+shift
 echo [CLI MODE] Launching Universal Job Auto Apply CLI Bot...
 if exist "%~dp0.venv\Scripts\python.exe" (
     "%~dp0.venv\Scripts\python.exe" Universal_Job_Auto_Apply.py %*
@@ -56,3 +91,4 @@ if exist "%~dp0.venv\Scripts\python.exe" (
     python Universal_Job_Auto_Apply.py %*
 )
 pause
+exit /b %ERRORLEVEL%

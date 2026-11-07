@@ -40,7 +40,7 @@
   - Non-blocking real-time Telegram Bot & Discord Webhook alerts on every successful application.
 - 🛡️ **Advanced Human Emulation & Anti-Detection**:
   - Random human typing delays, smooth page scrolling, randomized cooldown intervals, and webdriver flag evasion.
-- ⚡ **1-Click Launch**: Double-click [`run.bat`](run.bat), run the Web UI with `py Universal_Job_Auto_Apply.py --gui`, or use the interactive CLI.
+- ⚡ **1-Click Self-Healing Launch**: Double-click [`run.bat`](run.bat) or [`START_BOT.bat`](START_BOT.bat). It automatically performs system analysis, auto-installs missing dependencies (Python 3.11, Node.js LTS, virtual environment, pip & npm packages) on new machines in one click, and launches instantly (<0.2s) for returning users!
 
 ---
 

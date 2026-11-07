@@ -37,8 +37,8 @@ if %ERRORLEVEL% neq 0 (
     echo.
     echo ===============================================================================
     echo [ERROR] FastAPI backend failed to start or exited with an error code.
-    echo Please make sure dependencies are installed:
-    echo   pip install -r requirements.txt
+    echo To automatically verify and install all dependencies, run:
+    echo   run.bat --setup
     echo ===============================================================================
 )
 echo.

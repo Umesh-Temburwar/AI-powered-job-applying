@@ -76,6 +76,51 @@ def is_backend_ready(port: int = BACKEND_PORT) -> bool:
         return False
 
 
+def ensure_environment() -> None:
+    """Ensure essential configuration files and dependencies exist for new users."""
+    import shutil
+    # 1. Root .env
+    root_env = os.path.join(ROOT_DIR, ".env")
+    root_env_example = os.path.join(ROOT_DIR, ".env.example")
+    if not os.path.exists(root_env) and os.path.exists(root_env_example):
+        shutil.copyfile(root_env_example, root_env)
+        print("   [SETUP] Created root .env from .env.example")
+
+    # 2. Frontend .env
+    frontend_env = os.path.join(FRONTEND_DIR, ".env")
+    if not os.path.exists(frontend_env):
+        with open(frontend_env, "w", encoding="utf-8") as f:
+            f.write(
+                "VITE_SUPABASE_URL=https://rwtimhnxghgzkgrdymmq.supabase.co\n"
+                "VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_EUzd4legD4ozbD-KEedciw_-OQVyCJc\n"
+                "VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3dGltaG54Z2hnemtncmR5bW1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NzE0NjksImV4cCI6MjEwODI0NzQ2OX0.cEeA6EsSxd2egW0V1ipH5tjUn3n-CchWpeze18_Z46w\n"
+                "VITE_API_BASE_URL=http://127.0.0.1:8001\n"
+            )
+        print("   [SETUP] Created frontend .env (http://127.0.0.1:8001)")
+
+    # 3. Data dirs & template
+    data_dir = os.path.join(ROOT_DIR, "data")
+    os.makedirs(os.path.join(data_dir, "resumes"), exist_ok=True)
+    os.makedirs(os.path.join(data_dir, "user_configs"), exist_ok=True)
+    p_json = os.path.join(data_dir, "profile_data.json")
+    if not os.path.exists(p_json):
+        import json
+        with open(p_json, "w", encoding="utf-8") as f:
+            json.dump({
+                "personal": {"firstname": "", "lastname": "", "phone": "", "email": "", "current_location": ""},
+                "naukri_headline": "", "profile_summary": "", "key_skills": [],
+                "education": [], "experience": [], "projects": [], "certifications": [],
+                "resume_name": None, "resume_path": None
+            }, f, indent=2)
+        print("   [SETUP] Initialized data/profile_data.json template")
+
+    # 4. Frontend node_modules check
+    if not os.path.exists(os.path.join(FRONTEND_DIR, "node_modules")):
+        print("   [SETUP] Installing frontend packages (npm install)...")
+        npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
+        subprocess.run([npm_cmd, "install"], cwd=FRONTEND_DIR, check=False)
+
+
 def main():
     print("=" * 75)
     print("🚀 LAUNCHING AI-POWERED-JOB-APPLYING (2026 EDITION)")
@@ -83,6 +128,8 @@ def main():
     print("   • Frontend: React 18 + Vite UI (http://localhost:5173)")
     print("   • Database: Supabase Cloud (Live Tasks, CRM, Multi-Portal Auth)")
     print("=" * 75)
+
+    ensure_environment()
 
     venv_py = os.path.join(ROOT_DIR, ".venv", "Scripts", "python.exe")
     py_exe = venv_py if os.path.exists(venv_py) else sys.executable
