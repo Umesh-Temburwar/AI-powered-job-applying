@@ -219,8 +219,35 @@ export const ApiOfflineModal: React.FC<ApiOfflineModalProps> = ({
     }
   };
 
-  // If API is online, do not render
-  if (isApiOnline) return null;
+  // If API is online, show a persistent live status badge at bottom-right
+  if (isApiOnline) {
+    return (
+      <div
+        className={`fixed bottom-4 right-4 z-[9990] px-3.5 py-2 border-2 ${
+          theme === 'dark'
+            ? 'border-emerald-500/80 bg-[#0B0E14]/95 text-emerald-400'
+            : 'border-[#18181B] bg-white/95 text-emerald-800'
+        } retro-shadow-sm font-mono text-[11px] flex items-center gap-2 select-none backdrop-blur-md transition-all hover:scale-105 group`}
+        title="FastAPI REST Backend is active on http://127.0.0.1:8001"
+      >
+        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block shadow-[0_0_10px_#10B981]" />
+        <span className="font-bold tracking-wider">REST API: ON HO GAYI (PORT 8001)</span>
+        <a
+          href="http://127.0.0.1:8001"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`ml-1 px-1.5 py-0.5 border text-[10px] font-bold ${
+            theme === 'dark'
+              ? 'border-emerald-500/50 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60'
+              : 'border-[#18181B] bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+          }`}
+          title="Open REST API Status in new tab"
+        >
+          API ↗
+        </a>
+      </div>
+    );
+  }
 
   // Minimized floating banner at bottom-right
   if (isMinimized) {

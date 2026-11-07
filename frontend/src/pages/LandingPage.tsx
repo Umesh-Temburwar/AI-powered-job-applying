@@ -193,8 +193,17 @@ export const LandingPage: React.FC = () => {
             <span className="w-2 h-2 rounded-none bg-emerald-500 animate-ping inline-block" />
             [SYS_STATUS: ACTIVE]
           </span>
-          <span className="hidden sm:inline opacity-75">| BAUD: 115200</span>
           <span className="hidden sm:inline opacity-75">| PORT: 5173</span>
+          <a
+            href="http://127.0.0.1:8001"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline text-emerald-400 font-bold inline-flex items-center gap-1.5"
+            title="REST API Server on Port 8001 is Active"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            [REST API: ON HO GAYI // 8001 ↗]
+          </a>
           <span className="hidden md:inline opacity-75">| ENGINE: CHROMIUM_UNDETECTED</span>
         </div>
         <div className="flex items-center gap-3 font-semibold">

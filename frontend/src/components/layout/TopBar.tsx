@@ -64,6 +64,16 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
           <span className="font-bold text-emerald-600 truncate">
             {getPageTitle(location.pathname)}
           </span>
+          <a
+            href="http://127.0.0.1:8001"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-500 font-mono text-[11px] font-bold hover:bg-emerald-500/20 transition-colors"
+            title="FastAPI REST API Server is Active on Port 8001 (Click to view API)"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            REST API: ON HO GAYI (8001)
+          </a>
         </div>
       </div>
 

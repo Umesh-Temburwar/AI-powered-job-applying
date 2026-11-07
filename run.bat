@@ -65,19 +65,19 @@ echo [2/3] Starting Vite React Frontend on http://localhost:5173 ...
 start "AI-powered-job-applying - React Frontend (Port 5173)" cmd /k call "%~dp0scripts\start_frontend.bat"
 
 echo.
-echo [3/3] Initializing servers and waiting for ports...
-powershell -NoProfile -Command "Start-Sleep -Seconds 3"
+echo [3/3] Initializing servers and waiting for ports 8001 and 5173...
+powershell -NoProfile -Command "$ready = $false; for ($i=0; $i -lt 15; $i++) { try { $r = Invoke-WebRequest -Uri 'http://127.0.0.1:8001/health' -UseBasicParsing -TimeoutSec 1; if ($r.StatusCode -eq 200) { $ready = $true; break } } catch {}; Start-Sleep -Milliseconds 600 }; if ($ready) { Write-Host '      [OK] REST API is live and responding on http://127.0.0.1:8001!' -ForegroundColor Green }"
 
 echo Opening Web Browser at http://localhost:5173/ ...
 start http://localhost:5173/
 
 echo.
 echo ===============================================================================
-echo [SUCCESS] AI-powered-job-applying Application is running!
+echo [SUCCESS] REST API ON HO GAYI HAI! Application is running!
 echo ===============================================================================
-echo   - Frontend:      http://localhost:5173
-echo   - Backend API:   http://127.0.0.1:8001
-echo   - API Docs:      http://127.0.0.1:8001/docs
+echo   - Web Dashboard:  http://localhost:5173
+echo   - REST API Live:  http://127.0.0.1:8001 (Click or open in browser)
+echo   - API Swagger UI: http://127.0.0.1:8001/docs
 echo ===============================================================================
 echo Both server consoles have been opened in separate windows.
 echo Keep them running while using the bot.

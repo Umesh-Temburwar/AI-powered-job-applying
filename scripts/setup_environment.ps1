@@ -1,4 +1,4 @@
-﻿# scripts/setup_environment.ps1
+# scripts/setup_environment.ps1
 # AI-Powered-Job-Applying - Automated System Analysis & Self-Healing Setup
 # Checks, auto-installs, or redirects to browser for Python, Node.js, and packages.
 
