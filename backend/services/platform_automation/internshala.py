@@ -9,6 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 
 from services.platform_automation.base import ApplyResult, BasePlatformAdapter, JobOpportunity
+from platforms.location_matcher import is_location_match, parse_target_locations, get_location_search_slugs
 
 logger = logging.getLogger("InternshalaAdapter")
 
@@ -85,6 +86,7 @@ class InternshalaPlatformAdapter(BasePlatformAdapter):
             return False, str(exc)
 
     def build_search_urls(self, keywords: list[str], locations: list[str]) -> list[str]:
+        self.target_locations = parse_target_locations(locations)
         slug_map = {
             "full stack": "full-stack-development",
             "react": "react-js-development",
@@ -98,19 +100,36 @@ class InternshalaPlatformAdapter(BasePlatformAdapter):
 
         urls = []
         used_slugs = set()
+        loc_slugs = get_location_search_slugs(self.target_locations) or [""]
+
         for kw in keywords:
             kw_l = kw.lower()
             matched = False
             for k, slug in slug_map.items():
                 if k in kw_l and slug not in used_slugs:
                     used_slugs.add(slug)
-                    urls.append(f"https://internshala.com/jobs/{slug}-jobs/")
                     matched = True
+                    for l_slug in loc_slugs[:2]:
+                        if l_slug == "work-from-home":
+                            urls.append(f"https://internshala.com/jobs/work-from-home-{slug}-jobs/")
+                            urls.append(f"https://internshala.com/internships/work-from-home-{slug}-internship/")
+                        elif l_slug:
+                            urls.append(f"https://internshala.com/jobs/{slug}-jobs-in-{l_slug}/")
+                            urls.append(f"https://internshala.com/internships/{slug}-internship-in-{l_slug}/")
+                        else:
+                            urls.append(f"https://internshala.com/jobs/{slug}-jobs/")
+                            urls.append(f"https://internshala.com/internships/{slug}-internship/")
             if not matched:
                 clean_kw = kw.replace(" ", "-").lower()
-                urls.append(f"https://internshala.com/jobs/keywords-{clean_kw}/")
+                for l_slug in loc_slugs[:2]:
+                    if l_slug == "work-from-home":
+                        urls.append(f"https://internshala.com/jobs/work-from-home-keywords-{clean_kw}/")
+                    elif l_slug:
+                        urls.append(f"https://internshala.com/jobs/keywords-{clean_kw}/?location={l_slug}")
+                    else:
+                        urls.append(f"https://internshala.com/jobs/keywords-{clean_kw}/")
 
-        return urls[:6]
+        return urls[:8]
 
     def search_jobs(
         self,
@@ -178,6 +197,12 @@ class InternshalaPlatformAdapter(BasePlatformAdapter):
                     card_raw_text = card.get_text(" ", strip=True)
                     if is_unpaid_internship(salary, job_title, company, card_raw_text):
                         logger.info("🚫 Filtered unpaid Internshala vacancy: '%s' @ '%s' (Stipend: %s)", job_title, company, salary)
+                        continue
+
+                    # Strictly skip vacancies not matching candidate target locations
+                    target_locs = getattr(self, "target_locations", None) or parse_target_locations()
+                    if not is_location_match(location, target_locs):
+                        logger.info("📍 [LOCATION FILTER] Filtered Internshala vacancy: '%s' @ '%s' (Location: '%s') - Out of scope: %s", job_title, company, location, target_locs)
                         continue
 
                     opportunities.append(

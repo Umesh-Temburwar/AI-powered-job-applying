@@ -16,6 +16,8 @@ import requests
 from typing import Dict, List, Tuple, Optional
 from dotenv import load_dotenv
 
+from platforms.location_matcher import parse_target_locations, is_location_match
+
 logger = logging.getLogger("AIEngine")
 load_dotenv()
 
@@ -163,8 +165,29 @@ class QuestionAnswerer:
         if "expected ctc" in q_clean or "expected salary" in q_clean:
             return str(self.personal.get("expected_ctc", "4.5 Lakhs"))
 
-        # Relocation / Preferred Location
-        if any(term in q_clean for term in ["relocate", "relocation", "willing to move", "preferred location"]):
+        # Current Location / City
+        if any(term in q_clean for term in ["current location", "current city", "where do you live", "where are you located", "present location", "residing in"]):
+            curr = self.personal.get("current_location") or os.getenv("LOCATION", "Pune")
+            if any(term in q_clean for term in ["are you residing in", "are you located in", "are you based in"]):
+                target_locs = parse_target_locations(profile_data=self.profile)
+                if any(is_location_match(loc, [curr]) or loc in q_clean for loc in target_locs if loc in q_clean):
+                    return "Yes"
+                return "Yes, willing to relocate or work remotely"
+            return str(curr).title()
+
+        # Preferred Location / Target Location
+        if any(term in q_clean for term in ["preferred location", "preferred city", "desired location", "target location"]):
+            target_locs = parse_target_locations(profile_data=self.profile)
+            if target_locs:
+                return ", ".join(l.title() for l in target_locs)
+            return str(os.getenv("LOCATION", "Pune")).title()
+
+        # Relocation / Willing to Move
+        if any(term in q_clean for term in ["relocate", "relocation", "willing to move", "ready to relocate", "open to relocate"]):
+            target_locs = parse_target_locations(profile_data=self.profile)
+            for loc in target_locs:
+                if loc in q_clean:
+                    return f"Yes, fully willing to relocate to {loc.title()}"
             return "Yes, fully willing to relocate or work remotely"
 
         # Full-time / Internship availability
@@ -213,6 +236,11 @@ class QuestionAnswerer:
 
         # Generic affirmative response
         return "Yes, I have hands-on practical experience in this domain and can demonstrate project implementations."
+
+    def get_answer(self, question: str, role_title: str = "", max_len: int = 500) -> str:
+        """Alias for answer_question."""
+        return self.answer_question(question=question, role_title=role_title, max_len=max_len)
+
 
     def _query_gemini(self, question: str, role_title: str) -> Optional[str]:
         """Query Gemini API for subjective screening questions."""

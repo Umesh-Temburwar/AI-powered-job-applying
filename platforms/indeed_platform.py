@@ -24,6 +24,7 @@ from platforms.browser_manager import create_driver, human_delay, safe_click
 from platforms.tracker_db import has_applied, record_application
 from platforms.notifier import notify_application_success
 from platforms.ai_engine import qa_engine
+from platforms.location_matcher import is_location_match, parse_target_locations
 
 logger = logging.getLogger("IndeedBot")
 load_dotenv()
@@ -161,6 +162,7 @@ def apply_on_indeed(driver, max_apps=25):
     password = os.getenv("INDEED_PASSWORD", "").strip()
     keywords = [kw.strip() for kw in os.getenv("KEYWORDS", "full stack developer, react developer").split(",") if kw.strip()]
     location = os.getenv("LOCATION", "pune")
+    target_locations = parse_target_locations(location)
 
     profile = load_profile()
     answers = load_answers()
@@ -171,102 +173,126 @@ def apply_on_indeed(driver, max_apps=25):
     failed_count = 0
     records = []
 
-    for kw in keywords[:3]:
-        if applied_count >= max_apps:
-            break
+    search_locs = target_locations if target_locations else [location]
 
-        search_url = build_search_url(kw, location)
-        logger.info(f"Searching Indeed: {kw} in {location} -> {search_url}")
-
-        try:
-            driver.get(search_url)
-            time.sleep(4)
-        except Exception as e:
-            logger.warning(f"Failed to load Indeed search: {e}")
-            continue
-
-        # Find job title links with Indeed Apply
-        job_links = []
-        try:
-            cards = driver.find_elements(By.CSS_SELECTOR, "div.job_seen_beacon, div[data-testid='slider_item']")
-            for card in cards:
-                try:
-                    # check if easily apply exists in card text
-                    if "easily apply" in card.text.lower() or "apply now" in card.text.lower():
-                        link_elem = card.find_element(By.CSS_SELECTOR, "a.jcs-JobTitle, h2.jobTitle a")
-                        href = link_elem.get_attribute("href")
-                        if href and href not in job_links:
-                            job_links.append(href)
-                except Exception:
-                    continue
-        except Exception:
-            pass
-
-        logger.info(f"Found {len(job_links)} 'Easily Apply' jobs on Indeed for '{kw}'.")
-
-        for link in job_links[:8]:
+    for search_loc in search_locs[:3]:
+        for kw in keywords[:3]:
             if applied_count >= max_apps:
                 break
 
-            # Fast CRM Duplicate Prevention
-            if has_applied(url=link):
-                logger.info(f"Already applied to {link} according to CRM Tracker. Skipping.")
+            search_url = build_search_url(kw, search_loc)
+            logger.info(f"Searching Indeed: {kw} in {search_loc} -> {search_url}")
+
+            try:
+                driver.get(search_url)
+                time.sleep(4)
+            except Exception as e:
+                logger.warning(f"Failed to load Indeed search: {e}")
                 continue
 
-            logger.info(f"Visiting Indeed Job: {link}")
+            # Find job title links with Indeed Apply
+            job_links = []
             try:
-                driver.get(link)
-                time.sleep(3)
+                cards = driver.find_elements(By.CSS_SELECTOR, "div.job_seen_beacon, div[data-testid='slider_item']")
+                for card in cards:
+                    try:
+                        # Check card location matches target
+                        card_loc = ""
+                        loc_elems = card.find_elements(By.CSS_SELECTOR, "div.companyLocation, div[data-testid='text-location'], span[data-testid='job-location']")
+                        if loc_elems:
+                            card_loc = loc_elems[0].text.strip()
+                        if card_loc and not is_location_match(card_loc, target_locations):
+                            logger.info(f"📍 [LOCATION FILTER] Skipping Indeed card at '{card_loc}' (Targets: {target_locations})")
+                            continue
 
-                # Look for Indeed Apply button
-                apply_selectors = [
-                    "button#indeedApplyButton",
-                    "//button[contains(@class,'indeed-apply-button') or contains(.,'Easily apply') or contains(.,'Apply now')]",
-                    "//div[contains(@id,'indeedApplyButton')]//button"
-                ]
+                        # check if easily apply exists in card text
+                        if "easily apply" in card.text.lower() or "apply now" in card.text.lower():
+                            link_elem = card.find_element(By.CSS_SELECTOR, "a.jcs-JobTitle, h2.jobTitle a")
+                            href = link_elem.get_attribute("href")
+                            if href and href not in job_links:
+                                job_links.append(href)
+                    except Exception:
+                        continue
+            except Exception:
+                pass
 
-                apply_btn = None
-                for sel in apply_selectors:
-                    if sel.startswith("//"):
-                        elems = driver.find_elements(By.XPATH, sel)
-                    else:
-                        elems = driver.find_elements(By.CSS_SELECTOR, sel)
-                    if elems and elems[0].is_displayed():
-                        apply_btn = elems[0]
-                        break
+            logger.info(f"Found {len(job_links)} 'Easily Apply' jobs on Indeed for '{kw}' in '{search_loc}'.")
 
-                if not apply_btn:
-                    logger.info("Direct Indeed Apply button not detected, skipping.")
+            for link in job_links[:8]:
+                if applied_count >= max_apps:
+                    break
+
+                # Fast CRM Duplicate Prevention
+                if has_applied(url=link):
+                    logger.info(f"Already applied to {link} according to CRM Tracker. Skipping.")
                     continue
 
-                driver.execute_script("arguments[0].click();", apply_btn)
-                time.sleep(3)
+                logger.info(f"Visiting Indeed Job: {link}")
+                try:
+                    driver.get(link)
+                    time.sleep(3)
 
-                # Modal interaction
-                if handle_indeed_application_modal(driver, profile, answers):
-                    applied_count += 1
-                    # Extract rich details from Indeed page
-                    title_elem = driver.find_elements(By.CSS_SELECTOR, "h1.jobsearch-JobInfoHeader-title, h1[data-testid='jobsearch-JobInfoHeader-title'], h1")
-                    actual_title = title_elem[0].text.strip() if title_elem and title_elem[0].text.strip() else kw
+                    # Detail page location check
+                    det_loc_elems = driver.find_elements(By.CSS_SELECTOR, "div[data-testid='inlineHeader-companyLocation'], div[data-testid='job-location'], div.jobsearch-JobInfoHeader-companyLocation, div#jobLocationText")
+                    if det_loc_elems:
+                        det_loc = det_loc_elems[0].text.strip()
+                        if det_loc and not is_location_match(det_loc, target_locations):
+                            logger.info(f"📍 [LOCATION FILTER] Skipping Indeed job detail at '{det_loc}' (Targets: {target_locations})")
+                            continue
 
-                    comp_elem = driver.find_elements(By.CSS_SELECTOR, "div[data-testid='inlineHeader-companyName'], [data-company-name='true'], div.jobsearch-CompanyInfoContainer a")
-                    actual_comp = comp_elem[0].text.strip() if comp_elem and comp_elem[0].text.strip() else "Indeed Employer"
+                    # Look for Indeed Apply button
+                    apply_selectors = [
+                        "button#indeedApplyButton",
+                        "//button[contains(@class,'indeed-apply-button') or contains(.,'Easily apply') or contains(.,'Apply now')]",
+                        "//div[contains(@id,'indeedApplyButton')]//button"
+                    ]
 
-                    loc_elem = driver.find_elements(By.CSS_SELECTOR, "div[data-testid='inlineHeader-companyLocation'], div[data-testid='job-location'], div.jobsearch-JobInfoHeader-companyLocation")
-                    actual_loc = loc_elem[0].text.strip() if loc_elem and loc_elem[0].text.strip() else (location or "India")
+                    apply_btn = None
+                    for sel in apply_selectors:
+                        if sel.startswith("//"):
+                            elems = driver.find_elements(By.XPATH, sel)
+                        else:
+                            elems = driver.find_elements(By.CSS_SELECTOR, sel)
+                        if elems and elems[0].is_displayed():
+                            apply_btn = elems[0]
+                            break
 
-                    sal_elem = driver.find_elements(By.CSS_SELECTOR, "div#salaryInfoAndJobType, [data-testid='attribute_snippets_section'], span.css-2iqe2o, [class*='salary']")
-                    actual_sal = sal_elem[0].text.strip() if sal_elem and sal_elem[0].text.strip() else "Competitive / Not disclosed"
-                    if "\n" in actual_sal:
-                        actual_sal = actual_sal.split("\n")[0].strip()
+                    if not apply_btn:
+                        logger.info("Direct Indeed Apply button not detected, skipping.")
+                        continue
 
-                    logger.info(f"✓ Successfully applied on Indeed: '{actual_title}' @ {actual_comp} ({applied_count}/{max_apps})")
-                    record_application(platform="Indeed", job_title=actual_title, company=actual_comp, location=actual_loc, salary=actual_sal, url=link, status="Applied")
-                    notify_application_success(platform="Indeed", job_title=actual_title, company=actual_comp, url=link)
-                    records.append({"platform": "Indeed", "url": link, "status": "Applied", "time": str(datetime.now())})
-                else:
+                    driver.execute_script("arguments[0].click();", apply_btn)
+                    time.sleep(3)
+
+                    # Modal interaction
+                    if handle_indeed_application_modal(driver, profile, answers):
+                        applied_count += 1
+                        # Extract rich details from Indeed page
+                        title_elem = driver.find_elements(By.CSS_SELECTOR, "h1.jobsearch-JobInfoHeader-title, h1[data-testid='jobsearch-JobInfoHeader-title'], h1")
+                        actual_title = title_elem[0].text.strip() if title_elem and title_elem[0].text.strip() else kw
+
+                        comp_elem = driver.find_elements(By.CSS_SELECTOR, "div[data-testid='inlineHeader-companyName'], [data-company-name='true'], div.jobsearch-CompanyInfoContainer a")
+                        actual_comp = comp_elem[0].text.strip() if comp_elem and comp_elem[0].text.strip() else "Indeed Employer"
+
+                        loc_elem = driver.find_elements(By.CSS_SELECTOR, "div[data-testid='inlineHeader-companyLocation'], div[data-testid='job-location'], div.jobsearch-JobInfoHeader-companyLocation")
+                        actual_loc = loc_elem[0].text.strip() if loc_elem and loc_elem[0].text.strip() else (search_loc or "India")
+
+                        sal_elem = driver.find_elements(By.CSS_SELECTOR, "div#salaryInfoAndJobType, [data-testid='attribute_snippets_section'], span.css-2iqe2o, [class*='salary']")
+                        actual_sal = sal_elem[0].text.strip() if sal_elem and sal_elem[0].text.strip() else "Competitive / Not disclosed"
+                        if "\n" in actual_sal:
+                            actual_sal = actual_sal.split("\n")[0].strip()
+
+                        logger.info(f"✓ Successfully applied on Indeed: '{actual_title}' @ {actual_comp} ({applied_count}/{max_apps})")
+                        record_application(platform="Indeed", job_title=actual_title, company=actual_comp, location=actual_loc, salary=actual_sal, url=link, status="Applied")
+                        notify_application_success(platform="Indeed", job_title=actual_title, company=actual_comp, url=link)
+                        records.append({"platform": "Indeed", "url": link, "status": "Applied", "time": str(datetime.now())})
+                    else:
+                        failed_count += 1
+                        records.append({"platform": "Indeed", "url": link, "status": "Failed", "time": str(datetime.now())})
+                except Exception as apply_err:
+                    logger.warning(f"Error applying on Indeed: {apply_err}")
                     failed_count += 1
-                    records.append({"platform": "Indeed", "url": link, "status": "Failed", "time": str(datetime.now())})
+                    records.append({"platform": "Indeed", "url": link, "status": "Error", "time": str(datetime.now())})
 
             except Exception as e:
                 logger.warning(f"Could not apply to {link}: {e}")

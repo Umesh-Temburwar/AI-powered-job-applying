@@ -1,0 +1,50 @@
+[
+  {
+    "question_text": "What is your current location or city?",
+    "answer": "Pune",
+    "field_type": "text",
+    "category": "location_preference"
+  },
+  {
+    "question_text": "What is your preferred job location?",
+    "answer": "Pune, Remote",
+    "field_type": "text",
+    "category": "location_preference"
+  },
+  {
+    "question_text": "Which city are you currently based in?",
+    "answer": "Pune",
+    "field_type": "text",
+    "category": "location_preference"
+  },
+  {
+    "question_text": "Are you currently residing in Pune?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "location_preference"
+  },
+  {
+    "question_text": "Are you open to remote or work from home (WFH) positions?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "location_preference"
+  },
+  {
+    "question_text": "Are you willing to relocate to Pune or hybrid office locations?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "location_preference"
+  },
+  {
+    "question_text": "Do you prefer on-site, hybrid, or remote work?",
+    "answer": "Flexible / Hybrid / Remote",
+    "field_type": "text",
+    "category": "location_preference"
+  },
+  {
+    "question_text": "Will you require relocation assistance to join?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "location_preference"
+  }
+]

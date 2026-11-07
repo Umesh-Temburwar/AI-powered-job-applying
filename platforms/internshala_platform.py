@@ -24,6 +24,7 @@ from platforms.browser_manager import create_driver, human_delay, safe_click
 from platforms.tracker_db import has_applied, record_application
 from platforms.notifier import notify_application_success
 from platforms.ai_engine import qa_engine
+from platforms.location_matcher import is_location_match, parse_target_locations, get_location_search_slugs
 
 logger = logging.getLogger("InternshalaBot")
 load_dotenv()
@@ -180,6 +181,7 @@ def login_internshala(driver, email, password):
 
 
 def build_search_urls(keywords, location=""):
+    target_locations = parse_target_locations(location)
     urls = []
     # Internshala supports categorized slugs
     slug_map = {
@@ -192,6 +194,7 @@ def build_search_urls(keywords, location=""):
         "backend": "backend-development"
     }
 
+    loc_slugs = get_location_search_slugs(target_locations) or [""]
     used_slugs = set()
     for kw in keywords:
         kw_l = kw.lower()
@@ -199,15 +202,28 @@ def build_search_urls(keywords, location=""):
         for k, slug in slug_map.items():
             if k in kw_l and slug not in used_slugs:
                 used_slugs.add(slug)
-                # Add both jobs and internships
-                urls.append(f"https://internshala.com/jobs/{slug}-jobs/")
-                urls.append(f"https://internshala.com/internships/{slug}-internship/")
                 matched = True
+                for l_slug in loc_slugs[:2]:
+                    if l_slug == "work-from-home":
+                        urls.append(f"https://internshala.com/jobs/work-from-home-{slug}-jobs/")
+                        urls.append(f"https://internshala.com/internships/work-from-home-{slug}-internship/")
+                    elif l_slug:
+                        urls.append(f"https://internshala.com/jobs/{slug}-jobs-in-{l_slug}/")
+                        urls.append(f"https://internshala.com/internships/{slug}-internship-in-{l_slug}/")
+                    else:
+                        urls.append(f"https://internshala.com/jobs/{slug}-jobs/")
+                        urls.append(f"https://internshala.com/internships/{slug}-internship/")
         if not matched:
             clean_kw = kw.replace(" ", "-").lower()
-            urls.append(f"https://internshala.com/jobs/keywords-{clean_kw}/")
+            for l_slug in loc_slugs[:2]:
+                if l_slug == "work-from-home":
+                    urls.append(f"https://internshala.com/jobs/work-from-home-keywords-{clean_kw}/")
+                elif l_slug:
+                    urls.append(f"https://internshala.com/jobs/keywords-{clean_kw}/?location={l_slug}")
+                else:
+                    urls.append(f"https://internshala.com/jobs/keywords-{clean_kw}/")
 
-    return urls[:6]
+    return urls[:8]
 
 
 def apply_on_internshala(driver, max_apps=25):
@@ -226,6 +242,8 @@ def apply_on_internshala(driver, max_apps=25):
     answers = load_answers()
     keywords = [kw.strip() for kw in os.getenv("KEYWORDS", "full stack developer, web developer").split(",") if kw.strip()]
     location = os.getenv("LOCATION", "pune")
+    target_locations = parse_target_locations(location)
+    logger.info(f"📍 Internshala Geolocation Targeting Active: {target_locations}")
 
     search_urls = build_search_urls(keywords, location)
     logger.info(f"Generated {len(search_urls)} search categories for Internshala.")
@@ -276,6 +294,12 @@ def apply_on_internshala(driver, max_apps=25):
                             logger.info(f"🚫 [SEARCH FILTER] Skipping unpaid Internshala vacancy: '{title_text}' @ '{comp_text}' (Stipend: '{stip_text}')")
                             continue
 
+                        card_loc_el = card.find_elements(By.CSS_SELECTOR, ".location_link, .location, [class*='location']")
+                        card_loc = card_loc_el[0].text.strip() if card_loc_el else ""
+                        if card_loc and not is_location_match(card_loc, target_locations):
+                            logger.info(f"📍 [LOCATION FILTER] Skipping Internshala card '{title_text}' @ '{comp_text}' (Location: '{card_loc}') - Out of target scope: {target_locations}")
+                            continue
+
                         if href not in job_links:
                             job_links.append(href)
                     except Exception:
@@ -319,6 +343,11 @@ def apply_on_internshala(driver, max_apps=25):
                 # Double check unpaid status on detail page
                 if is_unpaid_internship(sal_text, role_text, comp_text):
                     logger.info(f"🚫 [DETAIL FILTER] Position '{role_text}' @ {comp_text} is unpaid (Stipend: '{sal_text}'). Excluded by candidate policy.")
+                    continue
+
+                # Strictly check location match on detail page
+                if not is_location_match(loc_text, target_locations):
+                    logger.info(f"📍 [LOCATION FILTER] Position '{role_text}' @ {comp_text} location '{loc_text}' does not match target locations {target_locations}. Skipping.")
                     continue
 
                 # Safe Dry-Run Simulation

@@ -33,6 +33,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.service import Service as EdgeService
 from selenium.webdriver.chrome.service import Service as ChromeService
+from platforms.location_matcher import is_location_match, parse_target_locations
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -514,6 +515,12 @@ def select_jobs_and_apply(driver):
                 loc = loc_elem[0].text.strip() if loc_elem else "Pune, India"
             except Exception:
                 loc = "Pune, India"
+
+            # Strictly filter recommended jobs by candidate target locations
+            target_locations = parse_target_locations()
+            if not is_location_match(loc, target_locations):
+                logger.info(f"📍 [LOCATION FILTER] Skipping recommended vacancy '{title}' @ '{comp}' (Location: '{loc}') - Target: {target_locations}")
+                continue
 
             try:
                 sal_elem = card.find_elements(By.CSS_SELECTOR, ".sal-wrap, .sal, [class*='salary']")

@@ -30,6 +30,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 from bs4 import BeautifulSoup
+from platforms.location_matcher import is_location_match, parse_target_locations, get_location_search_slugs
 
 # Try to use webdriver-manager for automatic driver management
 try:
@@ -392,26 +393,25 @@ def login_naukri(driver):
 
 def build_search_urls():
     """
-    Build all search URLs for every keyword and page combination.
+    Build all search URLs for every keyword and target location combination.
     Naukri.com updated URL format: /{keyword}-jobs-in-{location}
     Returns a list of (keyword, url) tuples.
     """
     urls = []
+    target_locations = parse_target_locations(LOCATION)
+    loc_slugs = get_location_search_slugs(target_locations) or [""]
+
     for keyword in KEYWORDS:
         keyword_slug = keyword.lower().replace(' ', '-')
-        for page_num in range(1, PAGES_PER_KEYWORD + 1):
-            if not LOCATION:
-                if page_num == 1:
-                    url = f"https://www.naukri.com/{keyword_slug}-jobs"
+        for loc_slug in loc_slugs[:2]:
+            for page_num in range(1, PAGES_PER_KEYWORD + 1):
+                if not loc_slug:
+                    url = f"https://www.naukri.com/{keyword_slug}-jobs" if page_num == 1 else f"https://www.naukri.com/{keyword_slug}-jobs-{page_num}"
+                elif loc_slug == "work-from-home":
+                    url = f"https://www.naukri.com/{keyword_slug}-wfh-jobs" if page_num == 1 else f"https://www.naukri.com/{keyword_slug}-wfh-jobs-{page_num}"
                 else:
-                    url = f"https://www.naukri.com/{keyword_slug}-jobs-{page_num}"
-            else:
-                location_slug = LOCATION.lower().replace(' ', '-')
-                if page_num == 1:
-                    url = f"https://www.naukri.com/{keyword_slug}-jobs-in-{location_slug}"
-                else:
-                    url = f"https://www.naukri.com/{keyword_slug}-jobs-in-{location_slug}-{page_num}"
-            urls.append((keyword, url))
+                    url = f"https://www.naukri.com/{keyword_slug}-jobs-in-{loc_slug}" if page_num == 1 else f"https://www.naukri.com/{keyword_slug}-jobs-in-{loc_slug}-{page_num}"
+                urls.append((keyword, url))
     return urls
 
 
@@ -502,6 +502,12 @@ def collect_job_links_from_tab(driver, window_handle):
                     or job_wrapper.find('span', class_=lambda c: c and ('loc' in c.lower() or 'city' in c.lower()))
                 )
                 location = loc_elem.get_text(strip=True) if loc_elem else (LOCATION or "Pune, India")
+
+                # Strictly check location match against candidate's targets
+                target_locations = parse_target_locations(LOCATION)
+                if not is_location_match(location, target_locations):
+                    logger.info(f"📍 [LOCATION FILTER] Skipping Naukri vacancy '{role}' @ '{company}' (Location: '{location}') - Target: {target_locations}")
+                    continue
 
                 sal_elem = (
                     job_wrapper.find('span', class_='sal-wrap')

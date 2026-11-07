@@ -12,6 +12,8 @@ import logging
 import subprocess
 from dotenv import load_dotenv
 
+from platforms.location_matcher import parse_target_locations
+
 logger = logging.getLogger("LinkedInBot")
 load_dotenv()
 
@@ -47,13 +49,16 @@ def sync_linkedin_config(max_apps: int = 25):
                     resume_pdf = os.path.join(BASE_DIR, f)
                     break
 
+    target_locs = parse_target_locations(location)
+    resolved_locations = [l.title() for l in target_locs] if target_locs else [location.title()]
+
     config_data = {
         "username": email,
         "password": password,
         "phone_number": phone,
         "profile_path": "",
         "positions": keywords[:4],
-        "locations": [location, "Remote"],
+        "locations": resolved_locations,
         "salary": 450000,
         "rate": max_apps,
         "uploads": {

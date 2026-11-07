@@ -9,6 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
 
 from services.platform_automation.base import ApplyResult, BasePlatformAdapter, JobOpportunity
+from platforms.location_matcher import is_location_match, parse_target_locations
 
 logger = logging.getLogger("IndeedAdapter")
 
@@ -46,14 +47,16 @@ class IndeedPlatformAdapter(BasePlatformAdapter):
             return False, str(exc)
 
     def build_search_urls(self, keywords: list[str], locations: list[str]) -> list[str]:
+        self.target_locations = parse_target_locations(locations)
         urls = []
-        loc = locations[0] if locations else "India"
-        encoded_l = urllib.parse.quote_plus(loc)
+        locs_to_query = self.target_locations[:2] if self.target_locations else ["India"]
 
-        for kw in keywords:
-            encoded_q = urllib.parse.quote_plus(kw)
-            # sc=0kf:attr(5QWDV); is the filter parameter for "Easily Apply" jobs on Indeed
-            urls.append(f"https://in.indeed.com/jobs?q={encoded_q}&l={encoded_l}&sc=0kf%3Aattr%285QWDV%29%3B")
+        for loc in locss_to_query if (locss_to_query := [l for l in locs_to_query if l]) else ["India"]:
+            encoded_l = urllib.parse.quote_plus(loc)
+            for kw in keywords:
+                encoded_q = urllib.parse.quote_plus(kw)
+                # sc=0kf:attr(5QWDV); is the filter parameter for "Easily Apply" jobs on Indeed
+                urls.append(f"https://in.indeed.com/jobs?q={encoded_q}&l={encoded_l}&sc=0kf%3Aattr%285QWDV%29%3B")
 
         return urls
 
@@ -124,6 +127,12 @@ class IndeedPlatformAdapter(BasePlatformAdapter):
 
                     loc_elem = card.find("div", class_="companyLocation") or card.find("div", {"data-testid": "text-location"})
                     location = loc_elem.get_text(strip=True) if loc_elem else "India"
+
+                    # Strictly skip vacancies not matching candidate target locations
+                    target_locs = getattr(self, "target_locations", None) or parse_target_locations()
+                    if not is_location_match(location, target_locs):
+                        logger.info("📍 [LOCATION FILTER] Filtered Indeed vacancy: '%s' @ '%s' (Location: '%s') - Out of scope: %s", job_title, company, location, target_locs)
+                        continue
 
                     sal_elem = card.find("div", class_="salary-snippet-container") or card.find("div", class_="metadata")
                     salary = sal_elem.get_text(strip=True) if sal_elem else "Estimated Market Rate"

@@ -23,6 +23,7 @@ import json
 import pickle
 from datetime import datetime
 from pathlib import Path
+from platforms.location_matcher import parse_target_locations, is_location_match
 
 # ── Selenium imports ──────────────────────────────────────────
 try:
@@ -103,6 +104,12 @@ if not resume_pdf or not resume_pdf.exists():
             resume_pdf = f
             break
 
+_target_locs = parse_target_locations(
+    locations=os.getenv("LOCATION"),
+    profile_data=profile_data
+)
+CONFIG_LOCATIONS = [l.title() for l in _target_locs] if _target_locs else ["Pune", "Remote"]
+
 CONFIG = {
     # --- Personal info ---
     "name":         personal.get("name", "Umesh Temburwar"),
@@ -127,14 +134,7 @@ CONFIG = {
         "Frontend Developer",
         "Software Engineer"
     ],
-    "locations": [
-        "Pune",
-        "Bangalore",
-        "Hyderabad",
-        "Mumbai",
-        "Remote",
-        "Work From Home"
-    ],
+    "locations": CONFIG_LOCATIONS,
 
     "skills":     skills_str,
     "salary":     "4.5",

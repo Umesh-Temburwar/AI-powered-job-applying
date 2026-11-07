@@ -15,6 +15,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from services.platform_automation.base import ApplyResult, BasePlatformAdapter, JobOpportunity
+from platforms.location_matcher import is_location_match, parse_target_locations
 
 logger = logging.getLogger("LinkedInAdapter")
 
@@ -68,16 +69,18 @@ class LinkedInPlatformAdapter(BasePlatformAdapter):
             return False, str(exc)
 
     def build_search_urls(self, keywords: list[str], locations: list[str]) -> list[str]:
+        self.target_locations = parse_target_locations(locations)
         urls = []
-        loc = locations[0] if locations else "India"
-        encoded_l = urllib.parse.quote_plus(loc)
+        locs_to_query = self.target_locations[:2] if self.target_locations else ["India"]
 
-        for kw in keywords:
-            encoded_q = urllib.parse.quote_plus(kw)
-            # f_AL=true filters for Easy Apply positions on LinkedIn
-            urls.append(
-                f"https://www.linkedin.com/jobs/search/?keywords={encoded_q}&location={encoded_l}&f_AL=true"
-            )
+        for loc in locs_to_query:
+            encoded_l = urllib.parse.quote_plus(loc)
+            for kw in keywords:
+                encoded_q = urllib.parse.quote_plus(kw)
+                # f_AL=true filters for Easy Apply positions on LinkedIn
+                urls.append(
+                    f"https://www.linkedin.com/jobs/search/?keywords={encoded_q}&location={encoded_l}&f_AL=true"
+                )
 
         return urls
 
@@ -148,6 +151,12 @@ class LinkedInPlatformAdapter(BasePlatformAdapter):
                         ".job-card-container__metadata-item, .job-search-card__location"
                     )
                     location = loc_elem.get_text(strip=True) if loc_elem else "India"
+
+                    # Strictly skip vacancies not matching candidate target locations
+                    target_locs = getattr(self, "target_locations", None) or parse_target_locations()
+                    if not is_location_match(location, target_locs):
+                        logger.info("📍 [LOCATION FILTER] Filtered LinkedIn vacancy: '%s' @ '%s' (Location: '%s') - Out of scope: %s", title, company, location, target_locs)
+                        continue
 
                     # Check Easy Apply indicator
                     is_easy = bool(card.select_one(".job-card-container__apply-method, [aria-label*='Easy Apply']")) or True
