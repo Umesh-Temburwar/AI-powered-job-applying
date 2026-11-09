@@ -1,0 +1,20 @@
+[
+  {
+    "question_text": "Are you legally authorized to work in India without sponsorship?",
+    "answer": "Yes, I am an Indian citizen with permanent legal work authorization.",
+    "field_type": "radio",
+    "category": "work_authorization"
+  },
+  {
+    "question_text": "Are you comfortable working in rotational shifts or supporting global timezones?",
+    "answer": "Yes, I am flexible and comfortable with rotational shifts, hybrid scheduling, and supporting remote engineering teams.",
+    "field_type": "radio",
+    "category": "work_authorization"
+  },
+  {
+    "question_text": "Do you own a dedicated laptop and stable broadband connection for remote work?",
+    "answer": "Yes, I have a high-performance development laptop and high-speed fiber broadband connection.",
+    "field_type": "radio",
+    "category": "work_authorization"
+  }
+]
