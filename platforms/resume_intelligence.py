@@ -33,6 +33,75 @@ class ResumeKnowledgeGraph:
         self.projects = self._load_projects()
         self.education = self._load_education()
         self.experience = self._load_experience()
+        self.skill_taxonomy = self._build_skill_taxonomy()
+
+    def _build_skill_taxonomy(self) -> Dict[str, List[str]]:
+        """Categorize skills into technical domains for targeted question answering."""
+        taxonomy = {
+            "frontend": ["React.js", "JavaScript", "HTML", "CSS", "Tailwind CSS", "Bootstrap", "Responsive Design", "DOM"],
+            "backend": ["Node.js", "Express.js", "REST APIs", "FastAPI", "API Design", "Microservices"],
+            "database": ["PostgreSQL", "Supabase", "MongoDB", "Firebase", "SQL", "Database Design", "CRUD"],
+            "languages": ["JavaScript", "Python", "C++", "C", "HTML", "CSS", "SQL"],
+            "devops_tools": ["Git", "GitHub", "VS Code", "Linux", "Vercel", "Docker", "Postman", "CI/CD"],
+            "security_auth": ["Supabase Auth", "JWT", "Role-Based Access Control", "RBAC", "Session Management"],
+            "soft_skills": ["Problem Solving", "Communication", "Team Leadership", "Critical Thinking", "Time Management"]
+        }
+        return taxonomy
+
+    def has_skill(self, query: str) -> bool:
+        """Check if candidate possesses a queried technical skill (with alias matching)."""
+        if not query:
+            return False
+        q_clean = query.lower().strip()
+        alias_map = {
+            "js": "javascript",
+            "ts": "typescript",
+            "py": "python",
+            "postgres": "postgresql",
+            "mongo": "mongodb",
+            "reactjs": "react.js",
+            "react": "react.js",
+            "nodejs": "node.js",
+            "node": "node.js",
+            "expressjs": "express.js",
+            "express": "express.js",
+            "rest": "rest apis",
+            "api": "rest apis",
+            "cpp": "c++",
+        }
+        resolved = alias_map.get(q_clean, q_clean)
+        for s in self.skills:
+            s_low = s.lower()
+            if resolved in s_low or s_low in resolved:
+                return True
+        return False
+
+    def get_skill_experience_years(self, skill_name: str) -> float:
+        """
+        Estimate hands-on project and working experience years for a given skill.
+        Returns realistic numeric duration (e.g. 1.0 or 1.5) based on project history.
+        """
+        if not skill_name:
+            return self.total_experience_years
+
+        s_low = skill_name.lower().strip()
+        # Core skills used continuously across EdTech, ByteFest, and Inventory projects
+        tier_1_skills = {"react", "react.js", "javascript", "node.js", "express", "express.js", "html", "css", "git", "github"}
+        # Secondary skills used in dedicated projects
+        tier_2_skills = {"postgresql", "supabase", "mongodb", "python", "c++", "c", "rest", "rest apis", "linux"}
+
+        for t in tier_1_skills:
+            if t in s_low:
+                return max(1.0, self.total_experience_years)
+
+        for t in tier_2_skills:
+            if t in s_low:
+                return 1.0
+
+        if self.has_skill(skill_name):
+            return 1.0
+
+        return 0.5
 
     def _load_default_profile(self) -> Dict[str, Any]:
         paths = [
