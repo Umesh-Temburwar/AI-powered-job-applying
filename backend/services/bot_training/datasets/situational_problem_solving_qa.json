@@ -1,0 +1,14 @@
+[
+  {
+    "question_text": "Tell me about a time you had to learn a new technology quickly",
+    "answer": "When building the EdTech platform, I needed a fast, scalable relational database with auth. I learned Supabase PostgreSQL and Row-Level Security in a few days, designing the complete data architecture and integrating it into our React and Node stack ahead of schedule.",
+    "field_type": "textarea",
+    "category": "situational_problem_solving"
+  },
+  {
+    "question_text": "How do you prioritize competing deadlines under pressure?",
+    "answer": "I break large milestones into smaller high-impact deliverables, prioritize blocker tasks, communicate status proactively, and focus on delivering reliable, tested functional software incrementally.",
+    "field_type": "textarea",
+    "category": "situational_problem_solving"
+  }
+]
