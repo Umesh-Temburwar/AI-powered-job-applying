@@ -137,10 +137,10 @@ class ResumeKnowledgeGraph:
             # Description match
             if any(k in q_low for k in ["database", "postgres", "sql", "supabase"]) and "supabase" in str(p.get("tech_stack", [])).lower():
                 score += 2
-            if any(k in q_low for k in ["traffic", "scale", "event", "performance"]) and "bytefest" in p["title"].lower():
-                score += 2
+            if any(k in q_low for k in ["traffic", "scale", "event", "performance", "visitor", "visitors", "attendee", "attendees"]) and "bytefest" in p["title"].lower():
+                score += 4
             if any(k in q_low for k in ["nosql", "inventory", "crud"]) and "inventory" in p["title"].lower():
-                score += 2
+                score += 3
             scored.append((score, p))
 
         scored.sort(key=lambda x: x[0], reverse=True)
@@ -200,7 +200,7 @@ class ResumeKnowledgeGraph:
             "score": str(self.education.get("score", "6.06 CGPA"))
         }
 
-    def get_cover_letter_elevator_pitch(self, target_role: str = "Full Stack Developer", max_chars: int = 650) -> str:
+    def get_cover_letter_elevator_pitch(self, target_role: str = "Full Stack Developer", max_chars: int = 1200) -> str:
         """Generate high-conversion cover letter tailored directly to the target role."""
         skills_summary = ", ".join(self.skills[:7])
         pitch = (
@@ -210,7 +210,7 @@ class ResumeKnowledgeGraph:
             f"I have engineered and deployed responsive production web applications, including the EdTech Learning Platform "
             f"(built with React.js, Node.js/Express, and Supabase PostgreSQL with RBAC) and the ByteFest 2K25 portal "
             f"serving 2,000+ daily visitors.\n\n"
-            f"I have an immediate notice period (0 Days) and am eager to bring high ownership, clean architectural practices, "
+            f"I have an Immediate (0 Days) notice period and am eager to bring high ownership, clean architectural practices, "
             f"and reliable problem-solving to your engineering team.\n\n"
             f"Best regards,\n{self.name}\n{self.phone} | {self.email}"
         )
