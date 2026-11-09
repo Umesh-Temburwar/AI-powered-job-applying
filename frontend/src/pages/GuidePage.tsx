@@ -6,9 +6,11 @@ import {
   Play,
   ShieldCheck,
   RefreshCw,
-  Search
+  Search,
+  Sparkles,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { Bot3DGuideVideo } from '../components/common/Bot3DGuideVideo';
 
 export const GuidePage: React.FC = () => {
   const { theme } = useTheme();
@@ -86,6 +88,21 @@ export const GuidePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 3D Interactive Video Tutorial Showcase */}
+      <section className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-dashed border-current/20 pb-2">
+          <div className="inline-flex items-center gap-2 font-mono text-[12px] font-bold uppercase text-emerald-600">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <span>3D INTERACTIVE VIDEO GUIDE // FROM GIT CLONE TO AUTONOMOUS APPLY</span>
+          </div>
+          <div className="font-mono text-[10px] text-zinc-400">
+            ARCHITECT & DEVELOPER: <strong className="text-emerald-500">UMESH TEMBURWAR</strong>
+          </div>
+        </div>
+
+        <Bot3DGuideVideo />
+      </section>
 
       {/* Step Navigation Pills */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 font-mono text-[11px]">
