@@ -211,3 +211,73 @@ class BooleanIntentResolver:
         return True
 
 
+class DropdownOptionResolver:
+    """Fuzzy matches and selects the best matching <option> from candidate profile."""
+
+    @classmethod
+    def resolve(cls, question: str, options: List[str], graph: ResumeKnowledgeGraph) -> Optional[str]:
+        if not options:
+            return None
+
+        # Clean options list
+        valid_options = [opt for opt in options if opt.strip() and not opt.lower().startswith("select")]
+        if not valid_options:
+            return options[0] if options else None
+
+        q_low = question.lower()
+
+        # 1. Degree / Education dropdown
+        if any(term in q_low for term in ["degree", "education", "qualification"]):
+            priority_terms = ["b.tech", "bachelor of technology", "b.e", "bachelor's", "engineering", "graduate"]
+            for term in priority_terms:
+                for opt in valid_options:
+                    if term in opt.lower():
+                        return opt
+
+        # 2. Notice period dropdown
+        if any(term in q_low for term in ["notice", "availability", "joining"]):
+            priority_terms = ["immediate", "0 days", "< 15 days", "15 days", "1 month"]
+            for term in priority_terms:
+                for opt in valid_options:
+                    if term in opt.lower():
+                        return opt
+
+        # 3. Experience level dropdown
+        if any(term in q_low for term in ["experience level", "total experience", "years"]):
+            priority_terms = ["1 year", "0-1", "1-2", "entry", "fresher", "junior", "associate"]
+            for term in priority_terms:
+                for opt in valid_options:
+                    if term in opt.lower():
+                        return opt
+
+        # 4. Location dropdown
+        if any(term in q_low for term in ["location", "city", "preferred"]):
+            priority_locs = ["pune", "remote", "bangalore", "mumbai", "hyderabad", "work from home"]
+            for loc in priority_locs:
+                for opt in valid_options:
+                    if loc in opt.lower():
+                        return opt
+
+        # 5. Gender dropdown
+        if "gender" in q_low:
+            for opt in valid_options:
+                if "male" in opt.lower() and "female" not in opt.lower():
+                    return opt
+
+        # 6. Country dropdown
+        if "country" in q_low:
+            for opt in valid_options:
+                if "india" in opt.lower():
+                    return opt
+
+        # 7. Employment type dropdown
+        if any(term in q_low for term in ["employment type", "job type"]):
+            for opt in valid_options:
+                if "full" in opt.lower() or "permanent" in opt.lower():
+                    return opt
+
+        # Fallback to the first non-empty option
+        return valid_options[0]
+
+
+
