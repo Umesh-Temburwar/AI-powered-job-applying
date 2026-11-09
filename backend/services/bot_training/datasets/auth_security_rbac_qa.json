@@ -1,0 +1,14 @@
+[
+  {
+    "question_text": "How do you implement authentication and Role-Based Access Control (RBAC)?",
+    "answer": "In my EdTech Platform, I implemented JWT authentication and RBAC via Supabase Auth and Express middleware, granting specific capabilities (enroll, grade, administer) based on verified user claims and database roles.",
+    "field_type": "textarea",
+    "category": "auth_security"
+  },
+  {
+    "question_text": "How do you safeguard web applications against common vulnerabilities like XSS and CSRF?",
+    "answer": "By sanitizing user input, using HttpOnly SameSite cookies, enforcing strict CORS origins, hashing passwords with bcrypt, parameterizing all SQL queries, and utilizing security headers like CSP.",
+    "field_type": "textarea",
+    "category": "auth_security"
+  }
+]
