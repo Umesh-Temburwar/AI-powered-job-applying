@@ -1,0 +1,14 @@
+[
+  {
+    "question_text": "Describe your experience working in collaborative teams or cross-functional groups",
+    "answer": "As Project Coordinator for ByteFest, I coordinated across technical, marketing, and logistics teams, leading code reviews, organizing sprint milestones, and delivering an event website that processed 1,500+ participant registrations smoothly.",
+    "field_type": "textarea",
+    "category": "teamwork_collaboration"
+  },
+  {
+    "question_text": "How do you handle technical disagreements during code reviews?",
+    "answer": "I focus objectively on code quality, maintainability, performance benchmarks, and team conventions. I welcome constructive peer feedback and seek alignment through quick architectural discussion.",
+    "field_type": "textarea",
+    "category": "teamwork_collaboration"
+  }
+]
