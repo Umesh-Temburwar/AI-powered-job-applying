@@ -188,6 +188,34 @@ class ResumeKnowledgeGraph:
                 clean.append(s_clean)
         return clean
 
+    def get_education_details(self) -> Dict[str, str]:
+        """Return standardized academic qualifications."""
+        return {
+            "degree": self.education.get("degree", "Bachelor of Technology (B.Tech)"),
+            "major": self.education.get("field_of_study", "Computer Science and Engineering"),
+            "college": self.education.get("institution", "MBES College of Engineering"),
+            "location": self.education.get("location", "Ambajogai, Maharashtra"),
+            "year": str(self.education.get("passing_year", "2025")),
+            "cgpa": str(self.education.get("cgpa", "6.06")),
+            "score": str(self.education.get("score", "6.06 CGPA"))
+        }
+
+    def get_cover_letter_elevator_pitch(self, target_role: str = "Full Stack Developer", max_chars: int = 650) -> str:
+        """Generate high-conversion cover letter tailored directly to the target role."""
+        skills_summary = ", ".join(self.skills[:7])
+        pitch = (
+            f"Dear Hiring Team,\n\n"
+            f"I am writing to express my strong interest in the {target_role} position. "
+            f"As a Computer Science graduate with hands-on full-stack development experience in {skills_summary}, "
+            f"I have engineered and deployed responsive production web applications, including the EdTech Learning Platform "
+            f"(built with React.js, Node.js/Express, and Supabase PostgreSQL with RBAC) and the ByteFest 2K25 portal "
+            f"serving 2,000+ daily visitors.\n\n"
+            f"I have an immediate notice period (0 Days) and am eager to bring high ownership, clean architectural practices, "
+            f"and reliable problem-solving to your engineering team.\n\n"
+            f"Best regards,\n{self.name}\n{self.phone} | {self.email}"
+        )
+        return pitch[:max_chars]
+
     def _load_projects(self) -> List[Dict[str, Any]]:
         projects = self.profile.get("projects") or []
         if not projects:
