@@ -5,7 +5,7 @@ Endpoints for evaluating screening questions, running benchmarks, syncing datase
 and approving active learning submissions.
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from core.auth import get_current_user
 from schemas.training import (
