@@ -79,3 +79,50 @@ def safe_click_control(driver: Any, element: Any) -> bool:
         logger.debug("safe_click_control failed: %s", exc)
     return False
 
+
+def select_dropdown_option(driver: Any, dropdown_element: Any, target_text: str) -> bool:
+    """
+    Select an option from either a standard HTML <select> or custom UI listbox.
+    """
+    if dropdown_element is None or not target_text:
+        return False
+    try:
+        tag = (dropdown_element.tag_name or "").lower()
+        if tag == "select":
+            sel = Select(dropdown_element)
+            # Try exact visible text
+            try:
+                sel.select_by_visible_text(target_text)
+                return True
+            except Exception:
+                pass
+            # Try partial text match across options
+            target_low = target_text.lower()
+            for opt in sel.options:
+                if target_low in opt.text.lower() or opt.text.lower() in target_low:
+                    sel.select_by_visible_text(opt.text)
+                    return True
+            return False
+
+        # Custom dropdown (e.g. React Select, Material UI, Tailwind dropdown)
+        safe_click_control(driver, dropdown_element)
+        time.sleep(0.2)
+        if driver:
+            # Look for popup options in current DOM
+            option_elements = driver.find_elements(
+                By.XPATH,
+                f"//li[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{target_text.lower()}')] | "
+                f"//div[@role='option'][contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{target_text.lower()}')]"
+            )
+            if option_elements:
+                return safe_click_control(driver, option_elements[0])
+            # Fallback keyboard selection
+            dropdown_element.send_keys(target_text)
+            time.sleep(0.1)
+            dropdown_element.send_keys(Keys.ENTER)
+            return True
+    except Exception as exc:
+        logger.debug("select_dropdown_option notice: %s", exc)
+    return False
+
+
