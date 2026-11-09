@@ -1,0 +1,20 @@
+[
+  {
+    "question_text": "What is your graduation college and degree?",
+    "answer": "Bachelor of Technology (B.Tech) in Computer Science and Engineering from MBES College of Engineering, Ambajogai, Maharashtra (Batch 2025).",
+    "field_type": "text",
+    "category": "college_academics"
+  },
+  {
+    "question_text": "What was your cumulative CGPA or percentage in college?",
+    "answer": "6.06 CGPA",
+    "field_type": "text",
+    "category": "college_academics"
+  },
+  {
+    "question_text": "What core Computer Science subjects did you study during B.Tech?",
+    "answer": "Data Structures & Algorithms, Object-Oriented Programming (C++/Java), Database Management Systems (DBMS), Operating Systems, Computer Networks, and Software Engineering.",
+    "field_type": "textarea",
+    "category": "college_academics"
+  }
+]
