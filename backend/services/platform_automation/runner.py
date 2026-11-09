@@ -17,6 +17,8 @@ from services.platform_automation.internshala import InternshalaPlatformAdapter
 from services.platform_automation.linkedin import LinkedInPlatformAdapter
 from services.platform_automation.naukri import NaukriPlatformAdapter
 from services.bot_training.questionnaire_simulator import QuestionnaireSimulator, QuestionItem
+from platforms.resume_intelligence import ResumeKnowledgeGraph
+from platforms.universal_form_filler import UniversalFormFiller
 
 try:
     from services.automation_runner import sanitize_text
@@ -224,6 +226,11 @@ async def run_platform_automation_task(
 
     profile = await profile_service.get_or_create_profile(user_id)
     profile_dict = profile.model_dump()
+    try:
+        resume_graph = ResumeKnowledgeGraph(profile_dict)
+        profile_dict["resume_graph"] = resume_graph
+    except Exception as g_err:
+        logger.debug("ResumeKnowledgeGraph init notice in runner: %s", g_err)
 
     missing_mandatory = []
     if not profile.full_name or profile.full_name.strip().lower() in ["", "candidate"] or len(profile.full_name.strip()) < 2:
