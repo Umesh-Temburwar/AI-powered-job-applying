@@ -1,0 +1,20 @@
+[
+  {
+    "question_text": "What is your expected fixed CTC in INR?",
+    "answer": "4.5 Lakhs (4,50,000 INR per annum)",
+    "field_type": "text",
+    "category": "compensation"
+  },
+  {
+    "question_text": "What is your current CTC?",
+    "answer": "0 (Fresher / Immediate Joiner)",
+    "field_type": "text",
+    "category": "compensation"
+  },
+  {
+    "question_text": "What are your minimum stipend expectations for an internship?",
+    "answer": "15,000 - 25,000 INR per month",
+    "field_type": "text",
+    "category": "compensation"
+  }
+]
