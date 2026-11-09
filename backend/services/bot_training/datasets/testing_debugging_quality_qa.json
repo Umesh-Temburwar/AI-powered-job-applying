@@ -1,0 +1,14 @@
+[
+  {
+    "question_text": "How do you approach automated testing and code quality?",
+    "answer": "I write automated unit and integration tests using Pytest and Jest, test REST endpoints with Postman and Swagger UI, and enforce linting and clean git hooks to maintain zero regressions.",
+    "field_type": "textarea",
+    "category": "testing_quality"
+  },
+  {
+    "question_text": "Walk through your debugging methodology when diagnosing a production issue",
+    "answer": "I inspect telemetry and server logs, reproduce the issue in an isolated local environment, analyze network payloads and database query plans, write a failing unit test, and deploy a regression-free patch.",
+    "field_type": "textarea",
+    "category": "testing_quality"
+  }
+]
