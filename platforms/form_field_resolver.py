@@ -154,3 +154,60 @@ class NumericExperienceResolver:
         # Default fallback for numeric experience field
         return "1"
 
+
+class BooleanIntentResolver:
+    """Accurately decides True (Yes) vs False (No) for radio buttons and checkboxes."""
+
+    @classmethod
+    def resolve(cls, question: str, graph: ResumeKnowledgeGraph) -> bool:
+        q_low = question.lower().strip()
+
+        # 1. Negative Intent Questions (Expected Answer: "No")
+        # Visa sponsorship requirement
+        if any(term in q_low for term in ["require sponsorship", "need visa sponsorship", "require visa", "sponsorship now or in the future"]):
+            return False
+
+        # Unpaid / zero stipend role
+        if any(term in q_low for term in ["unpaid", "without stipend", "zero stipend", "no stipend", "volunteer"]):
+            if any(term in q_low for term in ["willing to accept", "comfortable with", "open to", "agree to"]):
+                return False
+
+        # Criminal record / disciplinary action
+        if any(term in q_low for term in ["criminal", "convicted", "felony", "misdemeanor", "terminated for cause", "fired", "disciplinary"]):
+            return False
+
+        # Non-compete / restrictive covenant
+        if any(term in q_low for term in ["non-compete", "restrictive covenant", "binding agreement"]):
+            return False
+
+        # 2. Positive Intent Questions (Expected Answer: "Yes")
+        # Relocation & work model
+        if any(term in q_low for term in ["willing to relocate", "open to relocate", "hybrid", "remote", "work from home", "commute", "travel"]):
+            return True
+
+        # Work authorization in India
+        if any(term in q_low for term in ["authorized to work", "legally authorized", "eligible to work in india", "citizen of india"]):
+            return True
+
+        # Infrastructure readiness (laptop, broadband)
+        if any(term in q_low for term in ["personal laptop", "broadband", "internet connection", "quiet workspace"]):
+            return True
+
+        # Background verification and compliance
+        if any(term in q_low for term in ["background check", "background verification", "drug test", "reference check", "agree to terms"]):
+            return True
+
+        # Availability and commitment
+        if any(term in q_low for term in ["immediate", "join immediately", "available for", "full-time", "full time", "rotational shift", "night shift", "flexible hours"]):
+            return True
+
+        # Technical skills possessed by candidate
+        for skill in graph.skills:
+            if re.search(r'\b' + re.escape(skill.lower()) + r'\b', q_low):
+                if any(term in q_low for term in ["experience with", "hands-on", "knowledge of", "proficient in", "familiar with"]):
+                    return True
+
+        # Standard affirmative fallback for recruiter screening questions
+        return True
+
+
