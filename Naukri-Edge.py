@@ -707,6 +707,14 @@ def apply_to_jobs(driver, job_links):
         except NoSuchElementException:
             pass
 
+        # --- Auto-fill any screening form or questions with UniversalFormFiller ---
+        try:
+            from platforms.universal_form_filler import UniversalFormFiller
+            filler = UniversalFormFiller()
+            filler.fill_form_step(driver)
+        except Exception as filler_err:
+            logger.debug(f"Form filler notice: {filler_err}")
+
         try:
             driver.find_element(By.XPATH, "//input[@id='CUSTOM-LASTNAME']")
             lastname_el = driver.find_element(By.ID, 'CUSTOM-LASTNAME')
