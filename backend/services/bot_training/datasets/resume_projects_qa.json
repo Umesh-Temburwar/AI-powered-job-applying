@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "Describe a full stack web application you developed from scratch",
+    "answer": "I developed the EdTech Learning Platform, a full-stack web application featuring responsive React.js dashboards with Role-Based Access Control (RBAC), Node.js/Express.js REST APIs, and Supabase PostgreSQL with Storage for courses, quizzes, assignments, and certificates.",
+    "field_type": "textarea",
+    "category": "resume_projects"
+  },
+  {
+    "question_text": "Have you worked on high-traffic web applications with real users?",
+    "answer": "Yes, as Website Developer for ByteFest 2K25, I architected and deployed the event portal that served 2,000+ daily visitors, managed automated registration for 1,500+ attendees, and maintained 100% uptime with Vercel edge delivery.",
+    "field_type": "textarea",
+    "category": "resume_projects"
+  },
+  {
+    "question_text": "Tell us about a database or inventory management system you built",
+    "answer": "I built an Automobile Spare Parts Inventory Management System with MongoDB, Express.js, React, and Node.js. It features secure CRUD operations, stock search, category filtering, CSV inventory export, and admin authorization.",
+    "field_type": "textarea",
+    "category": "resume_projects"
+  },
+  {
+    "question_text": "Do you have live project links demonstrating your work?",
+    "answer": "Yes, live applications include the EdTech Platform (https://edtechacademy.vercel.app/), ByteFest Portal (https://bytefest2k25.vercel.app/), and my engineering portfolio (https://umeshtemburwar.vercel.app/).",
+    "field_type": "text",
+    "category": "resume_projects"
+  }
+]
