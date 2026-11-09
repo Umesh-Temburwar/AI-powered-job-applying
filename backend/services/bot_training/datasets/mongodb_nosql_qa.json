@@ -1,0 +1,14 @@
+[
+  {
+    "question_text": "Do you have experience working with MongoDB or NoSQL databases?",
+    "answer": "Yes, I engineered the backend of an Automobile Inventory System with MongoDB, utilizing document modeling, compound indexes, aggregation pipelines, and Mongoose ODM for fast inventory lookups.",
+    "field_type": "radio",
+    "category": "mongodb_nosql"
+  },
+  {
+    "question_text": "How do you decide between SQL (PostgreSQL) and NoSQL (MongoDB)?",
+    "answer": "I choose PostgreSQL when transactional ACID compliance, rigid relational structures, and multi-table integrity are essential (like EdTech course enrollments), and MongoDB when dynamic schemas, rapid document nesting, and flexible catalogs are needed.",
+    "field_type": "textarea",
+    "category": "mongodb_nosql"
+  }
+]
