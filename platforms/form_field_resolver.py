@@ -85,3 +85,72 @@ class FormFieldClassifier:
             return FormFieldType.NUMERIC
 
         return FormFieldType.TEXT
+
+
+class NumericExperienceResolver:
+    """Extracts target skill and returns verified years of experience from resume."""
+
+    @staticmethod
+    def extract_skill_from_question(question: str, graph: ResumeKnowledgeGraph) -> Optional[str]:
+        q_low = question.lower()
+        # Direct check against candidate's skills
+        for skill in graph.skills:
+            pattern = r'\b' + re.escape(skill.lower()) + r'\b'
+            if re.search(pattern, q_low):
+                return skill
+
+        # Common aliases
+        aliases = {
+            "reactjs": "React.js",
+            "react": "React.js",
+            "nodejs": "Node.js",
+            "node": "Node.js",
+            "expressjs": "Express.js",
+            "express": "Express.js",
+            "postgres": "PostgreSQL",
+            "postgresql": "PostgreSQL",
+            "mongo": "MongoDB",
+            "mongodb": "MongoDB",
+            "js": "JavaScript",
+            "javascript": "JavaScript",
+            "python": "Python",
+            "git": "Git",
+            "rest": "REST APIs",
+            "api": "REST APIs",
+            "html": "HTML",
+            "css": "CSS"
+        }
+        for alias, normalized in aliases.items():
+            if re.search(r'\b' + re.escape(alias) + r'\b', q_low):
+                return normalized
+
+        return None
+
+    @classmethod
+    def resolve(cls, question: str, graph: ResumeKnowledgeGraph) -> str:
+        q_low = question.lower().strip()
+
+        # CGPA or percentage
+        if "cgpa" in q_low or "gpa" in q_low:
+            return graph.education.get("cgpa", "6.06")
+        if "percentage" in q_low:
+            return "65"
+
+        # Passing year or graduation year
+        if any(term in q_low for term in ["passing year", "graduation year", "batch", "passout"]):
+            return str(graph.education.get("passing_year", "2025"))
+
+        # Skill-specific experience
+        target_skill = cls.extract_skill_from_question(question, graph)
+        if target_skill:
+            years = graph.get_skill_experience_years(target_skill)
+            return str(int(years)) if years.is_integer() else f"{years:.1f}"
+
+        # Total or relevant experience
+        if any(term in q_low for term in ["total experience", "overall experience", "total years", "work experience"]):
+            tot = graph.total_experience_years
+            return str(int(tot)) if tot.is_integer() else f"{tot:.1f}"
+
+        # Default fallback for numeric experience field
+        return "1"
+
