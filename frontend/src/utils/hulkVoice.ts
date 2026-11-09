@@ -89,22 +89,24 @@ export function speakHulk(text: string, withRoar = true): void {
     window.speechSynthesis.cancel(); // Cancel any existing speech
 
     const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
     // Ultra deep pitch for Hulk monster effect
     utterance.pitch = 0.25;
     // Deliberate heavy cadence
     utterance.rate = 0.84;
     utterance.volume = 1.0;
 
-    // Pick a deep voice if available
+    // Pick an English deep voice if available
     const voices = window.speechSynthesis.getVoices();
     const deepVoice = voices.find(
       (v) =>
-        v.lang.includes('hi') ||
-        v.lang.includes('en-IN') ||
-        v.name.toLowerCase().includes('male') ||
-        v.name.toLowerCase().includes('david') ||
-        v.name.toLowerCase().includes('ravi')
-    );
+        v.lang.startsWith('en') &&
+        (v.name.toLowerCase().includes('male') ||
+          v.name.toLowerCase().includes('david') ||
+          v.name.toLowerCase().includes('george') ||
+          v.name.toLowerCase().includes('mark') ||
+          v.name.toLowerCase().includes('natural'))
+    ) || voices.find((v) => v.lang.startsWith('en'));
     if (deepVoice) {
       utterance.voice = deepVoice;
     }
@@ -117,12 +119,12 @@ export function speakHulk(text: string, withRoar = true): void {
 
 export const HULK_VOICES = {
   clickOutside:
-    'Arey pehle A P I toh start karde re! Hulk smash! Bahar click mat kar, pehle terminal me A P I start kar!',
+    'Start the REST API first! Hulk smash! Do not click outside, run the command in your terminal now!',
   modalOpen:
-    'Arey pehle A P I toh start karde re! REST API band hai! Terminal me command run kar!',
+    'Start the REST API first! Backend server is offline! Run the command in your terminal!',
   replay:
-    'Hulk bol raha hai! Pehle A P I toh start karde re! Command copy kar aur terminal me chala!',
+    'Hulk is speaking! Start the REST API first! Copy the command and run it in your terminal!',
   connected:
-    'Hulk happy! REST API start ho gaya! Ab aage badho!',
+    'Hulk happy! REST API is online and connected! You can now proceed!',
 };
 

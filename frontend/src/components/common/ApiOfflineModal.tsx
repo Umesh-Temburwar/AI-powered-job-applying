@@ -165,7 +165,7 @@ export const ApiOfflineModal: React.FC<ApiOfflineModalProps> = ({
       }
 
       setHulkAngryCount((prev) => prev + 1);
-      setOutsideWarningMessage('💥 HULK: "PEHLE API TOH START KARDE RE!! BAHAR CLICK MAT KAR!"');
+      setOutsideWarningMessage('💥 HULK: "START THE REST API FIRST! DO NOT CLICK OUTSIDE!"');
 
       if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
       warningTimeoutRef.current = setTimeout(() => {
@@ -231,7 +231,7 @@ export const ApiOfflineModal: React.FC<ApiOfflineModalProps> = ({
         title="FastAPI REST Backend is active on http://127.0.0.1:8001"
       >
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block shadow-[0_0_10px_#10B981]" />
-        <span className="font-bold tracking-wider">REST API: ON HO GAYI (PORT 8001)</span>
+        <span className="font-bold tracking-wider">REST API: ONLINE (PORT 8001)</span>
         <a
           href="http://127.0.0.1:8001"
           target="_blank"
@@ -322,7 +322,7 @@ export const ApiOfflineModal: React.FC<ApiOfflineModalProps> = ({
                   ? 'border-emerald-400 bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/80'
                   : 'border-[#F5F3EC] bg-white/20 text-white hover:bg-white/30'
               }`}
-              title="Hulk Ki Voice Suniye"
+              title="Listen to Hulk Voice"
             >
               <Volume2 className="w-3.5 h-3.5" />
               <span>HULK VOICE</span>
@@ -378,11 +378,11 @@ export const ApiOfflineModal: React.FC<ApiOfflineModalProps> = ({
           {/* Heading */}
           <div className="space-y-1">
             <h2 className="text-[19px] sm:text-[21px] font-black uppercase tracking-tight text-red-500">
-              REST API Server Chalu Nahi Hai!
+              REST API Server is Offline!
             </h2>
             <p className={`text-[12px] leading-relaxed ${theme === 'dark' ? 'text-[#A1A1AA]' : 'text-[#52525B]'}`}>
-              Job apply bot ko chalane ke liye backend REST API ka start hona zaroori hai.
-              Agar aap popup ke bahar click karenge toh Hulk gussa karega! <strong>Kripya pehle terminal me API start karein.</strong>
+              The backend REST API server must be running to power the job application bot.
+              If you click outside the popup, Hulk gets angry! <strong>Please start the API in your terminal first.</strong>
             </p>
           </div>
 
@@ -409,10 +409,10 @@ export const ApiOfflineModal: React.FC<ApiOfflineModalProps> = ({
                 </button>
               </div>
               <p className="italic font-bold text-[13px] leading-snug">
-                "Pehle API toh start karde re! Hulk smash! Terminal me command run kar!"
+                "Start the REST API first! Hulk smash! Run the command in your terminal!"
               </p>
               <div className="text-[10px] opacity-75">
-                (Popup ke bahar click karoge toh Hulk aakar bolega!)
+                (Clicking outside the modal triggers Hulk's angry voice!)
               </div>
             </div>
           </div>
@@ -488,7 +488,7 @@ export const ApiOfflineModal: React.FC<ApiOfflineModalProps> = ({
           <div className="p-2.5 border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 text-[11px] space-y-0.5">
             <div className="font-bold">⚡ AUTOMATIC RADAR RECOVERY:</div>
             <div className="opacity-90">
-              Jaise hi terminal me API start hogi, yeh popup bina refresh kiye <strong>turant gayab ho jayega</strong>!
+              As soon as the REST API starts in your terminal, this modal will automatically dismiss <strong>without needing a refresh</strong>!
             </div>
           </div>
 
