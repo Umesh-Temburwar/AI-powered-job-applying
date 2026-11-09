@@ -71,11 +71,14 @@ def main():
 
     if args.stats or (not args.benchmark and not args.export_jsonl and not args.sync):
         stats = trainer.get_stats()
+        all_items = load_all_datasets()
+        categories = set(it.get("category", "general") for it in all_items)
         print("=" * 60)
         print("🤖 UNIVERSAL BOT TRAINING HEALTH & STATS")
         print("=" * 60)
         print(f"Candidate:           {stats.get('candidate_name')}")
         print(f"Skills Profiled:     {stats.get('skills_count')}")
+        print(f"Golden Q&A Items:    {len(all_items)} questions across {len(categories)} domains")
         print(f"Answer Bank Entries: {stats.get('total_answers_in_bank')}")
         print(f"Profile Loaded:      {'YES' if stats.get('profile_loaded') else 'NO'}")
         print("=" * 60)
