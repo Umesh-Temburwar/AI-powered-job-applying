@@ -1,0 +1,14 @@
+[
+  {
+    "question_text": "What experience do you have with Python and automation?",
+    "answer": "I have extensive Python experience building browser automation suites with Selenium, undetected_chromedriver, and Playwright, creating REST APIs with FastAPI, and developing data pipelines with Beautiful Soup.",
+    "field_type": "textarea",
+    "category": "python_automation"
+  },
+  {
+    "question_text": "How do you bypass anti-bot and Cloudflare detection in browser automation?",
+    "answer": "By using undetected_chromedriver, emulating natural human typing jitter, using cubic bezier mouse curves, randomizing viewport resolutions, managing persistent session cookies, and avoiding automation flag signatures.",
+    "field_type": "textarea",
+    "category": "python_automation"
+  }
+]
