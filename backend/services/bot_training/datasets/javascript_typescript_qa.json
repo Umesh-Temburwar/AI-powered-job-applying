@@ -1,0 +1,14 @@
+[
+  {
+    "question_text": "Are you skilled in modern JavaScript (ES6+) and TypeScript concepts?",
+    "answer": "Yes, I write modern ES6+/TypeScript using promises, async/await, closures, destructuring, arrow functions, strict static typing, and modular import/export structures.",
+    "field_type": "radio",
+    "category": "javascript_typescript"
+  },
+  {
+    "question_text": "How do you explain the JavaScript Event Loop and asynchronous execution?",
+    "answer": "JavaScript is single-threaded; the Event Loop continuously monitors the Call Stack and moves callbacks from the Microtask Queue (Promises) and Macrotask Queue (setTimeout, I/O) to the stack when it is idle.",
+    "field_type": "textarea",
+    "category": "javascript_typescript"
+  }
+]
