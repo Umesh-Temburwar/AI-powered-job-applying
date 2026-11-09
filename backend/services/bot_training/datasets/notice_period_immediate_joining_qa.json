@@ -1,0 +1,20 @@
+[
+  {
+    "question_text": "What is your official notice period?",
+    "answer": "Immediate (0 Days)",
+    "field_type": "text",
+    "category": "notice_period"
+  },
+  {
+    "question_text": "How soon can you join if offered?",
+    "answer": "Immediately / Within 24-48 hours",
+    "field_type": "text",
+    "category": "notice_period"
+  },
+  {
+    "question_text": "Are you currently serving a notice period?",
+    "answer": "No, I am immediately available to join with 0 days notice.",
+    "field_type": "radio",
+    "category": "notice_period"
+  }
+]
