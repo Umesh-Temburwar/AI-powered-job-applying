@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "How many years of experience do you have with React.js?",
+    "answer": "1",
+    "field_type": "number",
+    "category": "react_frontend"
+  },
+  {
+    "question_text": "Are you proficient in React hooks, state management, and component lifecycle?",
+    "answer": "Yes, I build dynamic React applications leveraging useState, useEffect, useContext, custom hooks, and clean component modularity with responsive Tailwind CSS.",
+    "field_type": "radio",
+    "category": "react_frontend"
+  },
+  {
+    "question_text": "Describe your experience building responsive user interfaces",
+    "answer": "I design mobile-first, cross-browser responsive interfaces using React.js and Tailwind CSS with CSS Flexbox/Grid, optimized asset delivery, and dynamic viewport layouts across smartphones, tablets, and desktop displays.",
+    "field_type": "textarea",
+    "category": "react_frontend"
+  },
+  {
+    "question_text": "Do you have experience connecting React frontends to REST APIs?",
+    "answer": "Yes, I regularly connect React SPAs to Node.js/Express and Supabase backends using Fetch and Axios with asynchronous async/await patterns, error state handling, and loading skeletons.",
+    "field_type": "radio",
+    "category": "react_frontend"
+  }
+]
