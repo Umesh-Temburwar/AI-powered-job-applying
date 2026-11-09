@@ -1,0 +1,14 @@
+[
+  {
+    "question_text": "How do you optimize web application loading speed and Lighthouse performance scores?",
+    "answer": "By implementing code splitting with React.lazy, minifying bundles via Vite, optimizing WebP images, utilizing CDN caching on Vercel/Cloudflare, and avoiding unnecessary component re-renders.",
+    "field_type": "textarea",
+    "category": "performance_optimization"
+  },
+  {
+    "question_text": "What strategies do you use to scale a backend under sudden traffic surges?",
+    "answer": "Deploying stateless microservices, adding Redis caching for hot database queries, rate limiting with express-rate-limit, connection pooling in PostgreSQL, and horizontal auto-scaling.",
+    "field_type": "textarea",
+    "category": "performance_optimization"
+  }
+]
