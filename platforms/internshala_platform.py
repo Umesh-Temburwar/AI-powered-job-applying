@@ -25,6 +25,7 @@ from platforms.tracker_db import has_applied, record_application
 from platforms.notifier import notify_application_success
 from platforms.ai_engine import qa_engine
 from platforms.location_matcher import is_location_match, parse_target_locations, get_location_search_slugs
+from platforms.universal_form_filler import UniversalFormFiller, human_type, safe_click_control
 
 logger = logging.getLogger("InternshalaBot")
 load_dotenv()
@@ -381,6 +382,13 @@ def apply_on_internshala(driver, max_apps=25):
                 time.sleep(1)
                 driver.execute_script("arguments[0].click();", apply_btn)
                 time.sleep(3)
+
+                # Use UniversalFormFiller to intelligently complete assessment form
+                try:
+                    filler = UniversalFormFiller(profile)
+                    filler.fill_form_step(driver)
+                except Exception as exc:
+                    logger.debug("UniversalFormFiller notice on Internshala: %s", exc)
 
                 # Fill Cover Letter or AI Question Answers
                 textareas = driver.find_elements(By.CSS_SELECTOR, "textarea")
