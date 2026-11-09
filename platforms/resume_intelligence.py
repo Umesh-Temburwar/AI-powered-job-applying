@@ -119,6 +119,60 @@ class ResumeKnowledgeGraph:
                     logger.debug("Error reading profile %s: %s", p, exc)
         return {}
 
+    def get_best_matching_project(self, query: str) -> Dict[str, Any]:
+        """Find the most relevant candidate project matching query keywords."""
+        if not self.projects:
+            return {}
+        q_low = query.lower()
+        scored = []
+        for p in self.projects:
+            score = 0
+            # Title match
+            if any(term in q_low for term in p["title"].lower().split()):
+                score += 2
+            # Tech stack match
+            for t in p.get("tech_stack", []):
+                if t.lower() in q_low:
+                    score += 3
+            # Description match
+            if any(k in q_low for k in ["database", "postgres", "sql", "supabase"]) and "supabase" in str(p.get("tech_stack", [])).lower():
+                score += 2
+            if any(k in q_low for k in ["traffic", "scale", "event", "performance"]) and "bytefest" in p["title"].lower():
+                score += 2
+            if any(k in q_low for k in ["nosql", "inventory", "crud"]) and "inventory" in p["title"].lower():
+                score += 2
+            scored.append((score, p))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return scored[0][1]
+
+    def get_project_narrative(self, question: str = "", max_chars: int = 500) -> str:
+        """Generate a concise, professional project description tailored to the question."""
+        proj = self.get_best_matching_project(question)
+        if not proj:
+            return (
+                "Developed a full-stack EdTech Learning Platform featuring responsive React dashboards, "
+                "Node.js/Express REST APIs, Supabase PostgreSQL database, and Role-Based Access Control (RBAC)."
+            )[:max_chars]
+
+        title = proj.get("title", "Full Stack Project")
+        stack = ", ".join(proj.get("tech_stack", []))
+        desc = proj.get("description", "")
+        metrics = proj.get("metrics", "")
+
+        narrative = f"In the '{title}' project, I engineered a solution using {stack}. {desc} Impact: {metrics}"
+        return narrative[:max_chars]
+
+    def get_portfolio_links(self) -> Dict[str, str]:
+        """Return candidate's verified portfolio and live project links."""
+        return {
+            "portfolio": "https://umeshtemburwar.vercel.app/",
+            "github": "https://github.com/Umesh-Temburwar",
+            "linkedin": "https://www.linkedin.com/in/umesh-temburwar-673555373/",
+            "edtech_project": "https://edtechacademy.vercel.app/",
+            "bytefest_project": "https://bytefest2k25.vercel.app/"
+        }
+
     def _normalize_skills(self, skills_raw: List[str]) -> List[str]:
         if not skills_raw:
             return [
