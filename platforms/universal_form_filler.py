@@ -126,3 +126,58 @@ def select_dropdown_option(driver: Any, dropdown_element: Any, target_text: str)
     return False
 
 
+def navigate_modal_step(driver: Any) -> str:
+    """
+    Detects and clicks progression buttons in multi-step application wizards.
+    Returns: 'submitted' | 'next_step' | 'no_action'
+    """
+    if not driver:
+        return "no_action"
+
+    # 1. Final submission buttons
+    submit_xpaths = [
+        "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'submit your application')]",
+        "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'submit application')]",
+        "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'send application')]",
+        "//button[@type='submit'][contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'submit')]",
+        "//button[contains(@class, 'ia-SubmitButton') or contains(@id, 'submit')]"
+    ]
+    for xpath in submit_xpaths:
+        try:
+            elems = driver.find_elements(By.XPATH, xpath)
+            for el in elems:
+                if el.is_displayed() and el.is_enabled():
+                    safe_click_control(driver, el)
+                    logger.info("✓ Final application submission button clicked.")
+                    time.sleep(2.0)
+                    return "submitted"
+        except Exception:
+            pass
+
+    # 2. Progression / Next step buttons
+    next_xpaths = [
+        "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'continue')]",
+        "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'next')]",
+        "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'review your application')]",
+        "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'save and continue')]",
+        "//button[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'proceed')]"
+    ]
+    for xpath in next_xpaths:
+        try:
+            elems = driver.find_elements(By.XPATH, xpath)
+            for el in elems:
+                if el.is_displayed() and el.is_enabled():
+                    # Ensure it's not a cancel or back button
+                    text = el.text.lower()
+                    if "back" in text or "cancel" in text or "discard" in text:
+                        continue
+                    safe_click_control(driver, el)
+                    time.sleep(1.5)
+                    return "next_step"
+        except Exception:
+            pass
+
+    return "no_action"
+
+
+
