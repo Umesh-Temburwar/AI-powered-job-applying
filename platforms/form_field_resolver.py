@@ -49,32 +49,32 @@ class FormFieldClassifier:
             if element_type == "file" or "upload" in q:
                 return FormFieldType.RESUME_UPLOAD
 
+        # Experience in years / Numeric skills (Evaluated before generic "do you have" boolean check)
+        if any(term in q for term in ["how many years", "years of experience", "total experience", "relevant experience"]) or \
+           (re.search(r'\bexperience\b', q) and any(term in q for term in ["year", "years", "yrs", "in years"])):
+            return FormFieldType.EXPERIENCE_YEARS
+
+        # Long-form / Essay questions
+        if any(term in q for term in ["why hire you", "why should we hire", "tell us about", "biggest achievement", "cover letter"]) or \
+           ("describe" in q and any(term in q for term in ["project", "experience", "yourself", "work", "challenge"])) or \
+           (element_tag == "textarea" and len(q) > 20):
+            return FormFieldType.PROJECT_ESSAY
+
+        # Boolean radio / Yes-No questions (Evaluated before salary/notice checks for "Are you willing/comfortable...")
+        if element_type == "radio" or any(term in q for term in [
+            "are you willing", "do you have", "are you comfortable", "can you relocate",
+            "are you located", "do you require", "will you require", "are you legally",
+            "is it acceptable", "agree to", "consent to", "would you be", "do you possess"
+        ]):
+            return FormFieldType.BOOLEAN_RADIO
+
         # Notice period
         if any(term in q for term in ["notice period", "how soon", "when can you join", "joining date", "availability"]):
             return FormFieldType.NOTICE_PERIOD
 
         # Salary / CTC
-        if any(term in q for term in ["expected ctc", "current ctc", "salary expectation", "expected salary", "stipend"]):
+        if any(term in q for term in ["ctc", "salary", "stipend", "compensation"]):
             return FormFieldType.SALARY_CTC
-
-        # Long-form / Essay questions
-        if any(term in q for term in ["why hire you", "why should we hire", "describe a project", "tell us about", "biggest achievement", "cover letter"]):
-            return FormFieldType.PROJECT_ESSAY
-        if element_tag == "textarea" and len(q) > 20:
-            return FormFieldType.PROJECT_ESSAY
-
-        # Experience in years / Numeric skills
-        if any(term in q for term in ["how many years", "years of experience", "total experience", "relevant experience"]) or \
-           (re.search(r'\bexperience\b', q) and any(term in q for term in ["year", "years", "yrs", "in years"])):
-            return FormFieldType.EXPERIENCE_YEARS
-
-        # Boolean radio / Yes-No questions
-        if element_type == "radio" or any(term in q for term in [
-            "are you willing", "do you have", "are you comfortable", "can you relocate",
-            "are you located", "do you require", "will you require", "are you legally",
-            "is it acceptable", "agree to", "consent to"
-        ]):
-            return FormFieldType.BOOLEAN_RADIO
 
         # Dropdowns
         if element_tag == "select":
@@ -164,7 +164,7 @@ class BooleanIntentResolver:
 
         # 1. Negative Intent Questions (Expected Answer: "No")
         # Visa sponsorship requirement
-        if any(term in q_low for term in ["require sponsorship", "need visa sponsorship", "require visa", "sponsorship now or in the future"]):
+        if "sponsorship" in q_low or any(term in q_low for term in ["require visa", "need visa", "visa support"]):
             return False
 
         # Unpaid / zero stipend role
