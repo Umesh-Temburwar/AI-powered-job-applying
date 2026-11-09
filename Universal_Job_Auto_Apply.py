@@ -573,6 +573,7 @@ def main():
     parser.add_argument("--live", action="store_true", help="Submit live applications to employers")
     parser.add_argument("--max-apps", "-m", type=int, default=25, help="Application limit per platform")
     parser.add_argument("--headless", action="store_true", help="Run browser in headless mode")
+    parser.add_argument("--visible", action="store_true", help="Force visible GUI browser window mode (disable headless)")
 
     args = parser.parse_args()
 
@@ -612,8 +613,12 @@ def main():
         os.environ["DRY_RUN"] = "1"
         logger.info("[MODE] DRY-RUN SIMULATION ACTIVE: Applications will be discovered and validated without live submission.")
 
-    if args.headless:
+    if args.visible or os.getenv("HEADLESS", "").lower() in ("0", "false", "no"):
+        os.environ["HEADLESS"] = "0"
+        logger.info("[DISPLAY MODE] 🖥️ VISIBLE BROWSER WINDOW ACTIVE: Browser window will open visibly on desktop.")
+    elif args.headless:
         os.environ["HEADLESS"] = "1"
+        logger.info("[DISPLAY MODE] ⚙️ HEADLESS MODE ACTIVE.")
 
     if args.platform == "all":
         run_all_platforms(max_apps=args.max_apps)

@@ -23,6 +23,8 @@ def run_naukri_search(max_apps: int = None):
     sub_env = os.environ.copy()
     if max_apps:
         sub_env["MAX_APPLICATIONS"] = str(max_apps)
+    if os.getenv("HEADLESS") is not None:
+        sub_env["HEADLESS"] = os.getenv("HEADLESS")
     proc = subprocess.run([sys.executable, script], cwd=BASE_DIR, env=sub_env)
     return proc.returncode == 0
 
@@ -34,6 +36,8 @@ def run_naukri_recommended(max_apps: int = None):
     sub_env = os.environ.copy()
     if max_apps:
         sub_env["MAX_APPLICATIONS"] = str(max_apps)
+    if os.getenv("HEADLESS") is not None:
+        sub_env["HEADLESS"] = os.getenv("HEADLESS")
     proc = subprocess.run([sys.executable, script], cwd=BASE_DIR, env=sub_env)
     return proc.returncode == 0
 
@@ -42,5 +46,8 @@ def run_naukri_profile_updater():
     """Run Naukri profile auto-updater."""
     script = os.path.join(BASE_DIR, "Naukri-UpdateProfile.py")
     logger.info("Executing Naukri Profile Auto-Updater...")
-    proc = subprocess.run([sys.executable, script], cwd=BASE_DIR)
+    sub_env = os.environ.copy()
+    if os.getenv("HEADLESS") is not None:
+        sub_env["HEADLESS"] = os.getenv("HEADLESS")
+    proc = subprocess.run([sys.executable, script], cwd=BASE_DIR, env=sub_env)
     return proc.returncode == 0

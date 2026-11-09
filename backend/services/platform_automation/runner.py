@@ -376,9 +376,20 @@ async def run_platform_automation_task(
             
             # Detect cloud / low-memory headless container (Render, Linux without DISPLAY)
             is_cloud = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or (sys.platform != "win32" and not os.getenv("DISPLAY")))
-            is_headless = bool(payload.get("headless") or is_cloud or os.getenv("HEADLESS", "").lower() in ("true", "1", "yes"))
+            
+            # Explicit headless preference from task payload:
+            req_headless = payload.get("headless")
+            if req_headless is False and not is_cloud:
+                is_headless = False
+            elif req_headless is True:
+                is_headless = True
+            else:
+                is_headless = bool(is_cloud or os.getenv("HEADLESS", "").lower() in ("true", "1", "yes"))
+
             if is_headless:
                 bot_args.append("--headless")
+            else:
+                bot_args.append("--visible")
 
         sub_env = os.environ.copy()
         sub_env["PYTHONUNBUFFERED"] = "1"
@@ -388,6 +399,10 @@ async def run_platform_automation_task(
         if is_headless:
             sub_env["HEADLESS"] = "1"
             sub_env["BROWSER"] = "chrome"
+        else:
+            sub_env["HEADLESS"] = "0"
+            sub_env["HEADLESS_BROWSER"] = "0"
+            sub_env["BROWSER_DISPLAY_MODE"] = "visible"
         if keywords:
             sub_env["KEYWORDS"] = ", ".join(keywords)
         if locations:

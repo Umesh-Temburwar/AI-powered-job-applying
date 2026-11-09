@@ -261,7 +261,10 @@ def get_default_browser() -> Optional[str]:
 
 def is_headless_environment() -> bool:
     """Return True if running in a headless container or cloud environment (e.g. Render, Linux without X11)."""
-    if os.getenv("HEADLESS", "").lower() in ("true", "1", "yes"):
+    headless_env = os.getenv("HEADLESS", "").strip().lower()
+    if headless_env in ("0", "false", "no", "off"):
+        return False
+    if headless_env in ("true", "1", "yes", "on"):
         return True
     if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("VERCEL"):
         return True
@@ -342,7 +345,9 @@ def launch_single_browser(browser_name: str, headless: bool = False, user_data_d
     Selenium Manager integration and graceful fallback if profiles are locked.
     """
     b = browser_name.lower().strip()
-    if is_headless_environment():
+    if headless is False and sys.platform == "win32":
+        headless = False
+    elif is_headless_environment():
         headless = True
 
     # ── 1. GOOGLE CHROME ──────────────────────────────────────────────────────
@@ -490,7 +495,9 @@ def create_driver(target: Optional[str] = None, headless: bool = False, user_dat
     3. If default fails or is not installed, gracefully cascades through all other installed browsers.
     4. Automatically resolves profile locks if user's daily browser is already open.
     """
-    if is_headless_environment():
+    if headless is False and sys.platform == "win32":
+        headless = False
+    elif is_headless_environment():
         headless = True
 
     target = (target or os.getenv('BROWSER', 'auto') or 'auto').lower().strip()

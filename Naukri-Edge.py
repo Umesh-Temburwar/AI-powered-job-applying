@@ -194,7 +194,10 @@ def find_edge_binary():
 
 def is_headless_environment() -> bool:
     """Return True if running in a headless container or cloud environment (e.g. Render, Linux without X11)."""
-    if os.getenv("HEADLESS", "").lower() in ("true", "1", "yes"):
+    headless_env = os.getenv("HEADLESS", "").strip().lower()
+    if headless_env in ("0", "false", "no", "off"):
+        return False
+    if headless_env in ("true", "1", "yes", "on"):
         return True
     if os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("VERCEL"):
         return True
@@ -225,12 +228,30 @@ def _launch_single_browser(browser_name):
         edge_bin = find_edge_binary()
         if edge_bin:
             options.binary_location = edge_bin
+
+        # Strategy 1: Selenium 4 Built-In Manager (resilient, no network drops)
+        try:
+            return webdriver.Edge(options=options)
+        except Exception as e_s4:
+            logger.debug(f"Selenium Manager Edge init note: {e_s4}")
+
+        # Strategy 2: Custom EDGE_DRIVER_PATH
+        if EDGE_DRIVER_PATH and os.path.exists(EDGE_DRIVER_PATH):
+            try:
+                service = EdgeService(executable_path=EDGE_DRIVER_PATH)
+                return webdriver.Edge(service=service, options=options)
+            except Exception:
+                pass
+
+        # Strategy 3: webdriver_manager
         if WEBDRIVER_MANAGER_AVAILABLE:
-            service = EdgeService(EdgeChromiumDriverManager().install())
-        elif EDGE_DRIVER_PATH:
-            service = EdgeService(executable_path=EDGE_DRIVER_PATH)
-        else:
-            service = EdgeService()
+            try:
+                service = EdgeService(EdgeChromiumDriverManager().install())
+                return webdriver.Edge(service=service, options=options)
+            except Exception as e_wm:
+                logger.debug(f"EdgeChromiumDriverManager init note: {e_wm}")
+
+        service = EdgeService()
         return webdriver.Edge(service=service, options=options)
 
     elif b == 'chrome':
