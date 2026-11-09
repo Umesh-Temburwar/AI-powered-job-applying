@@ -309,3 +309,4 @@ class CandidateProfileTrainer:
 
         logger.info("Successfully trained and synced %d answers for candidate '%s'", updated_count, self.graph.name)
         return updated_count
+

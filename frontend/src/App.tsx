@@ -32,7 +32,6 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AdminPage } from './pages/AdminPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ApiOfflineModal } from './components/common/ApiOfflineModal';
-import { HomePageGate } from './components/common/HomePageGate';
 
 export function App() {
   return (
