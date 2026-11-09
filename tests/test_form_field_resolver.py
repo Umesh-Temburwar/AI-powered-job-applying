@@ -87,3 +87,4 @@ def test_project_essay_resolver(graph):
     ans_db = ProjectEssayResolver.resolve("Explain your experience with PostgreSQL databases", graph)
     assert "PostgreSQL" in ans_db
     assert len(ans_db) > 80
+

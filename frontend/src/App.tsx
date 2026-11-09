@@ -44,14 +44,7 @@ export function App() {
             <ApiOfflineModal />
             <Routes>
               {/* Public Marketing & Auth Routes */}
-              <Route
-                path="/"
-                element={
-                  <HomePageGate>
-                    <LandingPage />
-                  </HomePageGate>
-                }
-              />
+              <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />

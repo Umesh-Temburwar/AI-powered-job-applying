@@ -22,6 +22,7 @@ from services.bot_training.scoring import ConfidenceScorer
 from services.bot_training.learning_registry import LearningRegistry
 from services.bot_training.feedback_promoter import FeedbackPromoter
 from services.bot_training.regression_detector import RegressionDetector
+from services.bot_training.profile_trainer import CandidateProfileTrainer
 
 logger = logging.getLogger("TrainingService")
 
@@ -153,6 +154,18 @@ class TrainingService:
             total_in_bank=total,
             message=f"Successfully synchronized {count} questions into active bot answer bank.",
         )
+
+    def train_for_profile(self, profile_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Train and ground all screening answers dynamically for a candidate's profile."""
+        pt = CandidateProfileTrainer(profile_data)
+        count = pt.train_and_sync_answer_bank()
+        self.trainer.answer_bank = self.trainer._load_answer_bank()
+        return {
+            "status": "success",
+            "candidate_name": pt.graph.name,
+            "trained_questions_count": count,
+            "total_answers_in_bank": len(self.trainer.answer_bank)
+        }
 
 
 training_service = TrainingService()

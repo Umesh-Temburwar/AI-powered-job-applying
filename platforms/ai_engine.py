@@ -97,9 +97,13 @@ class QuestionAnswerer:
             if any(term in q_clean for term in ["available for", "months", "duration", "start date", "availability"]):
                 return "Yes, I am available full-time immediately for the entire required duration."
             if any(term in q_clean for term in ["why should you be hired", "why should we hire you"]):
+                projs = self.profile.get("projects") or []
+                proj_names = [p.get("title") for p in projs if isinstance(p, dict) and p.get("title")]
+                proj_mention = f"like {' and '.join(proj_names[:2])}" if proj_names else "with responsive UI and REST APIs"
+                deg = self.education.get("degree") or "Computer Science"
                 return (
-                    f"As a Computer Science graduate specializing in {', '.join(self.skills[:4])}, "
-                    "I have built complete web applications including an EdTech platform with responsive UI and REST APIs. "
+                    f"As a {deg} graduate specializing in {', '.join(self.skills[:4])}, "
+                    f"I have built complete web applications {proj_mention}. "
                     "I am ready to contribute immediately with high dedication."
                 )[:max_len]
 
@@ -107,13 +111,13 @@ class QuestionAnswerer:
             if "notice period in days" in q_clean:
                 return "0"
             if "notice period" in q_clean:
-                return "Immediate"
+                return self.personal.get("notice_period") or "Immediate"
             if "expected ctc" in q_clean:
-                return "4.5"
+                return str(self.personal.get("expected_ctc") or "4.5")
 
         if "linkedin" in plat:
             if any(term in q_clean for term in ["phone", "mobile", "contact number"]):
-                return str(self.personal.get("phone", "+91 9172288005"))
+                return str(self.personal.get("phone") or os.getenv("PHONE", "+91 9876543210"))
             if any(term in q_clean for term in ["authorized", "sponsorship", "legally"]):
                 return "Yes" if "sponsorship" not in q_clean else "No"
             if "commute" in q_clean or "on-site" in q_clean:
@@ -220,18 +224,28 @@ class QuestionAnswerer:
 
         # 4. Contextual Fallback for subjective questions ("Why hire you?", "Describe project", etc.)
         if any(term in q_clean for term in ["why", "hire", "fit", "suitable", "strength"]):
+            skills_str = ", ".join(self.skills[:5]) if self.skills else "Software Engineering"
+            deg = self.education.get("degree") or "Engineering"
+            projs = self.profile.get("projects") or []
+            proj_names = [p.get("title") for p in projs if isinstance(p, dict) and p.get("title")]
+            proj_mention = f"like {' and '.join(proj_names[:2])}" if proj_names else "with clean architectures and robust APIs"
             return (
-                f"As a Computer Science graduate with hands-on expertise in {', '.join(self.skills[:5])}, "
-                "I have designed full-stack applications with production-ready architectures, RESTful APIs, and secure database integrations. "
-                "I have a proven track record delivering responsive web applications like the EdTech Learning Platform and ByteFest event website. "
-                "I am eager to contribute immediately with high ownership and technical problem-solving."
+                f"As a {deg} graduate with hands-on expertise in {skills_str}, "
+                f"I have designed applications with production-ready architectures, RESTful APIs, and secure database integrations {proj_mention}. "
+                f"I am eager to contribute immediately with high ownership and technical problem-solving."
             )[:max_len]
 
         if any(term in q_clean for term in ["project", "describe a project", "portfolio"]):
+            projs = self.profile.get("projects") or []
+            if projs and isinstance(projs[0], dict):
+                p0 = projs[0]
+                p_title = p0.get("title", "Web Application")
+                p_stack = ", ".join(p0.get("tech_stack", [])) if isinstance(p0.get("tech_stack"), list) else str(p0.get("tech_stack", ""))
+                p_desc = p0.get("description", "")
+                return f"I developed '{p_title}' using {p_stack}. {p_desc}"[:max_len]
             return (
-                "I developed a full-stack EdTech Learning Platform for courses, quizzes, assignments, and certificates. "
-                "It features responsive React.js dashboards with Role-Based Access Control (RBAC), Supabase PostgreSQL database, "
-                "and secure Node.js/Express.js REST APIs."
+                f"I developed full-stack software applications featuring responsive frontend interfaces, "
+                f"modular REST APIs using {', '.join(self.skills[:3])}, and secure database persistence."
             )[:max_len]
 
         # Generic affirmative response

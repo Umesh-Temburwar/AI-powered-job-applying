@@ -31,23 +31,30 @@ flowchart TD
 ## 3. Core Engine Components
 
 ### A. Resume Knowledge Graph (`platforms/resume_intelligence.py`)
-* Extracts candidate's verified skills, projects, and metrics.
-* Projects Grounding:
-  - **EdTech Learning Platform:** Full-stack React, Node.js/Express, Supabase PostgreSQL with RBAC, Storage.
-  - **ByteFest 2K25:** High-traffic event portal handling 2,000+ daily visitors and 1,500+ registrations.
-  - **Automobile Inventory System:** MongoDB, Express, React, Node.js with CRUD search and CSV audit export.
-* Academic Grounding:
-  - **Degree:** Bachelor of Technology (B.Tech) in Computer Science and Engineering.
-  - **College:** MBES College of Engineering, Ambajogai, Maharashtra (Batch 2025, 6.06 CGPA).
+* Extracts candidate's verified skills, projects, academics, notice period, and CTC dynamically from the active user profile (`data/profile_data.json` or uploaded resume).
+* **Multi-User Dynamic Grounding:** Guarantees that any user (not just one fixed individual) has form fields filled strictly with their own college, CGPA, projects, tech stack, and notice period.
+* Generates authentic, project-grounded narratives, cover letter elevator pitches, and skill tenure estimates.
 
-### B. Semantic Form Field Resolvers (`platforms/form_field_resolver.py`)
-1. **Numeric & Experience Resolver:** Matches requested skill (React, Node.js, PostgreSQL) against candidate's timeline and returns exact years.
+### B. Dynamic Candidate Profile Trainer (`backend/services/bot_training/profile_trainer.py`)
+* Bridges candidate profile records into the bot's Q&A memory bank (`application_answers.csv`).
+* Automatically runs via `python train_bot.py --train-for-user` or via API endpoint `POST /training/train-for-profile`.
+* Rehydrates screening questions across 30+ domains with the candidate's exact degree, university, CGPA, coursework, notice period, CTC, and project descriptions.
+
+### C. Semantic Form Field Resolvers (`platforms/form_field_resolver.py`)
+1. **Numeric & Experience Resolver:** Matches requested skill (React, Node.js, Python, Java, etc.) against candidate's timeline and returns exact years.
 2. **Boolean Intent Resolver:** Accurately answers "Yes" for relocation, hybrid, laptop readiness, background verification; answers "No" for visa sponsorship or unpaid roles.
-3. **Dropdown Option Resolver:** Fuzzy-matches `<option>` tags for degree (`B.Tech`), notice period (`Immediate (0 Days)`), location (`Pune`, `Remote`), and employment type.
-4. **Project Essay Resolver:** Formulates authentic project narratives and situational answers without generic fluff.
+3. **Dropdown Option Resolver:** Fuzzy-matches `<option>` tags for degree, notice period, location, and employment type using candidate's verified preferences.
+4. **Project Essay Resolver:** Formulates authentic project narratives and situational answers dynamically synthesized from candidate's actual projects.
 
-### C. Universal DOM Filler (`platforms/universal_form_filler.py`)
+### D. Universal DOM Filler (`platforms/universal_form_filler.py`)
 * **`human_type`:** Types character-by-character with randomized jitter (15ms - 45ms) to defeat anti-bot telemetry.
+* **`safe_click_control`:** Scrolls elements into view and handles custom styled radios and checkboxes.
+* **Dynamic Candidate Identity:** Populates first name, last name, email, phone, and city derived from active profile.
+
+---
+
+## 4. Seamless User Experience & Zero Landing Password Gate
+* Landing page (`/`) is completely unlocked without any password prompt, enabling instant frictionless access for new users and fresh laptops.
 * **`safe_click_control`:** Auto-scrolls target elements into center viewport and provides JavaScript fallback for overlaid controls.
 * **`select_dropdown_option`:** Handles standard `<select>` and modern custom React/Tailwind listboxes.
 * **`navigate_modal_step`:** Automates multi-step wizards through "Continue", "Next", and "Submit application" triggers.
@@ -78,3 +85,4 @@ Sync all datasets anytime into the master answer bank with:
 ```bash
 python train_bot.py --sync
 ```
+

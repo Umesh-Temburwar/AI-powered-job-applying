@@ -77,3 +77,9 @@ async def approve_unanswered_question(req: ApproveAnswerRequest):
         field_type=req.field_type,
     )
     return {"message": "Question approved and learned into bot memory", "entry": approved}
+
+
+@router.post("/train-for-profile")
+async def train_for_candidate_profile(profile_data: Optional[Dict[str, Any]] = None):
+    """Train the bot's screening Q&A memory bank strictly using candidate's resume/profile."""
+    return training_service.train_for_profile(profile_data)

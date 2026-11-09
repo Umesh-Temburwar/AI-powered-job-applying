@@ -37,6 +37,7 @@ if BACKEND_DIR not in sys.path:
 from services.bot_training.engine import BotTrainer
 from services.bot_training.dataset_exporter import DatasetExporter
 from services.bot_training.feedback_promoter import FeedbackPromoter
+from services.bot_training.profile_trainer import CandidateProfileTrainer
 
 
 def load_all_datasets() -> List[Dict[str, str]]:
@@ -65,11 +66,18 @@ def main():
     parser.add_argument("--benchmark", action="store_true", help="Run benchmark suite across all datasets")
     parser.add_argument("--export-jsonl", type=str, help="Export training dataset to JSONL file")
     parser.add_argument("--sync", action="store_true", help="Sync all domain datasets into application_answers.csv")
+    parser.add_argument("--train-for-user", action="store_true", help="Dynamically train & ground all form questions strictly on active candidate resume")
 
     args = parser.parse_args()
     trainer = BotTrainer()
 
-    if args.stats or (not args.benchmark and not args.export_jsonl and not args.sync):
+    if args.train_for_user or args.sync:
+        print("[*] Personalizing & training screening Q&A for candidate resume...")
+        profile_trainer = CandidateProfileTrainer()
+        updated = profile_trainer.train_and_sync_answer_bank()
+        print(f"[OK] Trained {updated} candidate-specific questions into master CSV answer bank.")
+
+    if args.stats or (not args.benchmark and not args.export_jsonl and not args.sync and not args.train_for_user):
         stats = trainer.get_stats()
         all_items = load_all_datasets()
         categories = set(it.get("category", "general") for it in all_items)

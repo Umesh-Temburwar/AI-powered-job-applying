@@ -103,3 +103,4 @@ def test_extract_field_label():
     elem = MockWebElement(attrs={"aria-label": "How many years of React experience do you have?"})
     label = filler.extract_field_label(None, elem)
     assert label == "How many years of React experience do you have?"
+

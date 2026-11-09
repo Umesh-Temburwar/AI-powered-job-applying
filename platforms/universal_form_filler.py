@@ -256,9 +256,9 @@ class UniversalFormFiller:
                 elif "email" in lbl_low:
                     answer = self.graph.email
                 elif "first name" in lbl_low:
-                    answer = self.graph.personal.get("firstname", "Umesh")
+                    answer = self.graph.first_name
                 elif "last name" in lbl_low:
-                    answer = self.graph.personal.get("lastname", "Temburwar")
+                    answer = self.graph.last_name
                 elif "name" in lbl_low and not any(k in lbl_low for k in ["company", "college", "school"]):
                     answer = self.graph.name
                 elif "city" in lbl_low or "location" in lbl_low or "address" in lbl_low:

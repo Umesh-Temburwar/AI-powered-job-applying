@@ -281,7 +281,7 @@ class DropdownOptionResolver:
 
 
 class ProjectEssayResolver:
-    """Generates context-rich essay answers grounded strictly in resume projects."""
+    """Generates context-rich essay answers grounded strictly in resume projects and candidate background."""
 
     @classmethod
     def resolve(cls, question: str, graph: ResumeKnowledgeGraph, max_len: int = 600) -> str:
@@ -289,27 +289,41 @@ class ProjectEssayResolver:
 
         # 1. Why Hire You / Why Fit
         if any(term in q_low for term in ["why hire you", "why should we hire", "why are you a good fit", "why fit", "why interested"]):
+            edu = graph.get_education_details()
+            major = edu.get("major", "Computer Science")
+            skills_str = ", ".join(graph.skills[:8]) if graph.skills else "Modern Software Engineering"
+            proj_names = [p.get("title", "Web Application") for p in graph.projects[:2]]
+            proj_str = " and ".join(f"'{p}'" for p in proj_names) if proj_names else "production-ready web applications"
             return (
-                f"As a Computer Science graduate with hands-on full-stack development experience, I bring proven expertise in "
-                f"React.js, Node.js, Express.js, and Supabase PostgreSQL. I have built production-ready applications like the "
-                f"EdTech Learning Platform (with secure RBAC and REST APIs) and the ByteFest 2K25 portal (handling 2,000+ daily visitors). "
-                f"With immediate availability (0 Days notice), I am ready to take high ownership, write maintainable code, and deliver value immediately."
+                f"As a {major} graduate with hands-on software development experience, I bring proven expertise in {skills_str}. "
+                f"I have engineered and deployed production applications like {proj_str}. "
+                f"With {graph.notice_period} notice, I am ready to take high ownership, write maintainable code, and deliver immediate value."
             )[:max_len]
 
         # 2. Challenge / Technical Problem Solved
         if any(term in q_low for term in ["challenge", "difficult bug", "problem solved", "obstacle", "troubleshoot"]):
-            return (
-                "While building the ByteFest 2K25 event portal, we experienced traffic spikes during registration opening with 2,000+ daily visitors. "
-                "I resolved latency bottlenecks by optimizing React component rendering cycles, eliminating redundant API round-trips, and "
-                "configuring edge caching via Vercel CDN. This maintained 100% uptime and ensured seamless registration for 1,500+ participants."
-            )[:max_len]
+            proj = graph.get_best_matching_project(question) or (graph.projects[0] if graph.projects else None)
+            if proj:
+                title = proj.get("title", "Software Platform")
+                stack = ", ".join(proj.get("tech_stack", [])) if isinstance(proj.get("tech_stack"), list) else str(proj.get("tech_stack", ""))
+                return (
+                    f"While engineering '{title}' utilizing {stack}, I resolved critical technical bottlenecks by profiling system latency, "
+                    f"eliminating redundant computations, and optimizing data flow. "
+                    f"This maintained uninterrupted system uptime, enhanced application responsiveness, and ensured a seamless experience."
+                )[:max_len]
 
         # 3. Database & Backend Architecture
-        if any(term in q_low for term in ["database", "backend", "architecture", "rest api", "postgres", "sql"]):
+        if any(term in q_low for term in ["database", "backend", "architecture", "rest api", "postgres", "sql", "nosql"]):
+            proj = graph.get_best_matching_project("database backend") or (graph.projects[0] if graph.projects else None)
+            title = proj.get("title", "Application System") if proj else "full stack system"
+            db_skills = [s for s in graph.skills if any(k in s.lower() for k in ["sql", "mongo", "postgres", "supabase", "data", "firebase", "database"])]
+            db_str = ", ".join(db_skills[:3]) if db_skills else "relational and document databases"
+            backend_skills = [s for s in graph.skills if any(k in s.lower() for k in ["node", "express", "fastapi", "django", "python", "rest", "api", "spring"])]
+            backend_str = ", ".join(backend_skills[:3]) if backend_skills else "modular RESTful APIs"
             return (
-                "In my EdTech Learning Platform, I architected a secure backend using Node.js, Express.js, and Supabase PostgreSQL. "
-                "I implemented relational schemas with foreign key constraints for student enrollments and course modules, enforced "
-                "Row-Level Security (RLS) policies, and implemented JWT-based Role-Based Access Control (RBAC) across instructor and admin routes."
+                f"In my '{title}', I architected a robust backend leveraging {backend_str} paired with {db_str}. "
+                f"I designed normalized schemas with foreign key relationships, implemented structured data validation, and built RESTful endpoints "
+                f"with role-based access control and high query performance."
             )[:max_len]
 
         # 4. Project description / Portfolio
@@ -318,10 +332,10 @@ class ProjectEssayResolver:
 
         # 5. Technical Strengths
         if any(term in q_low for term in ["strength", "greatest strength", "skill"]):
+            skills_str = ", ".join(graph.skills[:6]) if graph.skills else "Full Stack Software Engineering"
             return (
-                f"My key technical strengths lie in end-to-end full-stack JavaScript/TypeScript engineering: building clean, responsive UI "
-                f"components with React.js, designing robust RESTful microservices with Node.js/Express, and managing relational databases with PostgreSQL. "
-                f"I prioritize clean architecture, automated testing, and fast problem resolution."
+                f"My key technical strengths lie in end-to-end software engineering using {skills_str}. "
+                f"I prioritize clean architecture, automated testing, scalable database design, and agile problem solving."
             )[:max_len]
 
         # Standard grounded narrative fallback

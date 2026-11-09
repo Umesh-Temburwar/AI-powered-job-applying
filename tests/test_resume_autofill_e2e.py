@@ -88,3 +88,4 @@ def test_resume_autofill_pipeline_comprehensive(graph):
             ans = ProjectEssayResolver.resolve(q, graph)
 
         assert scenario["answer_check"](ans), f"Failed answer validation for '{q}'. Got: '{ans}'"
+

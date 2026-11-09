@@ -67,3 +67,4 @@ def test_resume_knowledge_graph_cover_letter_pitch(graph):
     assert "Umesh" in pitch
     assert "EdTech" in pitch
     assert "Immediate (0 Days)" in pitch
+
