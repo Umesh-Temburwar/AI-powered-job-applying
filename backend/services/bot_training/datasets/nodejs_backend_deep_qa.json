@@ -1,0 +1,20 @@
+[
+  {
+    "question_text": "How many years of experience do you have with Node.js and Express.js?",
+    "answer": "1",
+    "field_type": "number",
+    "category": "nodejs_backend"
+  },
+  {
+    "question_text": "Have you built secure RESTful APIs in Node.js?",
+    "answer": "Yes, I build Express.js REST APIs with robust route modularity, JWT authentication middleware, schema validation, CORS configuration, and centralized HTTP error handling.",
+    "field_type": "radio",
+    "category": "nodejs_backend"
+  },
+  {
+    "question_text": "How do you handle error handling and async operations in Node.js?",
+    "answer": "I use async/await with try-catch blocks and Express error-handling middleware to intercept unhandled rejections, returning standardized JSON error envelopes with semantic HTTP status codes.",
+    "field_type": "textarea",
+    "category": "nodejs_backend"
+  }
+]
