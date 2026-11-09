@@ -1,0 +1,14 @@
+[
+  {
+    "question_text": "Do you use Git and GitHub for version control in your daily workflow?",
+    "answer": "Yes, I use Git and GitHub daily for branch management, conventional commits, pull requests, code reviews, rebasing, merge conflict resolution, and CI/CD automation via GitHub Actions.",
+    "field_type": "radio",
+    "category": "git_cicd"
+  },
+  {
+    "question_text": "What is your GitHub profile link?",
+    "answer": "https://github.com/Umesh-Temburwar",
+    "field_type": "text",
+    "category": "git_cicd"
+  }
+]
