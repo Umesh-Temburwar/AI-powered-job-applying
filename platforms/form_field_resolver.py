@@ -280,4 +280,53 @@ class DropdownOptionResolver:
         return valid_options[0]
 
 
+class ProjectEssayResolver:
+    """Generates context-rich essay answers grounded strictly in resume projects."""
+
+    @classmethod
+    def resolve(cls, question: str, graph: ResumeKnowledgeGraph, max_len: int = 600) -> str:
+        q_low = question.lower().strip()
+
+        # 1. Why Hire You / Why Fit
+        if any(term in q_low for term in ["why hire you", "why should we hire", "why are you a good fit", "why fit", "why interested"]):
+            return (
+                f"As a Computer Science graduate with hands-on full-stack development experience, I bring proven expertise in "
+                f"React.js, Node.js, Express.js, and Supabase PostgreSQL. I have built production-ready applications like the "
+                f"EdTech Learning Platform (with secure RBAC and REST APIs) and the ByteFest 2K25 portal (handling 2,000+ daily visitors). "
+                f"With immediate availability (0 Days notice), I am ready to take high ownership, write maintainable code, and deliver value immediately."
+            )[:max_len]
+
+        # 2. Challenge / Technical Problem Solved
+        if any(term in q_low for term in ["challenge", "difficult bug", "problem solved", "obstacle", "troubleshoot"]):
+            return (
+                "While building the ByteFest 2K25 event portal, we experienced traffic spikes during registration opening with 2,000+ daily visitors. "
+                "I resolved latency bottlenecks by optimizing React component rendering cycles, eliminating redundant API round-trips, and "
+                "configuring edge caching via Vercel CDN. This maintained 100% uptime and ensured seamless registration for 1,500+ participants."
+            )[:max_len]
+
+        # 3. Database & Backend Architecture
+        if any(term in q_low for term in ["database", "backend", "architecture", "rest api", "postgres", "sql"]):
+            return (
+                "In my EdTech Learning Platform, I architected a secure backend using Node.js, Express.js, and Supabase PostgreSQL. "
+                "I implemented relational schemas with foreign key constraints for student enrollments and course modules, enforced "
+                "Row-Level Security (RLS) policies, and implemented JWT-based Role-Based Access Control (RBAC) across instructor and admin routes."
+            )[:max_len]
+
+        # 4. Project description / Portfolio
+        if any(term in q_low for term in ["project", "describe a project", "portfolio", "application"]):
+            return graph.get_project_narrative(question, max_chars=max_len)
+
+        # 5. Technical Strengths
+        if any(term in q_low for term in ["strength", "greatest strength", "skill"]):
+            return (
+                f"My key technical strengths lie in end-to-end full-stack JavaScript/TypeScript engineering: building clean, responsive UI "
+                f"components with React.js, designing robust RESTful microservices with Node.js/Express, and managing relational databases with PostgreSQL. "
+                f"I prioritize clean architecture, automated testing, and fast problem resolution."
+            )[:max_len]
+
+        # Standard grounded narrative fallback
+        return graph.get_project_narrative(question, max_chars=max_len)
+
+
+
 
