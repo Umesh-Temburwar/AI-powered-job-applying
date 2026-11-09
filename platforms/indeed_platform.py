@@ -25,6 +25,7 @@ from platforms.tracker_db import has_applied, record_application
 from platforms.notifier import notify_application_success
 from platforms.ai_engine import qa_engine
 from platforms.location_matcher import is_location_match, parse_target_locations
+from platforms.universal_form_filler import UniversalFormFiller
 
 logger = logging.getLogger("IndeedBot")
 load_dotenv()
@@ -104,7 +105,15 @@ def build_search_url(keyword, location="pune"):
 
 
 def handle_indeed_application_modal(driver, profile, answers):
-    """Walk through Indeed application steps."""
+    """Walk through Indeed application steps using intelligent resume-based form filler."""
+    try:
+        filler = UniversalFormFiller(profile)
+        if filler.execute_application_wizard(driver, max_steps=6):
+            logger.info("✓ Submitted application on Indeed via UniversalFormFiller!")
+            return True
+    except Exception as exc:
+        logger.debug("UniversalFormFiller notice on Indeed: %s. Falling back to direct steps.", exc)
+
     for step in range(6):
         time.sleep(2)
 
