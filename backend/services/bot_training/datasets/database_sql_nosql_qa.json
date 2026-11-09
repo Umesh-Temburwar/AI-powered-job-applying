@@ -1,0 +1,20 @@
+[
+  {
+    "question_text": "How many years of experience do you have with PostgreSQL?",
+    "answer": "1",
+    "field_type": "number",
+    "category": "database_sql"
+  },
+  {
+    "question_text": "Have you worked with relational databases, migrations, and indexing?",
+    "answer": "Yes, I design normalized relational schemas with foreign keys and indexes in PostgreSQL and Supabase, implementing Row-Level Security (RLS) policies and writing optimized multi-table JOIN queries.",
+    "field_type": "radio",
+    "category": "database_sql"
+  },
+  {
+    "question_text": "What experience do you have with Supabase?",
+    "answer": "I use Supabase as a production PostgreSQL database, integrating Supabase Auth for JWT user sessions, Postgres tables and foreign key constraints, and Supabase Storage for secure file uploads.",
+    "field_type": "textarea",
+    "category": "database_sql"
+  }
+]
