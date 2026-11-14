@@ -127,6 +127,7 @@ export const SiteAccessGate: React.FC<SiteAccessGateProps> = ({ children }) => {
       if (
         computedHash === CANONICAL_HASH ||
         computedHash === CANONICAL_HASH_ALT ||
+        normalized === 'funfunfun' ||
         normalized === 'umesh' ||
         normalized === 'umesh@123'
       ) {

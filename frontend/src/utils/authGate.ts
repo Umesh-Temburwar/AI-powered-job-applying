@@ -6,9 +6,11 @@
 const SALT = 'universal_job_bot_secure_salt_2026';
 
 // Cryptographic SHA-256 hashes for authorized master passwords:
-// 1. "umesh" -> 1ab3384539470876f7b2ed061d9705ffeda83e7a512e5b5dd01b945b9a9b4720
-// 2. "umesh@123" -> 4b263082436b7a7c37eca4ee51793fc884f4123a682f03ba629d521ed42ff6d2
+// 1. "funfunfun" -> deafc63de1bf4b5636da5bc0cffd920e17d6fb1cf6805f26ae0ddf9dfffb7eda
+// 2. "umesh" -> 1ab3384539470876f7b2ed061d9705ffeda83e7a512e5b5dd01b945b9a9b4720
+// 3. "umesh@123" -> 4b263082436b7a7c37eca4ee51793fc884f4123a682f03ba629d521ed42ff6d2
 export const AUTHORIZED_HASHES = [
+  'deafc63de1bf4b5636da5bc0cffd920e17d6fb1cf6805f26ae0ddf9dfffb7eda',
   '1ab3384539470876f7b2ed061d9705ffeda83e7a512e5b5dd01b945b9a9b4720',
   '4b263082436b7a7c37eca4ee51793fc884f4123a682f03ba629d521ed42ff6d2',
 ];
@@ -46,7 +48,7 @@ export async function verifyMasterPassword(rawPassword: string): Promise<boolean
   if (!trimmed) return false;
 
   const normalized = trimmed.toLowerCase();
-  if (normalized === 'umesh' || normalized === 'umesh@123') {
+  if (normalized === 'funfunfun' || normalized === 'umesh' || normalized === 'umesh@123') {
     return true;
   }
 
@@ -54,7 +56,7 @@ export async function verifyMasterPassword(rawPassword: string): Promise<boolean
     const computedHash = await hashAccessPassword(trimmed);
     return AUTHORIZED_HASHES.includes(computedHash);
   } catch {
-    return normalized === 'umesh' || normalized === 'umesh@123';
+    return normalized === 'funfunfun' || normalized === 'umesh' || normalized === 'umesh@123';
   }
 }
 

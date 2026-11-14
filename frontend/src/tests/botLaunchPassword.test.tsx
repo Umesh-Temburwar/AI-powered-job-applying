@@ -40,7 +40,8 @@ describe('BotLaunchPasswordModal Component Tests', () => {
     expect(screen.getByText(/Verify Password to Start Bot/i)).toBeInTheDocument();
     expect(screen.getByText(/Run All Platforms \(Auto-Apply\)/i)).toBeInTheDocument();
     expect(screen.getAllByText(/All Platforms/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByPlaceholderText(/Enter access password \(e\.g\. Umesh\)/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Enter access password/i)).toBeInTheDocument();
+    expect(screen.getByText(/GET PASSWORD ON WHATSAPP: 8856087984/i)).toBeInTheDocument();
   });
 
   it('rejects incorrect password with error message and does not call onConfirm', async () => {
@@ -89,6 +90,34 @@ describe('BotLaunchPasswordModal Component Tests', () => {
     const submitBtn = screen.getByRole('button', { name: /VERIFY & START/i });
 
     fireEvent.change(input, { target: { value: 'Umesh' } });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+    });
+
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('verifies new master password "FUNFUNFUN" and calls onConfirm', async () => {
+    const confirmSpy = vi.fn();
+    const closeSpy = vi.fn();
+
+    render(
+      <ThemeProvider>
+        <BotLaunchPasswordModal
+          isOpen={true}
+          onClose={closeSpy}
+          onConfirm={confirmSpy}
+          commandLabel="Naukri.com Auto-Apply"
+        />
+      </ThemeProvider>
+    );
+
+    const input = screen.getByPlaceholderText(/Enter access password/i);
+    const submitBtn = screen.getByRole('button', { name: /VERIFY & START/i });
+
+    fireEvent.change(input, { target: { value: 'FUNFUNFUN' } });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
