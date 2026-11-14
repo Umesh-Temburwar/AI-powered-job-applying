@@ -40,8 +40,10 @@ describe('BotLaunchPasswordModal Component Tests', () => {
     expect(screen.getByText(/Verify Password to Start Bot/i)).toBeInTheDocument();
     expect(screen.getByText(/Run All Platforms \(Auto-Apply\)/i)).toBeInTheDocument();
     expect(screen.getAllByText(/All Platforms/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByPlaceholderText(/Enter access password/i)).toBeInTheDocument();
-    expect(screen.getByText(/GET PASSWORD ON WHATSAPP: 8856087984/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/^Enter access password$/i)).toBeInTheDocument();
+    expect(screen.getByText(/GET PASSWORD ON WHATSAPP ↗/i)).toBeInTheDocument();
+    expect(screen.queryByText(/8856087984/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/FUNFUNFUN/)).not.toBeInTheDocument();
   });
 
   it('rejects incorrect password with error message and does not call onConfirm', async () => {

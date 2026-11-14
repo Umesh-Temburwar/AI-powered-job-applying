@@ -24,7 +24,10 @@ describe('HomePageGate Component Tests', () => {
     );
 
     expect(screen.getByText(/Home Page Access Verification/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Enter access password/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/^Enter access password$/i)).toBeInTheDocument();
+    expect(screen.getByText(/GET PASSWORD ON WHATSAPP ↗/i)).toBeInTheDocument();
+    expect(screen.queryByText(/8856087984/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/FUNFUNFUN/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /UNLOCK & PROCEED TO HOME PAGE/i })).toBeInTheDocument();
     expect(screen.queryByTestId('landing-page-content')).not.toBeInTheDocument();
   });
