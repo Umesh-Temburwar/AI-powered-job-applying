@@ -491,3 +491,48 @@ class ResumeKnowledgeGraph:
                 elif title:
                     achievements.append(f"Engineered and deployed {title}")
         return achievements
+
+    def compute_role_fit_score(self, job_title: str, job_description: str = "") -> Dict[str, Any]:
+        """
+        Compute a candidate-specific role fit score (0.0 - 100.0) by comparing
+        verified resume skills and domain taxonomy against a job title & description.
+        """
+        corpus = f"{job_title} {job_description}".lower()
+        matched_skills: List[str] = []
+        missing_skills: List[str] = []
+
+        # Collect all known technical skills from taxonomy + candidate skills
+        all_known = set()
+        for domain_skills in self.skill_taxonomy.values():
+            for sk in domain_skills:
+                all_known.add(sk)
+        for sk in self.skills:
+            all_known.add(sk)
+
+        required_detected: List[str] = []
+        for sk in sorted(all_known):
+            sk_low = sk.lower()
+            if len(sk_low) >= 2 and re.search(rf"(?<!\w){re.escape(sk_low)}(?!\w)", corpus):
+                required_detected.append(sk)
+
+        for req in required_detected:
+            if self.has_skill(req):
+                matched_skills.append(req)
+            else:
+                missing_skills.append(req)
+
+        if not required_detected:
+            # Fallback to title/domain heuristic
+            score = 72.0 if any(
+                kw in corpus for kw in ["developer", "engineer", "intern", "full stack", "frontend", "backend", "software"]
+            ) else 50.0
+        else:
+            score = round((len(matched_skills) / len(required_detected)) * 100.0, 2)
+
+        return {
+            "job_title": job_title,
+            "fit_score": score,
+            "matched_skills": matched_skills,
+            "missing_skills": missing_skills,
+            "recommended_to_apply": score >= 50.0,
+        }
