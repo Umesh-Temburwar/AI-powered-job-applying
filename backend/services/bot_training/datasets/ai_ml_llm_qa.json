@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "Have you integrated Generative AI or LLM APIs into production applications?",
+    "answer": "Yes, I design structured prompt pipelines with schema validation, fallback heuristics, rate limiting, and deterministic output parsing for reliable AI integrations.",
+    "field_type": "textarea",
+    "category": "ai_ml_llm"
+  },
+  {
+    "question_text": "How do you prevent hallucinations when using LLMs for structured form filling or Q&A?",
+    "answer": "I ground model prompts strictly in verified candidate resume context (RAG), enforce low temperature, validate output types against field schemas, and fall back to deterministic rules when confidence is low.",
+    "field_type": "textarea",
+    "category": "ai_ml_llm"
+  },
+  {
+    "question_text": "Explain how Retrieval-Augmented Generation (RAG) improves accuracy.",
+    "answer": "RAG retrieves relevant verified chunks from a knowledge store at query time and injects them into the prompt context, keeping answers up-to-date and traceable without expensive full retraining.",
+    "field_type": "textarea",
+    "category": "ai_ml_llm"
+  },
+  {
+    "question_text": "How do you evaluate the quality of an AI or NLP pipeline before deployment?",
+    "answer": "I maintain a versioned golden benchmark dataset and measure exact/semantic match accuracy, latency per query, fallback rate, and cross-user isolation regressions in CI.",
+    "field_type": "textarea",
+    "category": "ai_ml_llm"
+  },
+  {
+    "question_text": "What programming languages and libraries do you use for AI or automation workflows?",
+    "answer": "I leverage my verified core stack ({{primary_skills}}) to build modular automation, NLP matching, and API-driven AI workflows.",
+    "field_type": "textarea",
+    "category": "ai_ml_llm"
+  }
+]
