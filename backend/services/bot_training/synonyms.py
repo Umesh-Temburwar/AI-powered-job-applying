@@ -84,6 +84,30 @@ SYNONYM_CLUSTERS: Dict[str, List[str]] = {
     "languages": [
         "languages known", "spoken languages", "language proficiency", "fluent languages"
     ],
+    "work_authorization": [
+        "legally authorized to work", "work authorization", "eligible to work",
+        "right to work", "permitted to work", "citizenship status"
+    ],
+    "visa_sponsorship": [
+        "require sponsorship", "visa sponsorship", "h1b sponsorship", "work permit sponsorship",
+        "need sponsorship now or in the future"
+    ],
+    "shift_readiness": [
+        "rotational shift", "night shift", "flexible shift", "us shift", "uk shift",
+        "shift timings", "comfortable with shifts", "weekend availability"
+    ],
+    "stipend_policy": [
+        "unpaid internship", "without stipend", "zero stipend", "no stipend",
+        "volunteer basis", "unpaid role", "minimum stipend", "expected stipend"
+    ],
+    "background_check": [
+        "background check", "background verification", "bgv", "criminal record check",
+        "reference check", "willing to undergo verification"
+    ],
+    "cover_letter": [
+        "why should we hire you", "why do you want to join", "cover letter",
+        "tell us about yourself", "introduce yourself", "brief summary about you"
+    ],
 }
 
 # Tech stack normalization aliases
