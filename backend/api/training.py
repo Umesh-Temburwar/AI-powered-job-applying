@@ -83,3 +83,9 @@ async def approve_unanswered_question(req: ApproveAnswerRequest):
 async def train_for_candidate_profile(profile_data: Optional[Dict[str, Any]] = None):
     """Train the bot's screening Q&A memory bank strictly using candidate's resume/profile."""
     return training_service.train_for_profile(profile_data)
+
+
+@router.get("/datasets")
+async def list_training_datasets():
+    """Return catalog of all golden Q&A domain datasets and dynamic template coverage."""
+    return training_service.get_dataset_catalog()

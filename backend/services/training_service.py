@@ -23,6 +23,7 @@ from services.bot_training.learning_registry import LearningRegistry
 from services.bot_training.feedback_promoter import FeedbackPromoter
 from services.bot_training.regression_detector import RegressionDetector
 from services.bot_training.profile_trainer import CandidateProfileTrainer
+from services.bot_training.template_renderer import CandidateTemplateRenderer
 
 logger = logging.getLogger("TrainingService")
 
@@ -135,12 +136,13 @@ class TrainingService:
         )
 
     def sync_all_datasets_to_bank(self) -> SyncTrainingResponse:
-        """Promote all domain questions from JSON into the main answer bank."""
+        """Promote all domain questions from JSON into the main answer bank (hydrated for active profile)."""
         items = self.load_domain_datasets()
+        renderer = CandidateTemplateRenderer(self.trainer.profile_data or None)
         count = 0
         for item in items:
             q = item.get("question")
-            a = item.get("expected")
+            a = renderer.render_text(item.get("expected") or "")
             if q and a:
                 if self.promoter.promote_answer(q, a):
                     count += 1
@@ -154,6 +156,41 @@ class TrainingService:
             total_in_bank=total,
             message=f"Successfully synchronized {count} questions into active bot answer bank.",
         )
+
+    def get_dataset_catalog(self) -> Dict[str, Any]:
+        """Return inventory of all domain JSON datasets, counts, and dynamic template readiness."""
+        pattern = os.path.join(DATASETS_DIR, "*.json")
+        catalog: List[Dict[str, Any]] = []
+        total_questions = 0
+        templated_questions = 0
+
+        for path in sorted(glob.glob(pattern)):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if not isinstance(data, list):
+                    continue
+                cats = sorted({str(d.get("category", "general")) for d in data if isinstance(d, dict)})
+                tmpl_cnt = sum(
+                    1 for d in data if isinstance(d, dict) and "{{" in str(d.get("answer", ""))
+                )
+                total_questions += len(data)
+                templated_questions += tmpl_cnt
+                catalog.append({
+                    "file": os.path.basename(path),
+                    "question_count": len(data),
+                    "templated_count": tmpl_cnt,
+                    "categories": cats,
+                })
+            except Exception as exc:
+                logger.warning("Failed inspecting dataset %s: %s", path, exc)
+
+        return {
+            "total_files": len(catalog),
+            "total_questions": total_questions,
+            "templated_questions": templated_questions,
+            "datasets": catalog,
+        }
 
     def train_for_profile(self, profile_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Train and ground all screening answers dynamically for a candidate's profile."""
