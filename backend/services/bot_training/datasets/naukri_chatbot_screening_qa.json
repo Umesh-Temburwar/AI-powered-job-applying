@@ -1,0 +1,50 @@
+[
+  {
+    "question_text": "What is your current CTC in LPA?",
+    "answer": "{{current_ctc}}",
+    "field_type": "text",
+    "category": "naukri_chatbot"
+  },
+  {
+    "question_text": "What is your expected CTC in LPA?",
+    "answer": "{{expected_ctc}}",
+    "field_type": "text",
+    "category": "naukri_chatbot"
+  },
+  {
+    "question_text": "What is your official notice period in days?",
+    "answer": "{{notice_period}}",
+    "field_type": "text",
+    "category": "naukri_chatbot"
+  },
+  {
+    "question_text": "Are you currently serving your notice period?",
+    "answer": "No, available as per {{notice_period}}",
+    "field_type": "text",
+    "category": "naukri_chatbot"
+  },
+  {
+    "question_text": "What is your highest educational qualification?",
+    "answer": "{{degree}} in {{major}}",
+    "field_type": "text",
+    "category": "naukri_chatbot"
+  },
+  {
+    "question_text": "What are your preferred job locations in India?",
+    "answer": "{{preferred_locations}}",
+    "field_type": "text",
+    "category": "naukri_chatbot"
+  },
+  {
+    "question_text": "Please list your key technical skills.",
+    "answer": "{{primary_skills}}",
+    "field_type": "text",
+    "category": "naukri_chatbot"
+  },
+  {
+    "question_text": "Are you ready for face-to-face or virtual technical interviews?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "naukri_chatbot"
+  }
+]
