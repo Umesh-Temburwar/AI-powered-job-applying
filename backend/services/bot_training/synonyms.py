@@ -58,6 +58,32 @@ SYNONYM_CLUSTERS: Dict[str, List[str]] = {
         "current location", "current city", "preferred location", "home town",
         "native location", "base location", "city of residence"
     ],
+    "portfolio": [
+        "portfolio link", "portfolio url", "personal website", "live portfolio",
+        "website url", "project showcase link", "portfolio site"
+    ],
+    "github": [
+        "github profile", "github link", "github url", "git repository",
+        "code samples link", "github username", "public repositories"
+    ],
+    "linkedin": [
+        "linkedin profile", "linkedin url", "linkedin link", "linkedin handle"
+    ],
+    "certifications": [
+        "certifications", "certificates", "relevant certifications", "professional certifications",
+        "online courses completed", "technical certifications"
+    ],
+    "cgpa": [
+        "cgpa", "gpa", "graduation percentage", "college percentage", "aggregate marks",
+        "academic score", "cumulative gpa", "overall percentage"
+    ],
+    "projects": [
+        "describe your project", "best project", "favorite project", "recent project",
+        "key projects", "capstone project", "tell us about a project", "project experience"
+    ],
+    "languages": [
+        "languages known", "spoken languages", "language proficiency", "fluent languages"
+    ],
 }
 
 # Tech stack normalization aliases
