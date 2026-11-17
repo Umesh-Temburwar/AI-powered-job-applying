@@ -103,6 +103,40 @@ def token_set_ratio(s1: str, s2: str) -> float:
     return round(max(r1, r2, r3, levenshtein_ratio(s1, s2)), 4)
 
 
+STOPWORDS: Set[str] = {
+    "a", "an", "the", "is", "are", "was", "were", "do", "does", "did",
+    "you", "your", "yours", "we", "our", "in", "on", "at", "for", "of",
+    "to", "with", "and", "or", "by", "from", "what", "how", "have", "has",
+    "can", "will", "would", "please", "enter", "mention", "provide", "tell", "us",
+}
+
+
+def char_ngram_similarity(s1: str, s2: str, n: int = 3) -> float:
+    """Calculate Dice coefficient over character n-grams to resist typos and suffixes."""
+    n1 = normalize_text(s1)
+    n2 = normalize_text(s2)
+    if not n1 or not n2:
+        return 0.0
+    if len(n1) < n or len(n2) < n:
+        return levenshtein_ratio(n1, n2)
+    g1 = {n1[i : i + n] for i in range(len(n1) - n + 1)}
+    g2 = {n2[i : i + n] for i in range(len(n2) - n + 1)}
+    if not g1 or not g2:
+        return 0.0
+    return round((2.0 * len(g1.intersection(g2))) / (len(g1) + len(g2)), 4)
+
+
+def weighted_token_similarity(s1: str, s2: str) -> float:
+    """Compute stopword-filtered Jaccard overlap blended with character trigram similarity."""
+    t1 = {t for t in tokenize(s1) if t not in STOPWORDS}
+    t2 = {t for t in tokenize(s2) if t not in STOPWORDS}
+    if not t1 or not t2:
+        return jaccard_similarity(s1, s2)
+    overlap = len(t1.intersection(t2)) / len(t1.union(t2))
+    ngram = char_ngram_similarity(" ".join(sorted(t1)), " ".join(sorted(t2)))
+    return round((0.65 * overlap) + (0.35 * ngram), 4)
+
+
 class QuestionMatcher:
     """Finds best matching question and answer from a known bank using multi-strategy similarity."""
 
@@ -110,34 +144,33 @@ class QuestionMatcher:
         self.answer_bank = answer_bank
         self.threshold = threshold
 
-    def find_best_match(self, query: str) -> Optional[Tuple[str, Dict[str, str], float]]:
-        """Return (matched_question_key, answer_payload, score) or None if below threshold."""
+    def _score_pair(self, query_norm: str, k_norm: str) -> float:
+        if query_norm == k_norm:
+            return 1.0
+        score = 0.0
+        if query_norm in k_norm or k_norm in query_norm:
+            score = max(score, 0.90)
+        score = max(score, token_set_ratio(query_norm, k_norm))
+        score = max(score, weighted_token_similarity(query_norm, k_norm))
+        return round(score, 4)
+
+    def find_top_matches(self, query: str, top_k: int = 3) -> List[Tuple[str, Dict[str, str], float]]:
+        """Return top-k matching questions above threshold sorted by descending confidence."""
         query_norm = normalize_text(query)
         if not query_norm:
-            return None
+            return []
 
-        best_score = 0.0
-        best_match = None
-
+        scored: List[Tuple[str, Dict[str, str], float]] = []
         for k, payload in self.answer_bank.items():
             k_norm = normalize_text(k)
-            # 1. Exact match
-            if query_norm == k_norm:
-                return (k, payload, 1.0)
+            score = self._score_pair(query_norm, k_norm)
+            if score >= self.threshold:
+                scored.append((k, payload, score))
 
-            # 2. Substring match bonus
-            if query_norm in k_norm or k_norm in query_norm:
-                sub_score = 0.90
-                if sub_score > best_score:
-                    best_score = sub_score
-                    best_match = (k, payload, sub_score)
+        scored.sort(key=lambda item: item[2], reverse=True)
+        return scored[:top_k]
 
-            # 3. Token set ratio
-            ts_score = token_set_ratio(query_norm, k_norm)
-            if ts_score > best_score:
-                best_score = ts_score
-                best_match = (k, payload, ts_score)
-
-        if best_match and best_score >= self.threshold:
-            return best_match
-        return None
+    def find_best_match(self, query: str) -> Optional[Tuple[str, Dict[str, str], float]]:
+        """Return (matched_question_key, answer_payload, score) or None if below threshold."""
+        top = self.find_top_matches(query, top_k=1)
+        return top[0] if top else None
