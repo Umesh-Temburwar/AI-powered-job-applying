@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "When should you use Server-Side Rendering (SSR) vs Static Site Generation (SSG) vs Client-Side Rendering?",
+    "answer": "SSG fits marketing/documentation pages with rare updates, SSR handles SEO-sensitive dynamic content per request, and CSR powers interactive authenticated dashboards.",
+    "field_type": "textarea",
+    "category": "nextjs_tailwind_ui"
+  },
+  {
+    "question_text": "How do you maintain consistent styling and responsive breakpoints with Tailwind CSS?",
+    "answer": "I configure semantic design tokens in the theme config, build reusable headless UI primitives, apply mobile-first utility classes (sm/md/lg), and verify dark/light mode contrast.",
+    "field_type": "textarea",
+    "category": "nextjs_tailwind_ui"
+  },
+  {
+    "question_text": "How do you make web forms accessible (a11y) for screen readers and keyboard users?",
+    "answer": "I bind explicit label htmlFor attributes, add aria-live error regions, preserve logical tab focus order, support Enter/Escape modal shortcuts, and maintain WCAG color contrast.",
+    "field_type": "textarea",
+    "category": "nextjs_tailwind_ui"
+  },
+  {
+    "question_text": "How do you optimize frontend bundle size and Core Web Vitals (LCP, CLS, INP)?",
+    "answer": "I use route-based code splitting and lazy loading, reserve explicit image dimensions to eliminate layout shift, memoize heavy renders, and avoid blocking main-thread scripts.",
+    "field_type": "textarea",
+    "category": "nextjs_tailwind_ui"
+  }
+]
