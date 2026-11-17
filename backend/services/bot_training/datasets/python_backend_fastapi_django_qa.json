@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "Why do developers choose FastAPI for modern Python REST APIs?",
+    "answer": "FastAPI combines native async/await ASGI performance with Pydantic v2 type validation, automatic OpenAPI/Swagger documentation, and clean dependency injection.",
+    "field_type": "textarea",
+    "category": "python_backend"
+  },
+  {
+    "question_text": "How do you avoid blocking the asyncio event loop in a FastAPI application?",
+    "answer": "I run non-blocking I/O with async clients, offload synchronous or CPU-heavy work (like PDF parsing or Selenium automation) to thread pools or dedicated background workers.",
+    "field_type": "textarea",
+    "category": "python_backend"
+  },
+  {
+    "question_text": "How do you structure Pydantic schemas and service layers in a Python backend?",
+    "answer": "I separate HTTP route handlers, strict Pydantic request/response schemas, and pure business-logic service modules so domain rules remain independently unit-testable.",
+    "field_type": "textarea",
+    "category": "python_backend"
+  },
+  {
+    "question_text": "What is the N+1 query problem in ORM-backed backends and how do you solve it?",
+    "answer": "N+1 occurs when fetching a parent collection triggers one extra database query per child row; I eliminate it using eager joins, batched IN queries, or indexed SQL views.",
+    "field_type": "textarea",
+    "category": "python_backend"
+  }
+]
