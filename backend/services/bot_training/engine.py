@@ -13,6 +13,10 @@ import logging
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
 
+from .normalizer import normalize_question
+from .similarity import QuestionMatcher
+from .template_renderer import CandidateTemplateRenderer
+
 logger = logging.getLogger("BotTrainingEngine")
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -52,6 +56,8 @@ class BotTrainer:
         self.answers_path = answers_path
         self.profile_data = self._load_profile()
         self.answer_bank = self._load_answer_bank()
+        self.renderer = CandidateTemplateRenderer(self.profile_data or None)
+        self.matcher = QuestionMatcher(self.answer_bank, threshold=0.72)
 
     def _load_profile(self) -> Dict[str, Any]:
         if os.path.exists(self.profile_path):
@@ -102,19 +108,36 @@ class BotTrainer:
         """Evaluate a single question using the bot's Q&A intelligence."""
         t0 = time.perf_counter()
         q_norm = question.strip().lower()
+        q_clean = normalize_question(question)
+
+        # Render template placeholders in expected_answer if provided
+        rendered_expected = (
+            self.renderer.render_text(expected_answer)
+            if expected_answer
+            else expected_answer
+        )
 
         # Direct answer bank lookup
         predicted = None
         source = "answer_bank"
         if q_norm in self.answer_bank:
             predicted = self.answer_bank[q_norm]["answer"]
+        elif q_clean in self.answer_bank:
+            predicted = self.answer_bank[q_clean]["answer"]
+            source = "answer_bank_normalized"
         else:
             # Substring match
             for k, val in self.answer_bank.items():
-                if k in q_norm or q_norm in k:
+                if k in q_norm or q_norm in k or (q_clean and (k in q_clean or q_clean in k)):
                     predicted = val["answer"]
                     source = "answer_bank_substring"
                     break
+
+        if not predicted and self.answer_bank:
+            fuzzy_hit = self.matcher.find_best_match(q_clean or q_norm)
+            if fuzzy_hit:
+                predicted = fuzzy_hit[1]["answer"]
+                source = "semantic_fuzzy_match"
 
         if not predicted:
             if any(term in q_norm for term in ["unpaid", "without stipend", "zero stipend", "no stipend", "volunteer"]):
@@ -124,12 +147,13 @@ class BotTrainer:
                 predicted = "Fresher / Immediate" if "notice" in q_norm or "experience" in q_norm else "Yes"
                 source = "default_fallback"
 
+        predicted = self.renderer.render_text(predicted)
         latency = (time.perf_counter() - t0) * 1000.0
 
         is_correct = True
         match_score = 1.0
-        if expected_answer:
-            exp_clean = expected_answer.strip().lower()
+        if rendered_expected:
+            exp_clean = rendered_expected.strip().lower()
             pred_clean = predicted.strip().lower()
             if exp_clean == pred_clean:
                 match_score = 1.0
@@ -143,7 +167,7 @@ class BotTrainer:
 
         return EvaluationResult(
             question=question,
-            expected_answer=expected_answer,
+            expected_answer=rendered_expected,
             predicted_answer=predicted,
             match_score=match_score,
             is_correct=is_correct,
