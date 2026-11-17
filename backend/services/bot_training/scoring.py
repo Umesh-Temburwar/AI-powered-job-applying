@@ -6,7 +6,7 @@ and verifies answer validity against form constraints.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 @dataclass
@@ -24,7 +24,12 @@ class ConfidenceScorer:
 
     STRATEGY_WEIGHTS = {
         "exact_bank": 1.0,
+        "answer_bank": 1.0,
+        "answer_bank_normalized": 0.96,
+        "resume_graph": 0.95,
+        "template_rendered": 0.94,
         "token_set_ratio": 0.90,
+        "semantic_fuzzy_match": 0.88,
         "synonym_intent": 0.85,
         "heuristic_rule": 0.80,
         "llm_synthetic": 0.75,
@@ -67,3 +72,33 @@ class ConfidenceScorer:
             requires_human_review=requires_review,
             meta={"raw_similarity": raw_similarity, "answer_length": answer_length},
         )
+
+    @staticmethod
+    def summarize_batch(reports: List[ConfidenceReport]) -> Dict[str, Any]:
+        """Aggregate confidence statistics and strategy distribution across a batch of answers."""
+        if not reports:
+            return {
+                "total": 0,
+                "average_confidence": 0.0,
+                "trusted_count": 0,
+                "review_required_count": 0,
+                "trusted_rate_pct": 0.0,
+                "strategy_breakdown": {},
+            }
+
+        total = len(reports)
+        trusted = sum(1 for r in reports if r.is_trusted)
+        review_req = sum(1 for r in reports if r.requires_human_review)
+        avg_conf = round(sum(r.score for r in reports) / total, 4)
+        breakdown: Dict[str, int] = {}
+        for r in reports:
+            breakdown[r.strategy] = breakdown.get(r.strategy, 0) + 1
+
+        return {
+            "total": total,
+            "average_confidence": avg_conf,
+            "trusted_count": trusted,
+            "review_required_count": review_req,
+            "trusted_rate_pct": round((trusted / total) * 100.0, 2),
+            "strategy_breakdown": breakdown,
+        }
