@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "How do you eliminate flaky tests in Selenium or Playwright browser automation?",
+    "answer": "I avoid hardcoded sleeps in favor of explicit WebDriverWait / auto-waiting assertions, prefer semantic roles or data-testid selectors over brittle XPaths, and isolate browser sessions per test.",
+    "field_type": "textarea",
+    "category": "qa_automation"
+  },
+  {
+    "question_text": "What is the Page Object Model (POM) and why is it valuable in UI automation?",
+    "answer": "POM encapsulates page locators and interactions into dedicated classes so UI changes only require updating a single page module rather than dozens of test files.",
+    "field_type": "textarea",
+    "category": "qa_automation"
+  },
+  {
+    "question_text": "How do you structure a balanced testing pyramid for a full-stack web application?",
+    "answer": "I prioritize fast unit tests for pure business logic, API/service integration tests for routes and database queries, and focused E2E browser tests covering critical user journeys.",
+    "field_type": "textarea",
+    "category": "qa_automation"
+  },
+  {
+    "question_text": "How do you handle dynamic modals, iframes, and stale element exceptions in browser bots?",
+    "answer": "I switch frames explicitly, re-query fresh DOM references on StaleElementReferenceException, scroll elements into view before clicking, and verify post-action state transitions.",
+    "field_type": "textarea",
+    "category": "qa_automation"
+  }
+]
