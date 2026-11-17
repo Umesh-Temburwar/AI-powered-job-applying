@@ -22,7 +22,8 @@ from platforms.form_field_resolver import (
     NumericExperienceResolver,
     BooleanIntentResolver,
     DropdownOptionResolver,
-    ProjectEssayResolver
+    ProjectEssayResolver,
+    SalaryAndNoticeResolver,
 )
 
 logger = logging.getLogger("UniversalFormFiller")
@@ -259,8 +260,19 @@ class UniversalFormFiller:
                     answer = self.graph.first_name
                 elif "last name" in lbl_low:
                     answer = self.graph.last_name
-                elif "name" in lbl_low and not any(k in lbl_low for k in ["company", "college", "school"]):
+                elif "name" in lbl_low and not any(k in lbl_low for k in ["company", "college", "school", "university"]):
                     answer = self.graph.name
+                elif any(k in lbl_low for k in ["college", "university", "institution"]):
+                    answer = self.graph.get_education_details().get("college", "")
+                elif "degree" in lbl_low or "qualification" in lbl_low:
+                    edu = self.graph.get_education_details()
+                    answer = f"{edu.get('degree', '')} in {edu.get('major', '')}".strip()
+                elif "github" in lbl_low:
+                    answer = self.graph.get_portfolio_links().get("github", "")
+                elif "linkedin" in lbl_low:
+                    answer = self.graph.get_portfolio_links().get("linkedin", "")
+                elif "portfolio" in lbl_low or "website" in lbl_low:
+                    answer = self.graph.get_portfolio_links().get("portfolio", "")
                 elif "city" in lbl_low or "location" in lbl_low or "address" in lbl_low:
                     answer = self.graph.current_location.split(",")[0].strip()
                 elif field_type == FormFieldType.EXPERIENCE_YEARS:
@@ -268,9 +280,12 @@ class UniversalFormFiller:
                 elif field_type == FormFieldType.PROJECT_ESSAY:
                     answer = ProjectEssayResolver.resolve(label, self.graph)
                 elif field_type == FormFieldType.NOTICE_PERIOD:
-                    answer = self.graph.notice_period
+                    if el_type == "number" or "days" in lbl_low:
+                        answer = SalaryAndNoticeResolver.resolve_notice_days(self.graph)
+                    else:
+                        answer = self.graph.notice_period
                 elif field_type == FormFieldType.SALARY_CTC:
-                    answer = self.graph.expected_ctc
+                    answer = SalaryAndNoticeResolver.resolve_salary(label, self.graph, numeric_only=(el_type == "number"))
                 elif field_type == FormFieldType.NUMERIC:
                     answer = NumericExperienceResolver.resolve(label, self.graph)
                 else:
