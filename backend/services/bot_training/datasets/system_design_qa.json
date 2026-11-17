@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "How would you design a scalable background job queue for long-running automation tasks?",
+    "answer": "I decouple HTTP requests from execution by enqueuing typed job payloads in a persistent queue with idempotency keys, worker heartbeats, exponential retry backoff, and dead-letter logging.",
+    "field_type": "textarea",
+    "category": "system_design"
+  },
+  {
+    "question_text": "How do you prevent duplicate submissions or race conditions in concurrent web applications?",
+    "answer": "I use unique database constraints, transactional locks or upsert clauses, idempotency keys on write endpoints, and optimistic concurrency checks.",
+    "field_type": "textarea",
+    "category": "system_design"
+  },
+  {
+    "question_text": "When would you introduce caching (like Redis) into a backend service?",
+    "answer": "I introduce caching for read-heavy, latency-sensitive data such as session profiles, configuration registries, or computed analytics, paired with explicit TTLs and cache invalidation on writes.",
+    "field_type": "textarea",
+    "category": "system_design"
+  },
+  {
+    "question_text": "How do you design APIs for graceful failure and rate limiting?",
+    "answer": "I enforce per-user sliding-window rate limits, return structured JSON error envelopes with clear HTTP status codes (429/503), and implement timeouts and circuit breakers for external calls.",
+    "field_type": "textarea",
+    "category": "system_design"
+  },
+  {
+    "question_text": "Describe the system architecture of a production project you built.",
+    "answer": "In {{primary_project}}, I architected a modular system using {{primary_project_stack}} with clean separation between UI state, REST API routing, business services, and persistent storage.",
+    "field_type": "textarea",
+    "category": "system_design"
+  }
+]
