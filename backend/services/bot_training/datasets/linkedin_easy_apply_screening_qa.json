@@ -1,0 +1,50 @@
+[
+  {
+    "question_text": "Are you legally authorized to work in the country where this job is located?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "linkedin_easy_apply"
+  },
+  {
+    "question_text": "Will you now or in the future require sponsorship for employment visa status?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "linkedin_easy_apply"
+  },
+  {
+    "question_text": "How many years of work experience do you have?",
+    "answer": "{{experience_years}}",
+    "field_type": "number",
+    "category": "linkedin_easy_apply"
+  },
+  {
+    "question_text": "What is your current city or location?",
+    "answer": "{{current_location}}",
+    "field_type": "text",
+    "category": "linkedin_easy_apply"
+  },
+  {
+    "question_text": "Have you completed a Bachelor's degree or equivalent higher education?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "linkedin_easy_apply"
+  },
+  {
+    "question_text": "What is your LinkedIn profile URL?",
+    "answer": "{{linkedin_url}}",
+    "field_type": "text",
+    "category": "linkedin_easy_apply"
+  },
+  {
+    "question_text": "What is your GitHub or portfolio URL?",
+    "answer": "{{github_url}}",
+    "field_type": "text",
+    "category": "linkedin_easy_apply"
+  },
+  {
+    "question_text": "Are you comfortable commuting to this job's location or working hybrid?",
+    "answer": "Yes",
+    "field_type": "radio",
+    "category": "linkedin_easy_apply"
+  }
+]
