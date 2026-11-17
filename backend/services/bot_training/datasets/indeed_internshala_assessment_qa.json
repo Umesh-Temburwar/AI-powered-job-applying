@@ -1,0 +1,38 @@
+[
+  {
+    "question_text": "Why should you be hired for this role?",
+    "answer": "I hold a {{degree}} in {{major}} with hands-on proficiency in {{primary_skills}}. Through {{primary_project}}, I delivered production features with clean code and ownership, and I am available on a {{notice_period}} basis.",
+    "field_type": "textarea",
+    "category": "indeed_internshala"
+  },
+  {
+    "question_text": "Are you available for a full-time role or internship starting immediately?",
+    "answer": "Yes, I am available based on my {{notice_period}} schedule.",
+    "field_type": "textarea",
+    "category": "indeed_internshala"
+  },
+  {
+    "question_text": "Share links to your GitHub, portfolio, or live deployed projects.",
+    "answer": "Portfolio: {{portfolio_url}} | GitHub: {{github_url}} | Projects: {{projects_list}}",
+    "field_type": "textarea",
+    "category": "indeed_internshala"
+  },
+  {
+    "question_text": "Are you willing to work on an unpaid or zero-stipend basis?",
+    "answer": "No",
+    "field_type": "radio",
+    "category": "indeed_internshala"
+  },
+  {
+    "question_text": "What languages are you fluent in?",
+    "answer": "{{languages}}",
+    "field_type": "text",
+    "category": "indeed_internshala"
+  },
+  {
+    "question_text": "List any relevant technical certifications or notable accomplishments.",
+    "answer": "{{certifications}}",
+    "field_type": "textarea",
+    "category": "indeed_internshala"
+  }
+]
