@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
 from .engine import BotTrainer
 from .formatters import adapt_answer_for_field
+from .profile_trainer import CandidateProfileTrainer
 
 
 @dataclass
@@ -80,3 +81,41 @@ class QuestionnaireSimulator:
             accuracy_rate=acc_rate,
             responses=responses,
         )
+
+    @staticmethod
+    def verify_multi_user_isolation(profiles: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Verify that training Q&A synthesized for multiple distinct candidates
+        remains strictly isolated with zero cross-user PII or academic leakage.
+        """
+        per_user_answers: List[Dict[str, Any]] = []
+        for idx, prof in enumerate(profiles):
+            trainer = CandidateProfileTrainer(prof)
+            qa_pairs = trainer.generate_candidate_qa_pairs()
+            combined = " ".join(str(item.get("answer", "")) for item in qa_pairs).lower()
+            personal = prof.get("personal", {})
+            edu = prof.get("education", {}) if isinstance(prof.get("education"), dict) else {}
+            per_user_answers.append({
+                "index": idx,
+                "name": str(personal.get("name", f"User_{idx}")).strip(),
+                "college": str(edu.get("college") or edu.get("institution") or "").strip(),
+                "combined_lower": combined,
+                "qa_count": len(qa_pairs),
+            })
+
+        leaks: List[str] = []
+        for i, ua in enumerate(per_user_answers):
+            for j, ub in enumerate(per_user_answers):
+                if i == j:
+                    continue
+                if ua["name"] and len(ua["name"]) > 3 and ua["name"].lower() in ub["combined_lower"]:
+                    leaks.append(f"Name '{ua['name']}' leaked into candidate '{ub['name']}'")
+                if ua["college"] and len(ua["college"]) > 3 and ua["college"].lower() in ub["combined_lower"]:
+                    leaks.append(f"College '{ua['college']}' leaked into candidate '{ub['name']}'")
+
+        return {
+            "candidates_tested": len(profiles),
+            "isolated": len(leaks) == 0,
+            "leaks": leaks,
+            "qa_counts": {u["name"]: u["qa_count"] for u in per_user_answers},
+        }
