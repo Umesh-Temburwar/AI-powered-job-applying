@@ -1,0 +1,32 @@
+[
+  {
+    "question_text": "Have you deployed web applications on cloud platforms like AWS, GCP, Azure, Vercel, or Render?",
+    "answer": "Yes, I have deployed full-stack applications to cloud platforms using automated CI/CD pipelines, environment secret management, and health monitoring.",
+    "field_type": "textarea",
+    "category": "cloud_infrastructure"
+  },
+  {
+    "question_text": "How do you manage environment variables and secrets securely in cloud deployments?",
+    "answer": "I never commit secrets to Git; instead, I store API keys and database credentials in platform secret managers or encrypted environment variables with least-privilege IAM roles.",
+    "field_type": "textarea",
+    "category": "cloud_infrastructure"
+  },
+  {
+    "question_text": "What is the difference between vertical scaling and horizontal scaling in cloud systems?",
+    "answer": "Vertical scaling adds more CPU/RAM to a single instance, whereas horizontal scaling distributes traffic across multiple stateless instances behind a load balancer for fault tolerance.",
+    "field_type": "textarea",
+    "category": "cloud_infrastructure"
+  },
+  {
+    "question_text": "How do you store and serve user-uploaded static files and resumes in production?",
+    "answer": "I use object storage buckets (such as AWS S3, Supabase Storage, or Cloud Storage) with signed URLs, MIME validation, and CDN caching rather than storing binaries on application servers.",
+    "field_type": "textarea",
+    "category": "cloud_infrastructure"
+  },
+  {
+    "question_text": "What cloud and deployment tools are listed in your technical skill set?",
+    "answer": "My cloud and deployment experience is aligned with my verified skills ({{primary_skills}}) and hands-on deployment of {{primary_project}}.",
+    "field_type": "textarea",
+    "category": "cloud_infrastructure"
+  }
+]
