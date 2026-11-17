@@ -446,3 +446,48 @@ class ResumeKnowledgeGraph:
                 ]
             }
         ]
+
+    def get_certifications(self) -> List[str]:
+        """Extract candidate certifications dynamically from profile data."""
+        raw = self.profile.get("certifications") or self.personal.get("certifications") or []
+        certs: List[str] = []
+        if isinstance(raw, list):
+            for item in raw:
+                if isinstance(item, dict):
+                    name = item.get("name") or item.get("title") or ""
+                    issuer = item.get("issuer") or item.get("organization") or ""
+                    if name:
+                        certs.append(f"{name} ({issuer})" if issuer else str(name))
+                elif isinstance(item, str) and item.strip():
+                    certs.append(item.strip())
+        elif isinstance(raw, str) and raw.strip():
+            certs = [c.strip() for c in raw.split(",") if c.strip()]
+        return certs
+
+    def get_languages(self) -> List[str]:
+        """Extract spoken/written languages dynamically from candidate profile."""
+        raw = self.profile.get("languages") or self.personal.get("languages") or []
+        if isinstance(raw, list) and raw:
+            return [str(lang).strip() for lang in raw if str(lang).strip()]
+        if isinstance(raw, str) and raw.strip():
+            return [lang.strip() for lang in raw.split(",") if lang.strip()]
+        return ["English", "Hindi"]
+
+    def get_achievements(self) -> List[str]:
+        """Synthesize candidate achievements from explicit profile fields and project highlights."""
+        raw = self.profile.get("achievements") or self.personal.get("achievements") or []
+        achievements: List[str] = []
+        if isinstance(raw, list):
+            achievements.extend(str(a).strip() for a in raw if str(a).strip())
+        elif isinstance(raw, str) and raw.strip():
+            achievements.append(raw.strip())
+
+        if not achievements:
+            for proj in self.projects[:3]:
+                title = proj.get("title", "")
+                metrics = proj.get("metrics", "")
+                if title and metrics:
+                    achievements.append(f"Built {title}: {metrics}")
+                elif title:
+                    achievements.append(f"Engineered and deployed {title}")
+        return achievements
