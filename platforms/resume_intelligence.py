@@ -130,22 +130,56 @@ class ResumeKnowledgeGraph:
         if not self.projects:
             return {}
         q_low = query.lower()
+        q_tokens = {w for w in re.findall(r"[a-z0-9+#.-]+", q_low) if len(w) >= 3}
         scored = []
         for p in self.projects:
             score = 0
+            title_low = str(p.get("title", "")).lower()
+            desc_low = str(p.get("description", "")).lower()
+            metrics_low = str(p.get("metrics", "")).lower()
+            highlights_low = " ".join(str(h).lower() for h in (p.get("highlights") or []))
+            full_text = f"{title_low} {desc_low} {metrics_low} {highlights_low}"
+
             # Title match
-            if any(term in q_low for term in p["title"].lower().split()):
-                score += 2
-            # Tech stack match
-            for t in p.get("tech_stack", []):
-                if t.lower() in q_low:
-                    score += 3
-            # Description match
-            if any(k in q_low for k in ["database", "postgres", "sql", "supabase"]) and "supabase" in str(p.get("tech_stack", [])).lower():
-                score += 2
-            if any(k in q_low for k in ["traffic", "scale", "event", "performance", "visitor", "visitors", "attendee", "attendees", "challenge", "bug", "troubleshoot", "obstacle", "latency"]) and "bytefest" in p["title"].lower():
+            if any(term in q_low for term in title_low.split() if len(term) >= 3):
                 score += 4
-            if any(k in q_low for k in ["nosql", "inventory", "crud"]) and "inventory" in p["title"].lower():
+
+            # Tech stack match (supports both list and comma-separated string)
+            raw_stack = p.get("tech_stack", [])
+            stack_items = (
+                [s.strip() for s in raw_stack.split(",") if s.strip()]
+                if isinstance(raw_stack, str)
+                else [str(s).strip() for s in raw_stack if str(s).strip()]
+            )
+            for t in stack_items:
+                t_low = t.lower()
+                if len(t_low) >= 2 and t_low in q_low:
+                    score += 3
+
+            # Token overlap across description, metrics, and highlights
+            for tok in q_tokens:
+                if tok in full_text:
+                    score += 2
+
+            # Semantic domain boosts (candidate-agnostic)
+            if any(k in q_low for k in ["database", "postgres", "sql", "supabase"]) and any(
+                k in full_text for k in ["supabase", "postgres", "sql"]
+            ):
+                score += 2
+            if any(
+                k in q_low
+                for k in [
+                    "traffic", "scale", "event", "performance", "visitor", "visitors",
+                    "attendee", "attendees", "challenge", "bug", "troubleshoot", "obstacle", "latency"
+                ]
+            ):
+                if any(k in title_low for k in ["fest", "event", "traffic", "scale", "live"]):
+                    score += 6
+                elif any(k in full_text for k in ["visitor", "attendee", "traffic", "scale", "event", "fest", "live website"]):
+                    score += 3
+            if any(k in q_low for k in ["nosql", "inventory", "crud", "mongo"]) and any(
+                k in full_text for k in ["inventory", "mongodb", "nosql", "crud"]
+            ):
                 score += 3
             scored.append((score, p))
 
@@ -156,17 +190,25 @@ class ResumeKnowledgeGraph:
         """Generate a concise, professional project description tailored to the question."""
         proj = self.get_best_matching_project(question)
         if not proj:
+            skills_str = ", ".join(self.skills[:5]) if self.skills else "modern full-stack technologies"
             return (
-                "Developed a full-stack EdTech Learning Platform featuring responsive React dashboards, "
-                "Node.js/Express REST APIs, Supabase PostgreSQL database, and Role-Based Access Control (RBAC)."
+                f"Engineered a production-ready web application using {skills_str}, "
+                "featuring responsive UI components, secure REST APIs, and structured database persistence."
             )[:max_chars]
 
         title = proj.get("title", "Full Stack Project")
-        stack = ", ".join(proj.get("tech_stack", []))
+        raw_stack = proj.get("tech_stack", [])
+        stack = (
+            raw_stack
+            if isinstance(raw_stack, str)
+            else ", ".join(str(s) for s in raw_stack)
+        )
         desc = proj.get("description", "")
         metrics = proj.get("metrics", "")
 
-        narrative = f"In the '{title}' project, I engineered a solution using {stack}. {desc} Impact: {metrics}"
+        narrative = f"In the '{title}' project, I engineered a solution using {stack}. {desc}"
+        if metrics:
+            narrative += f" Impact: {metrics}"
         return narrative[:max_chars]
 
     def get_portfolio_links(self) -> Dict[str, str]:
@@ -250,8 +292,59 @@ class ResumeKnowledgeGraph:
 
     def _load_projects(self) -> List[Dict[str, Any]]:
         projects = self.profile.get("projects") or []
+        loaded: List[Dict[str, Any]] = []
         if isinstance(projects, list) and len(projects) > 0:
-            return projects
+            for p in projects:
+                if isinstance(p, dict):
+                    p_copy = dict(p)
+                    desc = str(p_copy.get("description", ""))
+                    # Split accidentally merged PDF project segments like "Name | Live Website ..."
+                    split_match = re.search(r"\.\s+([A-Z][A-Za-z0-9\s\-]{2,40}\|\s*[A-Za-z\s]{3,30})\s{2,}(.+)$", desc)
+                    if split_match:
+                        p_copy["description"] = desc[: split_match.start() + 1].strip()
+                        loaded.append(p_copy)
+                        merged_title = split_match.group(1).strip()
+                        merged_desc = split_match.group(2).strip()
+                        loaded.append(
+                            {
+                                "title": merged_title,
+                                "role": "Developer",
+                                "tech_stack": self.skills[:5],
+                                "description": merged_desc,
+                                "metrics": merged_desc,
+                            }
+                        )
+                    else:
+                        loaded.append(p_copy)
+
+        # Also extract embedded technical project/event entries from experience highlights
+        exp_list = self.profile.get("experience") or []
+        if isinstance(exp_list, list):
+            existing_titles = {str(p.get("title", "")).lower() for p in loaded}
+            for exp in exp_list:
+                if not isinstance(exp, dict):
+                    continue
+                org = str(exp.get("organization") or exp.get("company") or "").strip()
+                role = str(exp.get("role") or "").strip()
+                highlights = exp.get("highlights") or exp.get("responsibilities") or []
+                hl_text = " ".join(str(h) for h in highlights) if isinstance(highlights, list) else str(highlights)
+                if org and org.lower() not in existing_titles and any(
+                    kw in hl_text.lower() for kw in ["website", "platform", "application", "system", "developed", "built"]
+                ):
+                    loaded.append(
+                        {
+                            "title": f"{org} Web Platform",
+                            "role": role or "Developer",
+                            "tech_stack": self.skills[:5],
+                            "description": hl_text,
+                            "highlights": highlights if isinstance(highlights, list) else [hl_text],
+                            "metrics": "Handled live user traffic, participant registrations, and responsive event operations.",
+                        }
+                    )
+                    existing_titles.add(org.lower())
+
+        if loaded:
+            return loaded
 
         # Dynamically build project records grounded in candidate's actual skills
         primary_skills = self.skills[:6] if self.skills else ["React.js", "Node.js", "Express.js", "PostgreSQL"]
