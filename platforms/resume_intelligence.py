@@ -536,3 +536,60 @@ class ResumeKnowledgeGraph:
             "missing_skills": missing_skills,
             "recommended_to_apply": score >= 50.0,
         }
+
+    def generate_role_summary(self, target_role: str = "Software Developer", max_chars: int = 350) -> str:
+        """Generate a concise 2-sentence candidate summary grounded in the active resume."""
+        edu = self.get_education_details()
+        top_skills = ", ".join(self.skills[:6]) if self.skills else "software development"
+        primary_proj = self.projects[0].get("title", "production web applications") if self.projects else "production web applications"
+        summary = (
+            f"{edu['degree']} graduate in {edu['major']} targeting {target_role} roles, "
+            f"with hands-on experience in {top_skills}. "
+            f"Delivered projects including {primary_proj}, with {self.notice_period} availability."
+        )
+        return summary[:max_chars]
+
+    def to_template_context(self) -> Dict[str, str]:
+        """Build a flat placeholder context dictionary strictly from the active candidate's resume."""
+        edu = self.get_education_details()
+        links = self.get_portfolio_links()
+        primary_proj = self.projects[0] if self.projects else {}
+        proj_titles = [str(p.get("title", "")).strip() for p in self.projects if p.get("title")]
+        raw_stack = primary_proj.get("tech_stack", [])
+        primary_stack = (
+            raw_stack
+            if isinstance(raw_stack, str)
+            else ", ".join(str(s) for s in raw_stack)
+        ) or ", ".join(self.skills[:5])
+
+        return {
+            "candidate_name": self.name,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "email": self.email,
+            "phone": self.phone,
+            "current_location": self.current_location,
+            "preferred_locations": ", ".join(self.preferred_locations),
+            "notice_period": self.notice_period,
+            "experience_years": str(self.total_experience_years),
+            "expected_ctc": str(self.expected_ctc),
+            "current_ctc": str(self.personal.get("current_ctc", "0 (Fresher)")),
+            "degree": edu["degree"],
+            "major": edu["major"],
+            "college": edu["college"],
+            "college_location": edu["location"],
+            "passing_year": edu["year"],
+            "cgpa": edu["cgpa"],
+            "score": edu["score"],
+            "coursework": edu["coursework"],
+            "primary_skills": ", ".join(self.skills[:8]),
+            "all_skills": ", ".join(self.skills),
+            "primary_project": str(primary_proj.get("title", "Full Stack Web Platform")),
+            "primary_project_stack": primary_stack,
+            "projects_list": ", ".join(proj_titles[:3]) or "Full Stack Web Platform",
+            "certifications": ", ".join(self.get_certifications()) or "Verified hands-on project portfolio",
+            "languages": ", ".join(self.get_languages()),
+            "portfolio_url": links.get("portfolio", ""),
+            "github_url": links.get("github", ""),
+            "linkedin_url": links.get("linkedin", ""),
+        }
