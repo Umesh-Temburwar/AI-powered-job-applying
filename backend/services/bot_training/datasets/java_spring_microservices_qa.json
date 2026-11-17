@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "Explain Dependency Injection and Inversion of Control in Spring Boot or modern OOP frameworks.",
+    "answer": "Inversion of Control delegates object creation and lifecycle management to a container, while Dependency Injection supplies collaborator dependencies via constructors for loose coupling and clean testability.",
+    "field_type": "textarea",
+    "category": "java_spring_microservices"
+  },
+  {
+    "question_text": "How do microservices communicate reliably without tight synchronous coupling?",
+    "answer": "They combine lightweight REST/gRPC contracts for synchronous queries with asynchronous message brokers (Kafka/RabbitMQ/queues) and outbox patterns for eventual consistency.",
+    "field_type": "textarea",
+    "category": "java_spring_microservices"
+  },
+  {
+    "question_text": "How do you handle centralized exception handling and validation in REST microservices?",
+    "answer": "I use declarative DTO validation annotations paired with a global exception handler that translates domain errors into consistent HTTP status codes and structured error payloads.",
+    "field_type": "textarea",
+    "category": "java_spring_microservices"
+  },
+  {
+    "question_text": "What are the key benefits of database migrations (Flyway/Liquibase/SQL migrations) in team workflows?",
+    "answer": "Versioned migrations keep schema changes reproducible across dev, staging, and production, prevent drift, and provide auditable rollback paths during deployments.",
+    "field_type": "textarea",
+    "category": "java_spring_microservices"
+  }
+]
