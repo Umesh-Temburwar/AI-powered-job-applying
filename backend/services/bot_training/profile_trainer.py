@@ -251,6 +251,61 @@ class CandidateProfileTrainer:
                 "category": "technical_skills"
             })
 
+        # 9. Portfolio Links, Certifications, Spoken Languages, and Achievements
+        links = self.graph.get_portfolio_links()
+        certs = self.graph.get_certifications()
+        languages = self.graph.get_languages()
+        achievements = self.graph.get_achievements()
+
+        if links.get("portfolio"):
+            qa_pairs.append({
+                "question_text": "What is your portfolio website URL?",
+                "answer": links["portfolio"],
+                "field_type": "text",
+                "category": "portfolio_links"
+            })
+        if links.get("github"):
+            qa_pairs.append({
+                "question_text": "What is your GitHub profile URL?",
+                "answer": links["github"],
+                "field_type": "text",
+                "category": "portfolio_links"
+            })
+        if links.get("linkedin"):
+            qa_pairs.append({
+                "question_text": "What is your LinkedIn profile URL?",
+                "answer": links["linkedin"],
+                "field_type": "text",
+                "category": "portfolio_links"
+            })
+
+        qa_pairs.extend([
+            {
+                "question_text": "What languages are you fluent in?",
+                "answer": ", ".join(languages),
+                "field_type": "text",
+                "category": "languages"
+            },
+            {
+                "question_text": "List any relevant certifications you hold.",
+                "answer": ", ".join(certs) if certs else "Hands-on production project portfolio verified via GitHub.",
+                "field_type": "textarea",
+                "category": "certifications"
+            },
+            {
+                "question_text": "What are your key technical achievements?",
+                "answer": "; ".join(achievements[:3]) if achievements else self.graph.generate_role_summary(),
+                "field_type": "textarea",
+                "category": "achievements"
+            },
+            {
+                "question_text": "Tell us briefly about yourself.",
+                "answer": self.graph.generate_role_summary(),
+                "field_type": "textarea",
+                "category": "summary"
+            },
+        ])
+
         return qa_pairs
 
     def train_and_sync_answer_bank(self) -> int:
