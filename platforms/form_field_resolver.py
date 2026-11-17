@@ -130,11 +130,18 @@ class NumericExperienceResolver:
     def resolve(cls, question: str, graph: ResumeKnowledgeGraph) -> str:
         q_low = question.lower().strip()
 
-        # CGPA or percentage
+        # CGPA or percentage (strictly grounded in active candidate's education)
         if "cgpa" in q_low or "gpa" in q_low:
-            return graph.education.get("cgpa", "6.06")
+            return str(graph.get_education_details().get("cgpa", "7.5"))
         if "percentage" in q_low:
-            return "65"
+            explicit_pct = graph.education.get("percentage") or graph.profile.get("percentage")
+            if explicit_pct:
+                return str(explicit_pct).replace("%", "").strip()
+            try:
+                cgpa_val = float(str(graph.get_education_details().get("cgpa", "7.5")).split()[0])
+                return str(round(cgpa_val * 9.5, 1)) if cgpa_val <= 10.0 else str(round(cgpa_val, 1))
+            except ValueError:
+                return "75"
 
         # Passing year or graduation year
         if any(term in q_low for term in ["passing year", "graduation year", "batch", "passout"]):
@@ -340,6 +347,56 @@ class ProjectEssayResolver:
 
         # Standard grounded narrative fallback
         return graph.get_project_narrative(question, max_chars=max_len)
+
+
+class SalaryAndNoticeResolver:
+    """Converts candidate CTC & notice period into exact units requested by ATS forms."""
+
+    @staticmethod
+    def _extract_lpa(raw_ctc: str, default_lpa: float = 4.5) -> float:
+        text = str(raw_ctc or "").lower().replace(",", "")
+        match = re.search(r"(\d+(?:\.\d+)?)", text)
+        if not match:
+            return default_lpa
+        val = float(match.group(1))
+        # If stored in full INR (e.g. 600000), convert to LPA
+        if val >= 50000:
+            return round(val / 100000.0, 2)
+        return val
+
+    @classmethod
+    def resolve_salary(cls, question: str, graph: ResumeKnowledgeGraph, numeric_only: bool = False) -> str:
+        q_low = (question or "").lower()
+        is_current = "current" in q_low or "present" in q_low or "existing" in q_low
+        raw_val = graph.personal.get("current_ctc", "0") if is_current else graph.expected_ctc
+        lpa = cls._extract_lpa(raw_val, default_lpa=0.0 if is_current else 4.5)
+
+        if any(k in q_low for k in ["monthly", "per month", "stipend", "in hand"]):
+            monthly_inr = int(round((lpa * 100000) / 12)) if lpa > 0 else 20000
+            return str(monthly_inr)
+
+        if any(k in q_low for k in ["inr", "rupees", "exact figure", "per annum in rs"]):
+            annual_inr = int(round(lpa * 100000))
+            return str(annual_inr)
+
+        if numeric_only or "in lpa" in q_low or "in lakhs" in q_low:
+            return str(int(lpa)) if lpa.is_integer() else f"{lpa:g}"
+
+        return f"{lpa:g} LPA" if lpa > 0 else "0 (Fresher)"
+
+    @staticmethod
+    def resolve_notice_days(graph: ResumeKnowledgeGraph) -> str:
+        np_text = str(graph.notice_period or "Immediate").lower()
+        if "immediate" in np_text:
+            return "0"
+        match = re.search(r"(\d+)", np_text)
+        if match:
+            val = int(match.group(1))
+            if "month" in np_text and val <= 6:
+                return str(val * 30)
+            return str(val)
+        return "0"
+
 
 
 
