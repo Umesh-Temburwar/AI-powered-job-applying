@@ -44,13 +44,44 @@ class ResumeKnowledgeGraph:
     def _build_skill_taxonomy(self) -> Dict[str, List[str]]:
         """Categorize skills into technical domains for targeted question answering."""
         taxonomy = {
-            "frontend": ["React.js", "JavaScript", "HTML", "CSS", "Tailwind CSS", "Bootstrap", "Responsive Design", "DOM"],
-            "backend": ["Node.js", "Express.js", "REST APIs", "FastAPI", "API Design", "Microservices"],
-            "database": ["PostgreSQL", "Supabase", "MongoDB", "Firebase", "SQL", "Database Design", "CRUD"],
-            "languages": ["JavaScript", "Python", "C++", "C", "HTML", "CSS", "SQL"],
-            "devops_tools": ["Git", "GitHub", "VS Code", "Linux", "Vercel", "Docker", "Postman", "CI/CD"],
-            "security_auth": ["Supabase Auth", "JWT", "Role-Based Access Control", "RBAC", "Session Management"],
-            "soft_skills": ["Problem Solving", "Communication", "Team Leadership", "Critical Thinking", "Time Management"]
+            "frontend": [
+                "React.js", "Next.js", "TypeScript", "JavaScript", "HTML", "CSS",
+                "Tailwind CSS", "Redux", "Bootstrap", "Responsive Design", "DOM", "Vite",
+            ],
+            "backend": [
+                "Node.js", "Express.js", "FastAPI", "Django", "Flask", "Spring Boot",
+                "REST APIs", "GraphQL", "WebSockets", "API Design", "Microservices",
+            ],
+            "database": [
+                "PostgreSQL", "Supabase", "MongoDB", "MySQL", "Redis", "Firebase",
+                "SQL", "Prisma", "Database Design", "CRUD",
+            ],
+            "languages": [
+                "JavaScript", "TypeScript", "Python", "Java", "Go", "C++", "C", "HTML", "CSS", "SQL",
+            ],
+            "cloud_devops": [
+                "AWS", "GCP", "Azure", "Docker", "Kubernetes", "Git", "GitHub",
+                "GitHub Actions", "Linux", "Vercel", "Render", "Nginx", "CI/CD", "Terraform",
+            ],
+            "ai_ml": [
+                "Machine Learning", "Deep Learning", "LLM", "LangChain", "RAG",
+                "OpenAI API", "Gemini API", "PyTorch", "TensorFlow", "Scikit-learn", "NLP", "Pandas", "NumPy",
+            ],
+            "mobile": [
+                "React Native", "Flutter", "Android", "iOS", "Dart", "Kotlin", "Swift",
+            ],
+            "testing_qa": [
+                "Pytest", "Vitest", "Jest", "Selenium", "Playwright", "Cypress",
+                "Postman", "Unit Testing", "Integration Testing", "E2E Testing",
+            ],
+            "security_auth": [
+                "Supabase Auth", "OAuth2", "JWT", "Role-Based Access Control", "RBAC",
+                "Session Management", "HTTPS", "CORS",
+            ],
+            "soft_skills": [
+                "Problem Solving", "Communication", "Team Leadership",
+                "Critical Thinking", "Time Management", "Agile", "Scrum",
+            ],
         }
         return taxonomy
 
@@ -64,9 +95,12 @@ class ResumeKnowledgeGraph:
             "ts": "typescript",
             "py": "python",
             "postgres": "postgresql",
+            "postgre": "postgresql",
             "mongo": "mongodb",
             "reactjs": "react.js",
             "react": "react.js",
+            "nextjs": "next.js",
+            "next": "next.js",
             "nodejs": "node.js",
             "node": "node.js",
             "expressjs": "express.js",
@@ -74,11 +108,20 @@ class ResumeKnowledgeGraph:
             "rest": "rest apis",
             "api": "rest apis",
             "cpp": "c++",
+            "k8s": "kubernetes",
+            "aws": "amazon web services",
+            "gcp": "google cloud",
+            "rn": "react native",
+            "ml": "machine learning",
+            "dl": "deep learning",
+            "ai": "artificial intelligence",
+            "tailwind": "tailwind css",
+            "springboot": "spring boot",
         }
         resolved = alias_map.get(q_clean, q_clean)
         for s in self.skills:
             s_low = s.lower()
-            if resolved in s_low or s_low in resolved:
+            if q_clean == s_low or resolved in s_low or s_low in resolved or s_low in q_clean:
                 return True
         return False
 
