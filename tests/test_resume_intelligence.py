@@ -68,3 +68,40 @@ def test_resume_knowledge_graph_cover_letter_pitch(graph):
     assert "EdTech" in pitch
     assert "Immediate (0 Days)" in pitch
 
+
+def test_dynamic_certifications_languages_and_achievements():
+    custom_profile = {
+        "personal": {
+            "name": "Priya Sharma",
+            "email": "priya.sharma@example.com",
+            "phone": "+91 9876543210",
+            "current_location": "Bengaluru",
+            "notice_period": "15 Days",
+            "expected_ctc": "8 LPA",
+            "total_experience_years": 2.0,
+        },
+        "key_skills": ["Python", "FastAPI", "PostgreSQL", "Docker", "AWS"],
+        "certifications": [{"name": "AWS Certified Developer", "issuer": "Amazon"}],
+        "languages": ["English", "Hindi", "Kannada"],
+        "achievements": ["Reduced API P95 latency by 45%"],
+        "projects": [{"title": "FinTech Ledger API", "tech_stack": ["Python", "FastAPI", "PostgreSQL"]}],
+    }
+    g = ResumeKnowledgeGraph(custom_profile)
+    assert "AWS Certified Developer (Amazon)" in g.get_certifications()
+    assert g.get_languages() == ["English", "Hindi", "Kannada"]
+    assert "Reduced API P95 latency by 45%" in g.get_achievements()
+
+    fit = g.compute_role_fit_score("Backend Python Engineer", "Need Python, FastAPI, Docker, PostgreSQL")
+    assert fit["fit_score"] == 100.0
+    assert fit["recommended_to_apply"] is True
+
+    summary = g.generate_role_summary("Backend Engineer")
+    assert "Backend Engineer" in summary
+    assert "Python" in summary
+
+    ctx = g.to_template_context()
+    assert ctx["candidate_name"] == "Priya Sharma"
+    assert ctx["primary_project"] == "FinTech Ledger API"
+    assert ctx["expected_ctc"] == "8 LPA"
+
+
