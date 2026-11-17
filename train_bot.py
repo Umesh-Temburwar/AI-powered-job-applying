@@ -38,6 +38,8 @@ from services.bot_training.engine import BotTrainer
 from services.bot_training.dataset_exporter import DatasetExporter
 from services.bot_training.feedback_promoter import FeedbackPromoter
 from services.bot_training.profile_trainer import CandidateProfileTrainer
+from services.bot_training.template_renderer import CandidateTemplateRenderer
+from services.bot_training.questionnaire_simulator import QuestionnaireSimulator
 
 
 def load_all_datasets() -> List[Dict[str, str]]:
@@ -64,12 +66,16 @@ def main():
     parser = argparse.ArgumentParser(description="Universal Job Apply Bot Trainer CLI")
     parser.add_argument("--stats", action="store_true", help="Display training dataset stats")
     parser.add_argument("--benchmark", action="store_true", help="Run benchmark suite across all datasets")
-    parser.add_argument("--export-jsonl", type=str, help="Export training dataset to JSONL file")
+    parser.add_argument("--export-jsonl", type=str, help="Export training dataset to OpenAI JSONL file")
+    parser.add_argument("--export-gemini-jsonl", type=str, help="Export training dataset to Gemini JSONL file")
     parser.add_argument("--sync", action="store_true", help="Sync all domain datasets into application_answers.csv")
     parser.add_argument("--train-for-user", action="store_true", help="Dynamically train & ground all form questions strictly on active candidate resume")
+    parser.add_argument("--validate-datasets", action="store_true", help="Validate all golden dataset JSON files and template rendering")
+    parser.add_argument("--multi-user-check", action="store_true", help="Verify zero cross-user PII leakage across distinct candidate profiles")
 
     args = parser.parse_args()
     trainer = BotTrainer()
+    renderer = CandidateTemplateRenderer(trainer.profile_data or None)
 
     if args.train_for_user or args.sync:
         print("[*] Personalizing & training screening Q&A for candidate resume...")
@@ -77,7 +83,54 @@ def main():
         updated = profile_trainer.train_and_sync_answer_bank()
         print(f"[OK] Trained {updated} candidate-specific questions into master CSV answer bank.")
 
-    if args.stats or (not args.benchmark and not args.export_jsonl and not args.sync and not args.train_for_user):
+    if args.validate_datasets:
+        print("[*] Validating all golden JSON datasets...")
+        dataset_pattern = os.path.join(BACKEND_DIR, "services", "bot_training", "datasets", "*.json")
+        files = sorted(glob.glob(dataset_pattern))
+        total_q = 0
+        errors = 0
+        for fp in files:
+            try:
+                with open(fp, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                assert isinstance(data, list) and len(data) > 0
+                for row in data:
+                    q = row.get("question_text", "").strip()
+                    a = renderer.render_text(row.get("answer", ""))
+                    if not q or not a or CandidateTemplateRenderer.has_unresolved_placeholders(a):
+                        errors += 1
+                    total_q += 1
+            except Exception as exc:
+                print(f"[ERROR] {os.path.basename(fp)}: {exc}")
+                errors += 1
+        print(f"[OK] Validated {len(files)} dataset files ({total_q} questions, {errors} errors).")
+
+    if args.multi_user_check:
+        print("[*] Running multi-candidate isolation verification...")
+        sample_profiles = [
+            {
+                "personal": {"name": "Aarav Kulkarni", "expected_ctc": "7 LPA", "notice_period": "Immediate"},
+                "education": {"degree": "B.Tech", "field_of_study": "CSE", "college": "COEP Pune", "cgpa": "8.7"},
+                "key_skills": ["React.js", "TypeScript", "Node.js"],
+            },
+            {
+                "personal": {"name": "Meera Iyer", "expected_ctc": "12 LPA", "notice_period": "30 Days"},
+                "education": {"degree": "M.Tech", "field_of_study": "AI", "college": "IIT Madras", "cgpa": "9.4"},
+                "key_skills": ["Python", "FastAPI", "PyTorch"],
+            },
+        ]
+        report = QuestionnaireSimulator.verify_multi_user_isolation(sample_profiles)
+        print(f"[OK] Candidates tested: {report['candidates_tested']} | Isolated: {report['isolated']} | Leaks: {len(report['leaks'])}")
+
+    if args.stats or (
+        not args.benchmark
+        and not args.export_jsonl
+        and not args.export_gemini_jsonl
+        and not args.sync
+        and not args.train_for_user
+        and not args.validate_datasets
+        and not args.multi_user_check
+    ):
         stats = trainer.get_stats()
         all_items = load_all_datasets()
         categories = set(it.get("category", "general") for it in all_items)
@@ -98,7 +151,7 @@ def main():
         promoted = 0
         for item in items:
             q = item.get("question")
-            a = item.get("expected")
+            a = renderer.render_text(item.get("expected") or "")
             if q and a:
                 if promoter.promote_answer(q, a):
                     promoted += 1
@@ -127,9 +180,15 @@ def main():
 
     if args.export_jsonl:
         out_file = args.export_jsonl
-        print(f"[*] Exporting dataset to JSONL at {out_file}...")
-        count = DatasetExporter.export_to_jsonl(trainer.answer_bank, out_file)
+        print(f"[*] Exporting dataset to OpenAI JSONL at {out_file}...")
+        count = DatasetExporter.export_to_jsonl(trainer.answer_bank, out_file, trainer.profile_data)
         print(f"[OK] Successfully exported {count} training records.")
+
+    if args.export_gemini_jsonl:
+        out_file = args.export_gemini_jsonl
+        print(f"[*] Exporting dataset to Gemini JSONL at {out_file}...")
+        count = DatasetExporter.export_to_gemini_jsonl(trainer.answer_bank, out_file, trainer.profile_data)
+        print(f"[OK] Successfully exported {count} Gemini fine-tuning records.")
 
 
 if __name__ == "__main__":
