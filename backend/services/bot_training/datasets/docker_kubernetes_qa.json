@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "How do you optimize Dockerfiles for smaller and faster production container images?",
+    "answer": "I use multi-stage builds, minimal base images (like alpine or slim), clean .dockerignore rules, ordered dependency layers for cache reuse, and non-root container users.",
+    "field_type": "textarea",
+    "category": "docker_kubernetes"
+  },
+  {
+    "question_text": "What is the purpose of Docker Compose in local full-stack development?",
+    "answer": "Docker Compose orchestrates multi-container stacks (frontend, backend API, worker, and database) with reproducible networks, volumes, and healthchecks using a single declarative file.",
+    "field_type": "textarea",
+    "category": "docker_kubernetes"
+  },
+  {
+    "question_text": "Explain the difference between Kubernetes liveness probes and readiness probes.",
+    "answer": "Liveness probes detect hung containers and trigger automatic restarts, whereas readiness probes control whether a pod is healthy enough to receive live traffic from a Service.",
+    "field_type": "textarea",
+    "category": "docker_kubernetes"
+  },
+  {
+    "question_text": "How do you debug a crashing container in staging or production?",
+    "answer": "I inspect exit codes and OOM events, tail structured stdout/stderr logs, verify injected environment configs and health endpoints, and reproduce the issue locally with matching image tags.",
+    "field_type": "textarea",
+    "category": "docker_kubernetes"
+  }
+]
