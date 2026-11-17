@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "When would you choose a Hash Map over a Balanced Binary Search Tree?",
+    "answer": "I choose a Hash Map for O(1) average lookup/insertion when ordering is unneeded, and a Balanced BST when ordered iteration, range queries, or worst-case O(log n) guarantees are required.",
+    "field_type": "textarea",
+    "category": "dsa_algorithms"
+  },
+  {
+    "question_text": "How do you approach optimizing a slow nested-loop algorithm?",
+    "answer": "I profile the bottleneck first, then apply hash-based indexing, sorting with two pointers, sliding windows, prefix sums, or memoization to reduce quadratic O(n^2) passes down to O(n log n) or O(n).",
+    "field_type": "textarea",
+    "category": "dsa_algorithms"
+  },
+  {
+    "question_text": "What is the practical difference between Breadth-First Search (BFS) and Depth-First Search (DFS)?",
+    "answer": "BFS explores level by level using a queue and guarantees the shortest path in unweighted graphs, while DFS uses recursion or a stack for topological sorting, cycle detection, and backtracking.",
+    "field_type": "textarea",
+    "category": "dsa_algorithms"
+  },
+  {
+    "question_text": "Are you comfortable solving online coding assessments (DSA / SQL / Debugging)?",
+    "answer": "Yes, I am comfortable completing timed coding, SQL, and practical debugging assessments.",
+    "field_type": "radio",
+    "category": "dsa_algorithms"
+  }
+]
