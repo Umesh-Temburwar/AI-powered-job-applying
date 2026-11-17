@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "When would you prefer GraphQL over REST APIs?",
+    "answer": "GraphQL excels when multiple clients (web and mobile) need flexible, nested data shapes without over-fetching or under-fetching, whereas REST is simpler for resource-oriented caching and standard CRUD.",
+    "field_type": "textarea",
+    "category": "graphql_websockets"
+  },
+  {
+    "question_text": "How do WebSockets differ from Server-Sent Events (SSE) and HTTP polling?",
+    "answer": "WebSockets provide full-duplex bidirectional low-latency messaging (chat, live collaboration), SSE streams lightweight server-to-client updates over HTTP (logs/notifications), and polling sends periodic requests.",
+    "field_type": "textarea",
+    "category": "graphql_websockets"
+  },
+  {
+    "question_text": "How do you handle WebSocket reconnections and authentication securely?",
+    "answer": "I validate short-lived signed tokens during the handshake, implement heartbeats/ping-pong frames, and reconnect with jittered exponential backoff on transient network drops.",
+    "field_type": "textarea",
+    "category": "graphql_websockets"
+  },
+  {
+    "question_text": "How do you protect APIs against abusive payloads or overly deep GraphQL queries?",
+    "answer": "I enforce request size limits, query depth/complexity caps, pagination cursors, and strict per-user rate limits at the API gateway layer.",
+    "field_type": "textarea",
+    "category": "graphql_websockets"
+  }
+]
