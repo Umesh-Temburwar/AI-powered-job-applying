@@ -1,0 +1,26 @@
+[
+  {
+    "question_text": "How do you optimize long scrolling lists and memory usage in React Native or mobile apps?",
+    "answer": "I use virtualized list components (FlatList/FlashList) with stable keyExtractor callbacks, memoized row components, image caching, and pagination instead of rendering all items upfront.",
+    "field_type": "textarea",
+    "category": "mobile_development"
+  },
+  {
+    "question_text": "How do you handle offline-first state and intermittent mobile connectivity?",
+    "answer": "I cache critical responses in encrypted local storage, queue optimistic mutations with retry timestamps, and reconcile conflicts cleanly once network connectivity is restored.",
+    "field_type": "textarea",
+    "category": "mobile_development"
+  },
+  {
+    "question_text": "How do you store authentication tokens securely on mobile devices?",
+    "answer": "I store refresh and access tokens in OS-level secure storage (iOS Keychain / Android Keystore) rather than plain AsyncStorage or unencrypted files.",
+    "field_type": "textarea",
+    "category": "mobile_development"
+  },
+  {
+    "question_text": "How do you ensure responsive layouts across diverse screen sizes and densities?",
+    "answer": "I use flexbox-based fluid layouts, safe-area insets, responsive typography scales, and automated visual checks across compact, standard, and tablet viewports.",
+    "field_type": "textarea",
+    "category": "mobile_development"
+  }
+]
