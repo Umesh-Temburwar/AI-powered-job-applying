@@ -46,6 +46,7 @@ async def run_benchmark_evaluation(req: BenchmarkRunRequest = BenchmarkRunReques
 
 
 @router.post("/sync", response_model=SyncTrainingResponse)
+@router.post("/sync-datasets", response_model=SyncTrainingResponse)
 async def sync_all_datasets():
     """Synchronize domain datasets from JSON files into active answer bank."""
     return training_service.sync_all_datasets_to_bank()
