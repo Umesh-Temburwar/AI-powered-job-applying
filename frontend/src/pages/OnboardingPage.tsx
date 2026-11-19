@@ -48,6 +48,7 @@ import {
   ConfirmDialog,
 } from '../components/ui';
 import type { EducationItem, ExperienceItem, ProjectItem, CertificationItem, PlatformName } from '../types';
+import { RoleCategorySelector } from '../components/common/RoleCategorySelector';
 
 const STEPS = [
   { id: 0, title: 'Upload Resume', icon: UploadCloud, subtitle: 'Automatic extraction' },
@@ -1617,6 +1618,25 @@ export const OnboardingPage: React.FC = () => {
                 >
                   Add Title
                 </Button>
+              </div>
+
+              {/* All Job Role Categories Selector */}
+              <div className="pt-1">
+                <RoleCategorySelector
+                  compact
+                  selectedRoles={targetTitles}
+                  onAddRole={(role) => {
+                    if (!targetTitles.includes(role)) {
+                      setTargetTitles((prev) => [...prev, role]);
+                    }
+                  }}
+                  onRemoveRole={(role) => {
+                    setTargetTitles((prev) => prev.filter((item) => item !== role));
+                  }}
+                  onAddMultipleRoles={(roles) => {
+                    setTargetTitles((prev) => Array.from(new Set([...prev, ...roles])));
+                  }}
+                />
               </div>
             </div>
 

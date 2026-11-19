@@ -14,23 +14,14 @@ import { playRetroSound } from '../../utils/soundEffects';
 import { Button, Input, Badge } from '../ui';
 import { BotLaunchPasswordModal } from './BotLaunchPasswordModal';
 
+import { RoleCategorySelector } from './RoleCategorySelector';
+
 interface BotSetupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStartBot?: (options?: { platform?: string; dryRun?: boolean }) => Promise<void> | void;
   showToast: (msg: string, type: 'success' | 'error' | 'info') => void;
 }
-
-const SUGGESTED_ROLES = [
-  'Full Stack Developer',
-  'Frontend Developer',
-  'Backend Developer',
-  'React Developer',
-  'Node.js Developer',
-  'Python Developer',
-  'Software Engineer',
-  'DevOps Engineer',
-];
 
 const SUGGESTED_LOCATIONS = [
   'Pune',
@@ -348,23 +339,16 @@ export const BotSetupModal: React.FC<BotSetupModalProps> = ({
               </Button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1">
-              <span className="text-[10px] text-[var(--text-secondary)]">Suggested:</span>
-              {SUGGESTED_ROLES.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => handleAddKeyword(r)}
-                  className={`px-1.5 py-0.5 text-[10px] border transition-all cursor-pointer ${
-                    keywordList.includes(r)
-                      ? 'border-emerald-600 bg-emerald-950/40 text-emerald-300 font-bold'
-                      : 'border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[var(--accent)]'
-                  }`}
-                >
-                  + {r}
-                </button>
-              ))}
-            </div>
+            {/* Role Categories Explorer */}
+            <RoleCategorySelector
+              compact
+              selectedRoles={keywordList}
+              onAddRole={(r) => handleAddKeyword(r)}
+              onRemoveRole={(r) => handleRemoveKeyword(r)}
+              onAddMultipleRoles={(roles) => {
+                setKeywordList((prev) => Array.from(new Set([...prev, ...roles])));
+              }}
+            />
           </div>
 
           {/* 3. Target Locations & Application Limit */}

@@ -21,6 +21,7 @@ import {
   Skeleton,
 } from '../components/ui';
 import type { PlatformName, EmploymentType, ExperienceLevel } from '../types';
+import { RoleCategorySelector } from '../components/common/RoleCategorySelector';
 
 export const PreferencesPage: React.FC = () => {
   const { preferences, loading, error, updatePreferences } = usePreferences();
@@ -280,6 +281,24 @@ export const PreferencesPage: React.FC = () => {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* All Job Role Categories Selector */}
+          <div className="mt-4 pt-4 border-t border-[var(--border-color)]">
+            <RoleCategorySelector
+              selectedRoles={targetTitles}
+              onAddRole={(role) => {
+                if (!targetTitles.includes(role)) {
+                  setTargetTitles((prev) => [...prev, role]);
+                  setIsDirty(true);
+                }
+              }}
+              onRemoveRole={(role) => handleRemoveTitle(role)}
+              onAddMultipleRoles={(roles) => {
+                setTargetTitles((prev) => Array.from(new Set([...prev, ...roles])));
+                setIsDirty(true);
+              }}
+            />
           </div>
         </Card>
 

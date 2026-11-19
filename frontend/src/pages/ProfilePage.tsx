@@ -42,19 +42,8 @@ import {
   ConfirmDialog,
 } from '../components/ui';
 import { BotLaunchPasswordModal } from '../components/common/BotLaunchPasswordModal';
+import { RoleCategorySelector } from '../components/common/RoleCategorySelector';
 import type { EducationItem, ExperienceItem, ProjectItem, CertificationItem, PlatformName } from '../types';
-
-const SUGGESTED_ROLES = [
-  'Full Stack Developer',
-  'Frontend Developer',
-  'Backend Developer',
-  'React Developer',
-  'Node.js Developer',
-  'Python Developer',
-  'Software Engineer',
-  'DevOps Engineer',
-  'Web Developer',
-];
 
 const SUGGESTED_CITIES = [
   'Pune',
@@ -2647,24 +2636,16 @@ export const ProfilePage: React.FC = () => {
             </Button>
           </div>
 
-          {/* Quick Suggestions */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            <span className="text-[10px] text-[var(--text-secondary)] font-mono">Suggested:</span>
-            {SUGGESTED_ROLES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => handleAddKeyword(r)}
-                className={`px-2 py-0.5 text-[10px] border font-mono transition-all cursor-pointer ${
-                  keywordList.includes(r)
-                    ? 'border-emerald-600 bg-emerald-950/40 text-emerald-300 font-bold'
-                    : 'border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                + {r}
-              </button>
-            ))}
-          </div>
+          {/* All Job Role Categories Explorer */}
+          <RoleCategorySelector
+            selectedRoles={keywordList}
+            onAddRole={(role) => handleAddKeyword(role)}
+            onRemoveRole={(role) => handleRemoveKeyword(role)}
+            onAddMultipleRoles={(roles) => {
+              setKeywordList((prev) => Array.from(new Set([...prev, ...roles])));
+              setIsDirty(true);
+            }}
+          />
         </div>
 
         {/* Locations Chips */}

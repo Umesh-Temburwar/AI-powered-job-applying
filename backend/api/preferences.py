@@ -12,6 +12,7 @@ from services.preference_service import (
     get_user_preferences,
     suggest_preferences_from_skills,
     update_user_preferences,
+    get_all_role_categories,
 )
 
 router = APIRouter(prefix="/preferences", tags=["Preferences"])
@@ -56,3 +57,13 @@ async def suggest_preferences(
 ) -> PreferenceSuggestionsResponse:
     """Provide intelligent targeting recommendations based on confirmed technical skills."""
     return await suggest_preferences_from_skills(user_id=current_user.id, skills=skills)
+
+
+@router.get(
+    "/roles-catalog",
+    summary="Get complete catalog of job role categories",
+    description="Returns all 11 industry job role categories and recommended job titles.",
+)
+async def get_roles_catalog():
+    """Return all available job role categories and suggested titles."""
+    return get_all_role_categories()

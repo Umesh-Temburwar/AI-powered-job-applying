@@ -6,6 +6,8 @@ from backend.services.preference_service import (
     suggest_preferences_from_skills,
     get_user_preferences,
     update_user_preferences,
+    get_all_role_categories,
+    ROLE_CATEGORIES_REGISTRY,
 )
 from backend.schemas.preferences import JobPreferencesUpdateRequest
 
@@ -39,3 +41,29 @@ def test_update_and_get_user_preferences_memory():
     assert "Senior Python Developer" in res.job_titles
     assert res.daily_application_limit == 30
     assert res.require_manual_review is False
+
+
+def test_get_all_role_categories_catalog():
+    """Verify complete catalog includes all 11 categories and 60+ unique roles."""
+    catalog = get_all_role_categories()
+    assert catalog["total_categories"] == 11
+    assert catalog["total_roles"] >= 60
+    category_ids = {c["id"] for c in catalog["categories"]}
+    expected_ids = {
+        "fullstack", "frontend", "backend", "mobile", "ai_data",
+        "devops_cloud", "qa_testing", "security", "product_mgmt",
+        "systems_iot", "fresher_intern"
+    }
+    assert expected_ids.issubset(category_ids)
+
+
+def test_suggest_preferences_ai_and_mobile_skills():
+    """Verify AI, mobile, and security skills trigger appropriate role categories."""
+    ai_skills = ["PyTorch", "NLP", "Pandas", "Scikit-Learn"]
+    res_ai = asyncio.run(suggest_preferences_from_skills("usr_test_ai", ai_skills))
+    assert any("AI" in title or "Data" in title for title in res_ai.suggested_titles)
+
+    mobile_skills = ["Flutter", "Kotlin", "Android Studio"]
+    res_mobile = asyncio.run(suggest_preferences_from_skills("usr_test_mob", mobile_skills))
+    assert any("Mobile" in title or "Flutter" in title or "Android" in title for title in res_mobile.suggested_titles)
+

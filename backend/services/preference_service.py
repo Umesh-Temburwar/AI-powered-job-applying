@@ -14,14 +14,154 @@ logger = logging.getLogger("preferences")
 # In-memory preferences registry for test/mock runs
 _MEMORY_PREFERENCES: dict[str, dict[str, Any]] = {}
 
+ROLE_CATEGORIES_REGISTRY: dict[str, dict[str, Any]] = {
+    "fullstack": {
+        "name": "Full Stack Engineering",
+        "triggers": ["fullstack", "full stack", "mern", "mean", "web app", "software engineer", "software development"],
+        "roles": [
+            "Full Stack Developer",
+            "MERN Stack Developer",
+            "MEAN Stack Developer",
+            "Full Stack Python Developer",
+            "Full Stack Java Developer",
+            "Software Engineer",
+        ],
+    },
+    "frontend": {
+        "name": "Frontend & UI Engineering",
+        "triggers": ["react", "vue", "angular", "frontend", "html", "css", "tailwind", "javascript", "typescript", "next.js", "nextjs", "ui/ux", "web design"],
+        "roles": [
+            "Frontend Developer",
+            "React Developer",
+            "Next.js Developer",
+            "Angular Developer",
+            "Vue.js Developer",
+            "UI/UX Engineer",
+            "JavaScript Developer",
+            "TypeScript Developer",
+        ],
+    },
+    "backend": {
+        "name": "Backend & API Engineering",
+        "triggers": ["node.js", "nodejs", "express", "fastapi", "django", "flask", "backend", "python", "java", "golang", "go", "c++", "c#", ".net", "spring boot", "springboot", "sql", "postgresql", "mongodb", "rest api", "microservices"],
+        "roles": [
+            "Backend Developer",
+            "Node.js Developer",
+            "Python Developer",
+            "Java Developer",
+            "FastAPI Developer",
+            "Django Developer",
+            "Go / Golang Developer",
+            "C++ Developer",
+            ".NET / C# Developer",
+            "REST API Engineer",
+        ],
+    },
+    "mobile": {
+        "name": "Mobile App Development",
+        "triggers": ["react native", "flutter", "android", "ios", "kotlin", "swift", "mobile", "dart"],
+        "roles": [
+            "Mobile App Developer",
+            "React Native Developer",
+            "Flutter Developer",
+            "Android Developer",
+            "iOS Developer",
+            "Kotlin Developer",
+            "Swift Developer",
+        ],
+    },
+    "ai_data": {
+        "name": "AI, ML & Data Science",
+        "triggers": ["pandas", "numpy", "tensorflow", "pytorch", "machine learning", "data science", "data analysis", "data analyst", "deep learning", "nlp", "llm", "generative ai", "computer vision", "bi", "tableau", "power bi"],
+        "roles": [
+            "AI Engineer",
+            "Machine Learning Engineer",
+            "Data Scientist",
+            "Data Analyst",
+            "Data Engineer",
+            "Generative AI / LLM Engineer",
+            "NLP Engineer",
+            "BI / Business Intelligence Developer",
+        ],
+    },
+    "devops_cloud": {
+        "name": "Cloud, DevOps & SRE",
+        "triggers": ["docker", "kubernetes", "aws", "azure", "gcp", "devops", "ci/cd", "linux", "cloud", "terraform", "sre", "ansible"],
+        "roles": [
+            "DevOps Engineer",
+            "Cloud Engineer (AWS / Azure / GCP)",
+            "Site Reliability Engineer (SRE)",
+            "Kubernetes Platform Engineer",
+            "CI/CD Automation Engineer",
+            "Linux System Administrator",
+        ],
+    },
+    "qa_testing": {
+        "name": "QA & Test Automation",
+        "triggers": ["selenium", "playwright", "automation", "qa", "pytest", "jest", "testing", "cypress", "sdet", "manual testing"],
+        "roles": [
+            "QA Automation Engineer",
+            "SDET (Software Development Engineer in Test)",
+            "Software Test Engineer",
+            "Manual QA Tester",
+            "Selenium / Playwright Tester",
+            "Performance Test Engineer",
+        ],
+    },
+    "security": {
+        "name": "Cybersecurity & InfoSec",
+        "triggers": ["cybersecurity", "security", "infosec", "soc", "penetration testing", "ethical hacking", "appsec", "network security", "owasp", "cryptography"],
+        "roles": [
+            "Cybersecurity Analyst",
+            "Information Security Engineer",
+            "SOC Analyst",
+            "Penetration Tester / Ethical Hacker",
+            "Application Security (AppSec) Engineer",
+            "Network Security Engineer",
+        ],
+    },
+    "product_mgmt": {
+        "name": "Product & Agile Management",
+        "triggers": ["product management", "product manager", "scrum", "agile", "project coordinator", "project manager", "scrum master", "technical program manager", "business analyst"],
+        "roles": [
+            "Associate Product Manager (APM)",
+            "Product Manager",
+            "Project Coordinator",
+            "Scrum Master",
+            "Technical Program Manager (TPM)",
+            "IT Business Analyst",
+        ],
+    },
+    "systems_iot": {
+        "name": "Systems, Embedded & IoT",
+        "triggers": ["embedded", "firmware", "iot", "robotics", "microcontroller", "arduino", "raspberry pi", "rtos", "hardware"],
+        "roles": [
+            "Embedded Systems Engineer",
+            "Firmware Engineer",
+            "IoT Solutions Developer",
+            "Robotics Software Engineer",
+            "Network Engineer",
+        ],
+    },
+    "fresher_intern": {
+        "name": "Freshers & Internships",
+        "triggers": ["fresher", "intern", "internship", "trainee", "entry level", "graduate engineer trainee", "get", "junior"],
+        "roles": [
+            "Software Engineer Intern",
+            "Frontend Developer Intern",
+            "Backend Developer Intern",
+            "Full Stack Intern",
+            "Graduate Engineer Trainee (GET)",
+            "Junior Software Developer",
+            "Associate Software Engineer",
+            "Technical Support Engineer",
+        ],
+    },
+}
+
 ROLE_MAPPINGS = [
-    (["react", "vue", "angular", "frontend", "html", "css", "tailwind", "javascript"], "Frontend Developer"),
-    (["node.js", "express", "fastapi", "django", "flask", "backend", "python", "java", "sql"], "Backend Developer"),
-    (["react", "node.js", "python", "fullstack", "full stack", "mongodb", "postgresql"], "Full Stack Developer"),
-    (["docker", "kubernetes", "aws", "azure", "gcp", "devops", "ci/cd", "linux"], "DevOps Engineer"),
-    (["pandas", "numpy", "tensorflow", "pytorch", "machine learning", "data science"], "Data Scientist / ML Engineer"),
-    (["selenium", "playwright", "automation", "qa", "pytest", "jest", "testing"], "QA Automation Engineer"),
-    (["fresher", "intern", "trainee", "entry level"], "Software Engineer Intern"),
+    (cat_data["triggers"], cat_data["roles"][0])
+    for cat_data in ROLE_CATEGORIES_REGISTRY.values()
 ]
 
 
@@ -210,3 +350,23 @@ async def suggest_preferences_from_skills(user_id: str, skills: list[str]) -> Pr
         suggested_keywords=suggested_keywords,
         source_skills=skills,
     )
+
+
+def get_all_role_categories() -> dict[str, Any]:
+    """Return complete structured catalog of all role categories and suggested titles."""
+    catalog = []
+    all_titles = []
+    for cat_id, cat_info in ROLE_CATEGORIES_REGISTRY.items():
+        catalog.append({
+            "id": cat_id,
+            "name": cat_info["name"],
+            "roles": cat_info["roles"],
+            "trigger_keywords_count": len(cat_info["triggers"]),
+        })
+        all_titles.extend(cat_info["roles"])
+
+    return {
+        "total_categories": len(catalog),
+        "total_roles": len(set(all_titles)),
+        "categories": catalog,
+    }
