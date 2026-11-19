@@ -34,6 +34,7 @@ logs/
 
 # Personal data, credentials, and generated configs
 profile_data.json
+training_history.json
 resume.ini
 platforms/linkedin/config.yaml
 !platforms/linkedin/config.example.yaml
