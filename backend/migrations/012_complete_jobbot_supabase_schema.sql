@@ -6,6 +6,7 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE SCHEMA IF NOT EXISTS private;
 
 -- 1. UPDATED_AT HELPER (search_path-safe)
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
@@ -95,6 +96,21 @@ CREATE TABLE IF NOT EXISTS public.automation_tasks (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE public.automation_tasks
+    ADD COLUMN IF NOT EXISTS progress INT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS message TEXT NOT NULL DEFAULT 'Task initialized',
+    ADD COLUMN IF NOT EXISTS task_type TEXT NOT NULL DEFAULT 'job_apply',
+    ADD COLUMN IF NOT EXISTS payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+    ADD COLUMN IF NOT EXISTS retry_count INT NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS max_retries INT NOT NULL DEFAULT 3,
+    ADD COLUMN IF NOT EXISTS error_details TEXT,
+    ADD COLUMN IF NOT EXISTS dry_run BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS worker_id TEXT,
+    ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
 CREATE TABLE IF NOT EXISTS public.applications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -114,16 +130,39 @@ CREATE TABLE IF NOT EXISTS public.applications (
     CONSTRAINT uq_user_job_url UNIQUE (user_id, job_url)
 );
 
+ALTER TABLE public.applications
+    ADD COLUMN IF NOT EXISTS task_id UUID REFERENCES public.automation_tasks(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS location TEXT,
+    ADD COLUMN IF NOT EXISTS salary TEXT,
+    ADD COLUMN IF NOT EXISTS notes TEXT,
+    ADD COLUMN IF NOT EXISTS applied_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE TABLE IF NOT EXISTS public.application_answers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     question TEXT NOT NULL,
-    question_text TEXT NOT NULL,
+    question_text TEXT,
     answer TEXT NOT NULL,
     field_type TEXT DEFAULT 'text',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure columns exist if table was created in an earlier migration
+ALTER TABLE public.application_answers
+    ADD COLUMN IF NOT EXISTS question TEXT,
+    ADD COLUMN IF NOT EXISTS question_text TEXT,
+    ADD COLUMN IF NOT EXISTS field_type TEXT DEFAULT 'text';
+
+-- Backfill question_text if empty
+UPDATE public.application_answers
+SET question_text = question
+WHERE question_text IS NULL AND question IS NOT NULL;
+
+-- Backfill question if empty
+UPDATE public.application_answers
+SET question = question_text
+WHERE question IS NULL AND question_text IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS public.platform_connections (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -139,6 +178,12 @@ CREATE TABLE IF NOT EXISTS public.platform_connections (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_user_platform UNIQUE (user_id, platform)
 );
+
+ALTER TABLE public.platform_connections
+    ADD COLUMN IF NOT EXISTS account_email TEXT,
+    ADD COLUMN IF NOT EXISTS last_verified TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS error_message TEXT,
+    ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS public.portal_configs (
     id TEXT PRIMARY KEY,
