@@ -90,3 +90,16 @@ async def train_for_candidate_profile(profile_data: Optional[Dict[str, Any]] = N
 async def list_training_datasets():
     """Return catalog of all golden Q&A domain datasets and dynamic template coverage."""
     return training_service.get_dataset_catalog()
+
+
+@router.get("/personas")
+async def list_candidate_personas():
+    """Return catalog of all public candidate personas used for universal bot training."""
+    return training_service.get_personas_catalog()
+
+
+@router.post("/train-all-personas")
+async def train_and_benchmark_all_personas():
+    """Train and evaluate the bot across all candidate personas, verifying multi-user accuracy and isolation."""
+    return training_service.train_and_benchmark_all_personas()
+

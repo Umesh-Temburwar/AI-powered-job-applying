@@ -1,7 +1,7 @@
 [
   {
     "question_text": "What is your official notice period?",
-    "answer": "Immediate (0 Days)",
+    "answer": "{{notice_period}}",
     "field_type": "text",
     "category": "notice_period"
   },

@@ -19,7 +19,7 @@
   },
   {
     "question_text": "Do you have live project links demonstrating your work?",
-    "answer": "Yes, live applications include the EdTech Platform (https://edtechacademy.vercel.app/), ByteFest Portal (https://bytefest2k25.vercel.app/), and my engineering portfolio (https://umeshtemburwar.vercel.app/).",
+    "answer": "Yes, live applications include {{projects_list}} and my portfolio ({{portfolio_url}}).",
     "field_type": "text",
     "category": "resume_projects"
   }

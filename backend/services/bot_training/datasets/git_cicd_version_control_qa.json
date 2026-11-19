@@ -7,7 +7,7 @@
   },
   {
     "question_text": "What is your GitHub profile link?",
-    "answer": "https://github.com/Umesh-Temburwar",
+    "answer": "{{github_url}}",
     "field_type": "text",
     "category": "git_cicd"
   }

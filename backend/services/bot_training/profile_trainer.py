@@ -43,7 +43,7 @@ class CandidateProfileTrainer:
             # 1. College Academics & Coursework
             {
                 "question_text": "What is your graduation college and degree?",
-                "answer": f"{edu['degree']} in {edu['major']} from {edu['college']}{', ' + edu['location'] if edu['location'] else ''} (Batch {edu['year']}).",
+                "answer": f"{edu['degree']} in {edu['major']} from {edu['college']} (Batch {edu['year']}).",
                 "field_type": "text",
                 "category": "college_academics"
             },

@@ -1,13 +1,13 @@
 [
   {
     "question_text": "What is your expected fixed CTC in INR?",
-    "answer": "4.5 Lakhs (4,50,000 INR per annum)",
+    "answer": "{{expected_ctc}}",
     "field_type": "text",
     "category": "compensation"
   },
   {
     "question_text": "What is your current CTC?",
-    "answer": "0 (Fresher / Immediate Joiner)",
+    "answer": "{{current_ctc}}",
     "field_type": "text",
     "category": "compensation"
   },

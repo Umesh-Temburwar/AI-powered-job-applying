@@ -6,6 +6,7 @@ confidence scoring, and model fine-tuning dataset generation.
 """
 
 import os
+import glob
 import json
 import csv
 import time
@@ -22,6 +23,9 @@ logger = logging.getLogger("BotTrainingEngine")
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 PROFILE_PATH = os.path.join(BASE_DIR, "data", "profile_data.json") if os.path.exists(os.path.join(BASE_DIR, "data", "profile_data.json")) else os.path.join(BASE_DIR, "profile_data.json")
 ANSWERS_PATH = os.path.join(BASE_DIR, "data", "application_answers.csv") if os.path.exists(os.path.join(BASE_DIR, "data", "application_answers.csv")) else os.path.join(BASE_DIR, "application_answers.csv")
+DATASETS_DIR = os.path.join(BASE_DIR, "backend", "services", "bot_training", "datasets")
+if not os.path.exists(DATASETS_DIR):
+    DATASETS_DIR = os.path.join(BASE_DIR, "services", "bot_training", "datasets")
 
 
 @dataclass
@@ -51,13 +55,101 @@ class BenchmarkSummary:
 class BotTrainer:
     """Core engine for training the bot, evaluating screening accuracy, and tracking learning progress."""
 
-    def __init__(self, profile_path: str = PROFILE_PATH, answers_path: str = ANSWERS_PATH):
+    def __init__(
+        self,
+        profile_path: str = PROFILE_PATH,
+        answers_path: str = ANSWERS_PATH,
+        profile_data: Optional[Dict[str, Any]] = None,
+    ):
         self.profile_path = profile_path
         self.answers_path = answers_path
-        self.profile_data = self._load_profile()
-        self.answer_bank = self._load_answer_bank()
+        self.raw_templates = self._load_raw_templates()
+        self.base_csv_bank = self._load_answer_bank()
+        self.profile_data = profile_data if profile_data is not None else self._load_profile()
         self.renderer = CandidateTemplateRenderer(self.profile_data or None)
-        self.matcher = QuestionMatcher(self.answer_bank, threshold=0.72)
+        self.answer_bank: Dict[str, Dict[str, str]] = {}
+        self._rebuild_dynamic_answer_bank()
+
+    def _load_raw_templates(self) -> Dict[str, Dict[str, str]]:
+        """Load canonical universal templates from golden domain datasets."""
+        raw: Dict[str, Dict[str, str]] = {}
+        pattern = os.path.join(DATASETS_DIR, "*.json")
+        for path in glob.glob(pattern):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        for entry in data:
+                            q = entry.get("question_text", "").strip()
+                            a = entry.get("answer", "").strip()
+                            ft = entry.get("field_type", "text").strip()
+                            cat = entry.get("category", "general").strip()
+                            if q and a:
+                                raw[q.lower()] = {
+                                    "original_question": q,
+                                    "template": a,
+                                    "field_type": ft,
+                                    "category": cat,
+                                }
+            except Exception as exc:
+                logger.debug("Failed loading raw dataset template %s: %s", path, exc)
+        return raw
+
+    def load_candidate_profile(self, profile_data: Optional[Dict[str, Any]] = None) -> None:
+        """Bind candidate profile to trainer, update template context, and re-ground entire bank dynamically."""
+        self.profile_data = profile_data if profile_data is not None else self._load_profile()
+        self.renderer = CandidateTemplateRenderer(self.profile_data or None)
+        self._rebuild_dynamic_answer_bank()
+
+    def _rebuild_dynamic_answer_bank(self) -> None:
+        """Hydrate universal templates dynamically for the active candidate and overlay candidate profile QA."""
+        fresh_bank: Dict[str, Dict[str, str]] = {}
+
+        # 1. First, hydrate all universal dataset templates for active candidate
+        for q_low, info in self.raw_templates.items():
+            rendered_ans = self.renderer.render_text(info["template"])
+            fresh_bank[q_low] = {
+                "original_question": info["original_question"],
+                "answer": rendered_ans,
+                "field_type": info["field_type"],
+            }
+
+        # 2. Overlay with base CSV bank (rendered through template renderer)
+        for q_low, info in self.base_csv_bank.items():
+            if q_low not in fresh_bank:
+                fresh_bank[q_low] = {
+                    "original_question": info["original_question"],
+                    "answer": self.renderer.render_text(info["answer"]),
+                    "field_type": info["field_type"],
+                }
+
+        self.answer_bank = fresh_bank
+
+        # 3. Overlay candidate profile Q&A
+        if self.profile_data:
+            self._overlay_candidate_profile(self.profile_data)
+        else:
+            self.matcher = QuestionMatcher(self.answer_bank, threshold=0.72)
+
+    def _overlay_candidate_profile(self, profile_data: Dict[str, Any]) -> None:
+        """Hydrate candidate-specific Q&A into memory bank without disk pollution."""
+        try:
+            from .profile_trainer import CandidateProfileTrainer
+            pt = CandidateProfileTrainer(profile_data)
+            pairs = pt.generate_candidate_qa_pairs()
+            for p in pairs:
+                q_text = p.get("question_text", "").strip()
+                ans = p.get("answer", "").strip()
+                ft = p.get("field_type", "text")
+                if q_text and ans:
+                    self.answer_bank[q_text.lower()] = {
+                        "original_question": q_text,
+                        "answer": ans,
+                        "field_type": ft,
+                    }
+            self.matcher = QuestionMatcher(self.answer_bank, threshold=0.72)
+        except Exception as exc:
+            logger.warning("Could not overlay candidate profile QA pairs: %s", exc)
 
     def _load_profile(self) -> Dict[str, Any]:
         if os.path.exists(self.profile_path):

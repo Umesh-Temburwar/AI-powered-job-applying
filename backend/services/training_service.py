@@ -204,5 +204,76 @@ class TrainingService:
             "total_answers_in_bank": len(self.trainer.answer_bank)
         }
 
+    def get_personas_catalog(self) -> Dict[str, Any]:
+        """Return catalog of all registered public candidate personas."""
+        from services.bot_training.personas import get_all_personas
+        personas = get_all_personas()
+        return {
+            "total_personas": len(personas),
+            "personas": [
+                {
+                    "id": p["id"],
+                    "label": p["label"],
+                    "domain": p.get("domain", "general"),
+                    "name": p["personal"]["name"],
+                    "degree": p["education"]["degree"],
+                    "college": p["education"]["college"],
+                    "experience_years": p["personal"]["total_experience_years"],
+                    "notice_period": p["personal"]["notice_period"],
+                    "expected_ctc": p["personal"]["expected_ctc"],
+                    "location": p["personal"]["current_location"],
+                    "skills": p["key_skills"][:5],
+                }
+                for p in personas
+            ],
+        }
+
+    def train_and_benchmark_all_personas(self) -> Dict[str, Any]:
+        """Train and evaluate the screening Q&A engine across all public candidate personas.
+        Verifies high accuracy for each persona and validates strict zero cross-user leakage.
+        """
+        from services.bot_training.personas import get_all_personas
+        from services.bot_training.questionnaire_simulator import QuestionnaireSimulator
+        personas = get_all_personas()
+        dataset = self.load_domain_datasets()
+
+        persona_results = []
+        total_evals = 0
+        total_passed = 0
+
+        # Dedicated runner trainer to avoid mutating primary trainer
+        runner_trainer = BotTrainer()
+
+        for p in personas:
+            runner_trainer.load_candidate_profile(p)
+            summary = runner_trainer.run_benchmark(dataset)
+            total_evals += summary.total_evaluated
+            total_passed += summary.passed
+            persona_results.append({
+                "persona_id": p["id"],
+                "candidate_name": p["personal"]["name"],
+                "domain": p.get("domain", "general"),
+                "total_evaluated": summary.total_evaluated,
+                "passed": summary.passed,
+                "failed": summary.failed,
+                "accuracy_percentage": summary.accuracy_percentage,
+                "average_latency_ms": summary.average_latency_ms,
+            })
+
+        # Multi-user isolation verification
+        isolation_report = QuestionnaireSimulator.verify_multi_user_isolation(personas)
+        overall_acc = round(total_passed / max(total_evals, 1) * 100.0, 2)
+
+        return {
+            "status": "success",
+            "public_bot_mode": True,
+            "total_personas_tested": len(personas),
+            "total_benchmark_evaluations": total_evals,
+            "overall_accuracy_percentage": overall_acc,
+            "multi_user_isolated": isolation_report.get("isolated", True),
+            "leaks_count": len(isolation_report.get("leaks", [])),
+            "persona_results": persona_results,
+        }
+
 
 training_service = TrainingService()

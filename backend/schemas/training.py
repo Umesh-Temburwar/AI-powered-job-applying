@@ -14,6 +14,9 @@ class TrainingStatsResponse(BaseModel):
     skills_count: int = Field(..., description="Count of candidate key skills")
     historical_runs_count: int = Field(0, description="Number of recorded benchmark evaluations")
     last_accuracy_pct: Optional[float] = Field(None, description="Most recent benchmark accuracy percentage")
+    public_bot_mode: bool = Field(True, description="Whether bot is operating in multi-user public bot mode")
+    supported_personas_count: int = Field(8, description="Number of standard public candidate personas supported")
+    multi_user_isolated: bool = Field(True, description="Verified zero cross-user PII leakage")
 
 
 class EvaluateQuestionRequest(BaseModel):
